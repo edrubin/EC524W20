@@ -6,4 +6,4 @@ Our syllabus will be posted shortly.
 
 ## Projects
 
-1. [Predicting sales price in housing data (Kaggle)](https://raw.githack.com/edrubin/EC524W20/master/projects/kaggle-house-prices/README.md)
+1. [Predicting sales price in housing data (Kaggle)](https://github.com/edrubin/EC524W20/tree/master/projects/kaggle-house-prices)
