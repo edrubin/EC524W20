@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+  <head>
+    <title>Lecture .mono[000]</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Edward Rubin" />
+    <meta name="date" content="2020-01-09" />
+    <link href="000-slides_files/remark-css-0.0.1/default.css" rel="stylesheet" />
+    <link href="000-slides_files/remark-css-0.0.1/metropolis.css" rel="stylesheet" />
+    <link href="000-slides_files/remark-css-0.0.1/metropolis-fonts.css" rel="stylesheet" />
+    <link rel="stylesheet" href="my-css.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Lecture .mono[000]
+## Why are we here?
+### Edward Rubin
+### 09 January 2020
+
+---
+
+exclude: true
+
+
+---
+class: inverse, middle
+# Admin
+---
+name: admin
+# Admin
+
+.hi-slate[In-class today]
+
+- .b[Course website:] [https://github.com/edrubin/EC524W20/](https://github.com/edrubin/EC524W20/)
+- [Syllabus](https://raw.githack.com/edrubin/EC524W20/master/syllabus/syllabus.pdf) (on website)
+
+.hi-slate[.mono[TODO] list]
+
+- [Assignment](https://github.com/edrubin/EC524W20/tree/master/projects/kaggle-house-prices) (from Tuesday) due Thursday
+- Readings for next time:
+  - ISL Ch1–Ch2
+  - [Prediction Policy Problems](https://www.aeaweb.org/articles?id=10.1257/aer.p20151023) by Kleinberg .it[et al.] (2015)
+---
+class: inverse, middle
+# What's the goal?
+---
+layout: true
+# What's the goal?
+
+---
+name: different
+## What's different?
+
+We've got a whole class on .hi-purple[prediction]. Why?
+
+--
+
+Up to this point, we've focused on causal .hi[identification/inference] of `\(\beta\)`, _i.e._,
+
+`$$\color{#6A5ACD}{\text{Y}_{i}} = \text{X}_{i} \color{#e64173}{\beta} + u_i$$`
+
+meaning we want an unbiased (consistent) and precise estimate `\(\color{#e64173}{\hat\beta}\)`.
+
+--
+
+With .hi-purple[prediction], we shift our focus to accurately estimating outcomes.
+
+In other words, how can we best construct `\(\color{#6A5ACD}{\hat{\text{Y}}_{i}}\)`?
+
+---
+## ... so?
+
+So we want "nice"-performing estimates `\(\hat y\)` instead of `\(\hat\beta\)`.
+
+.qa[Q] Can't we just use the same methods (_i.e._, OLS)?
+
+--
+
+.qa[A] It depends.
+--
+ How well does your .hi[linear]-regression model approximate the underlying data? (And how do you plan to select your model?)
+
+--
+
+.note[Recall] Least-squares regression is a great .hi[linear] estimator.
+
+---
+layout: false
+class: clear, middle
+
+Data data be tricky.super[.pink[†]]—as can understanding many relationships.
+
+.footnote[
+.pink[†] "Tricky" might mean nonlinear... or many other things...
+]
+
+
+---
+layout: true
+class: clear
+---
+exclude: true
+
+
+---
+name: graph-example
+
+.white[blah]
+&lt;img src="000-slides_files/figure-html/plot points-1.svg" style="display: block; margin: auto;" /&gt;
+---
+.pink[Linear regression]
+&lt;img src="000-slides_files/figure-html/plot ols-1.svg" style="display: block; margin: auto;" /&gt;
+---
+.pink[Linear regression], .turquoise[linear regression] `\(\color{#20B2AA}{\left( x^4 \right)}\)`
+&lt;img src="000-slides_files/figure-html/plot ols poly-1.svg" style="display: block; margin: auto;" /&gt;
+---
+.pink[Linear regression], .turquoise[linear regression] `\(\color{#20B2AA}{\left( x^4 \right)}\)`, .purple[KNN (100)]
+&lt;img src="000-slides_files/figure-html/plot knn-1.svg" style="display: block; margin: auto;" /&gt;
+---
+.pink[Linear regression], .turquoise[linear regression] `\(\color{#20B2AA}{\left( x^4 \right)}\)`, .purple[KNN (100)], .orange[KNN (10)]
+&lt;img src="000-slides_files/figure-html/plot knn more-1.svg" style="display: block; margin: auto;" /&gt;
+---
+.pink[Linear regression], .turquoise[linear regression] `\(\color{#20B2AA}{\left( x^4 \right)}\)`, .purple[KNN (100)], .orange[KNN (10)], .slate[random forest]
+&lt;img src="000-slides_files/figure-html/plot rf-1.svg" style="display: block; margin: auto;" /&gt;
+---
+class: clear, middle
+
+.note[Note] That example only had one predictor...
+
+---
+layout: false
+name: tradeoffs
+# What's the goal?
+## Tradeoffs
+
+In prediction, we constantly face many tradeoffs, _e.g._,
+- .hi[flexibility] and .hi-slate[parametric structure] (and interpretability)
+- performance in .hi[training] and .hi-slate[test] samples
+- .hi[variance] and .hi-slate[bias]
+
+--
+
+As your economic training should have predicted, in each setting, we need to .b[balance the additional benefits and costs] of adjusting these tradeoffs.
+
+--
+
+Many machine-learning (ML) techniques/algorithms are crafted to optimize with these tradeoffs, but the practitioner (you) still needs to be careful.
+---
+name: more-goals
+# What's the goal?
+
+There are many  reasons to step outside the world of linear regression...
+
+--
+
+.hi-slate[Multi-class] classification problems
+- Rather than {0,1}, we need to classify `\(y_i\)` into 1 of K classes
+- _E.g._, ER patients: {heart attack, drug overdose, stroke, nothing}
+
+--
+
+.hi-slate[Text analysis] and .hi-slate[image recognition]
+- Comb though sentences (pixels) to glean insights from relationships
+- _E.g._, detect sentiments in tweets or roof-top solar in satellite imagery
+
+--
+
+.hi-slate[Unsupervised learning]
+- You don't know groupings, but you think there are relevant groups
+- _E.g._, classify spatial data into groups
+---
+layout: true
+class: clear, middle
+
+---
+name: example-articles
+&lt;img src="images/ml-xray.png" width="90%" style="display: block; margin: auto;" /&gt;
+---
+&lt;img src="images/ml-cars.png" width="90%" style="display: block; margin: auto;" /&gt;
+---
+&lt;img src="images/ml-writing.png" width="90%" style="display: block; margin: auto;" /&gt;
+---
+&lt;img src="images/ml-issues.jpeg" width="90%" style="display: block; margin: auto;" /&gt;
+---
+# Takeaways?
+
+What are your main takeaways from these examples?
+
+--
+
+.note[Mine]
+
+- Interactions and nonlinearities likely matter
+- .it[Engineering] features/variables can be important
+- Flexibility is huge—but we still want to avoid overfitting
+
+---
+class: clear, middle
+
+.qa[Q] What have you learned/noticed in your first project?
+
+---
+class: clear, middle
+
+.note[Next time] Start formal building blocks of prediction.
+
+---
+name: sources
+layout: false
+
+# Sources
+
+Sources (articles) of images
+
+- [Deep learning and radiology ](https://www.smart2zero.com/news/algorithm-beats-radiologists-diagnosing-x-rays)
+- [Parking lot detection](https://www.smart2zero.com/news/algorithm-beats-radiologists-diagnosing-x-rays)
+- [.it[New Yorker] writing](https://www.newyorker.com/magazine/2019/10/14/can-a-machine-learn-to-write-for-the-new-yorker)
+- [Gender Shades](http://gendershades.org/overview.html)
+
+---
+# Table of contents
+
+.col-left[
+.small[
+#### Admin
+- [Today and upcoming](#admin)
+
+#### What's the goal?
+- [What's difference?](#different)
+- [Graphical example](#graph-example)
+- [Tradeoffs](#tradeoffs)
+- [More goals](#more-goals)
+- [Examples](#example-articles)
+
+#### Other
+- [Image sources](#sources)
+]
+]
+
+---
+exclude: true
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

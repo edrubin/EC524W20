@@ -3,3 +3,4 @@
 *.rdb
 *.Rhistory
 *.Rproj.user/
+.Rproj.user

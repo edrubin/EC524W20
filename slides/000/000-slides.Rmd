@@ -1,0 +1,365 @@
+---
+title: "Lecture .mono[000]"
+subtitle: "Why are we here?"
+author: "Edward Rubin"
+#date: "`r format(Sys.time(), '%d %B %Y')`"
+date: "09 January 2020"
+output:
+  xaringan::moon_reader:
+    css: ['default', 'metropolis', 'metropolis-fonts', 'my-css.css']
+    # self_contained: true
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+exclude: true
+
+```{R, setup, include = F}
+library(pacman)
+p_load(
+  broom, tidyverse,
+  ggplot2, ggthemes, ggforce, ggridges, cowplot,
+  latex2exp, viridis, extrafont, gridExtra,
+  kableExtra, snakecase, janitor,
+  data.table, dplyr,
+  lubridate, knitr, future, furrr,
+  estimatr, FNN, parsnip,
+  huxtable, here, magrittr
+)
+# Define colors
+red_pink   = "#e64173"
+turquoise  = "#20B2AA"
+orange     = "#FFA500"
+red        = "#fb6107"
+blue       = "#3b3b9a"
+green      = "#8bb174"
+grey_light = "grey70"
+grey_mid   = "grey50"
+grey_dark  = "grey20"
+purple     = "#6A5ACD"
+slate      = "#314f4f"
+# Knitr options
+opts_chunk$set(
+  comment = "#>",
+  fig.align = "center",
+  fig.height = 7,
+  fig.width = 10.5,
+  warning = F,
+  message = F
+)
+opts_chunk$set(dev = "svg")
+options(device = function(file, width, height) {
+  svg(tempfile(), width = width, height = height)
+})
+options(knitr.table.format = "html")
+```
+---
+class: inverse, middle
+# Admin
+---
+name: admin
+# Admin
+
+.hi-slate[In-class today]
+
+- .b[Course website:] [https://github.com/edrubin/EC524W20/](https://github.com/edrubin/EC524W20/)
+- [Syllabus](https://raw.githack.com/edrubin/EC524W20/master/syllabus/syllabus.pdf) (on website)
+
+.hi-slate[.mono[TODO] list]
+
+- [Assignment](https://github.com/edrubin/EC524W20/tree/master/projects/kaggle-house-prices) (from Tuesday) due Thursday
+- Readings for next time:
+  - ISL Ch1–Ch2
+  - [Prediction Policy Problems](https://www.aeaweb.org/articles?id=10.1257/aer.p20151023) by Kleinberg .it[et al.] (2015)
+---
+class: inverse, middle
+# What's the goal?
+---
+layout: true
+# What's the goal?
+
+---
+name: different
+## What's different?
+
+We've got a whole class on .hi-purple[prediction]. Why?
+
+--
+
+Up to this point, we've focused on causal .hi[identification/inference] of $\beta$, _i.e._,
+
+$$\color{#6A5ACD}{\text{Y}_{i}} = \text{X}_{i} \color{#e64173}{\beta} + u_i$$
+
+meaning we want an unbiased (consistent) and precise estimate $\color{#e64173}{\hat\beta}$.
+
+--
+
+With .hi-purple[prediction], we shift our focus to accurately estimating outcomes.
+
+In other words, how can we best construct $\color{#6A5ACD}{\hat{\text{Y}}_{i}}$?
+
+---
+## ... so?
+
+So we want "nice"-performing estimates $\hat y$ instead of $\hat\beta$.
+
+.qa[Q] Can't we just use the same methods (_i.e._, OLS)?
+
+--
+
+.qa[A] It depends.
+--
+ How well does your .hi[linear]-regression model approximate the underlying data? (And how do you plan to select your model?)
+
+--
+
+.note[Recall] Least-squares regression is a great .hi[linear] estimator.
+
+---
+layout: false
+class: clear, middle
+
+Data data be tricky.super[.pink[†]]—as can understanding many relationships.
+
+.footnote[
+.pink[†] "Tricky" might mean nonlinear... or many other things...
+]
+
+
+---
+layout: true
+class: clear
+---
+exclude: true
+
+```{R, data prediction types, include = F, cache = T}
+# Generate data
+n = 1e3
+set.seed(123)
+tmp_df = tibble(
+  x = runif(n = n, min = -10, max = 10),
+  er = rnorm(n = n, sd = 70),
+  y = 0.3* x^2 + sqrt(abs(er)) - 17
+) %>% mutate(y = ifelse(y > 0, y, 5 - x + 0.03 * er)) %>% mutate(y = abs(y)^0.7)
+# Estimate
+knn_df = tibble(
+  x = seq(-10, 10, by = 0.1),
+  y = knn.reg(
+    train = tmp_df[,"x"] %>% as.matrix(),
+    test = tibble(x = seq(-10, 10, by = 0.1)),
+    y = tmp_df[,"y"] %>% as.matrix(),
+    k = 100
+  )$pred
+)
+knn_c_df = tibble(
+  x = seq(-10, 10, by = 0.1),
+  y = knn.reg(
+    train = tmp_df[,"x"] %>% as.matrix(),
+    test = tibble(x = seq(-10, 10, by = 0.1)),
+    y = tmp_df[,"y"] %>% as.matrix(),
+    k = 10
+  )$pred
+)
+# Random forest
+rf_model = rand_forest(mode = "regression", mtry = 1, trees = 10000) %>%
+  set_engine("ranger", seed = 12345, num.threads = 10) %>%
+  fit_xy(y = tmp_df[,"y"], x = tmp_df[,"x"])
+# Predict onto testing data
+rf_df = tibble(
+  y = predict(rf_model, new_data = tibble(x = seq(-10, 10, by = 0.1)))$.pred,
+  x = seq(-10, 10, by = 0.1)
+)
+# The plot
+gg_basic =
+ggplot(data = tmp_df, aes(x, y)) +
+geom_hline(yintercept = 0) +
+geom_vline(xintercept = 0) +
+geom_point(size = 3.5, shape = 19, alpha = 0.05) +
+geom_point(size = 3.5, shape = 1, alpha = 0.2) +
+theme_void(base_family = "Fira Sans Book") +
+xlab("Y") + ylab("X") +
+theme(
+  axis.title.y.left = element_text(size = 18, hjust = 1, vjust = 0),
+  axis.title.x.bottom = element_text(size = 18, hjust = 0.5, vjust = 0.5, angle = 0)
+)
+```
+---
+name: graph-example
+
+.white[blah]
+```{R, plot points, echo = F}
+gg_basic
+```
+---
+.pink[Linear regression]
+```{R, plot ols, echo = F}
+gg_basic +
+geom_smooth(method = "lm", se = F, color = red_pink, size = 1.25)
+```
+---
+.pink[Linear regression], .turquoise[linear regression] $\color{#20B2AA}{\left( x^4 \right)}$
+```{R, plot ols poly, echo = F}
+gg_basic +
+geom_smooth(method = "lm", se = F, color = red_pink, size = 1.25) +
+geom_smooth(method = "lm", formula = y ~ poly(x, 4), se = F, color = turquoise, size = 1.25)
+```
+---
+.pink[Linear regression], .turquoise[linear regression] $\color{#20B2AA}{\left( x^4 \right)}$, .purple[KNN (100)]
+```{R, plot knn, echo = F}
+gg_basic +
+geom_smooth(method = "lm", se = F, color = red_pink, size = 1.25) +
+geom_smooth(method = "lm", formula = y ~ poly(x, 4), se = F, color = turquoise, size = 1.25) +
+geom_path(data = knn_df, color = purple, size = 1.25)
+```
+---
+.pink[Linear regression], .turquoise[linear regression] $\color{#20B2AA}{\left( x^4 \right)}$, .purple[KNN (100)], .orange[KNN (10)]
+```{R, plot knn more, echo = F}
+gg_basic +
+geom_smooth(method = "lm", se = F, color = red_pink, size = 1.25) +
+geom_smooth(method = "lm", formula = y ~ poly(x, 4), se = F, color = turquoise, size = 1.25) +
+geom_path(data = knn_df, color = purple, size = 1.25) +
+geom_path(data = knn_c_df, color = orange, size = 1.25)
+```
+---
+.pink[Linear regression], .turquoise[linear regression] $\color{#20B2AA}{\left( x^4 \right)}$, .purple[KNN (100)], .orange[KNN (10)], .slate[random forest]
+```{R, plot rf, echo = F}
+gg_basic +
+geom_smooth(method = "lm", se = F, color = red_pink, size = 1.25) +
+geom_smooth(method = "lm", formula = y ~ poly(x, 4), se = F, color = turquoise, size = 1.25) +
+geom_path(data = knn_df, color = purple, size = 1.25) +
+geom_path(data = knn_c_df, color = orange, size = 1.25) +
+geom_path(data = rf_df, color = slate, size = 1.25)
+```
+---
+class: clear, middle
+
+.note[Note] That example only had one predictor...
+
+---
+layout: false
+name: tradeoffs
+# What's the goal?
+## Tradeoffs
+
+In prediction, we constantly face many tradeoffs, _e.g._,
+- .hi[flexibility] and .hi-slate[parametric structure] (and interpretability)
+- performance in .hi[training] and .hi-slate[test] samples
+- .hi[variance] and .hi-slate[bias]
+
+--
+
+As your economic training should have predicted, in each setting, we need to .b[balance the additional benefits and costs] of adjusting these tradeoffs.
+
+--
+
+Many machine-learning (ML) techniques/algorithms are crafted to optimize with these tradeoffs, but the practitioner (you) still needs to be careful.
+---
+name: more-goals
+# What's the goal?
+
+There are many  reasons to step outside the world of linear regression...
+
+--
+
+.hi-slate[Multi-class] classification problems
+- Rather than {0,1}, we need to classify $y_i$ into 1 of K classes
+- _E.g._, ER patients: {heart attack, drug overdose, stroke, nothing}
+
+--
+
+.hi-slate[Text analysis] and .hi-slate[image recognition]
+- Comb though sentences (pixels) to glean insights from relationships
+- _E.g._, detect sentiments in tweets or roof-top solar in satellite imagery
+
+--
+
+.hi-slate[Unsupervised learning]
+- You don't know groupings, but you think there are relevant groups
+- _E.g._, classify spatial data into groups
+---
+layout: true
+class: clear, middle
+
+---
+name: example-articles
+```{R, xray image, echo = F, out.width = '90%'}
+knitr::include_graphics("images/ml-xray.png")
+```
+---
+```{R, cars image, echo = F, out.width = '90%'}
+knitr::include_graphics("images/ml-cars.png")
+```
+---
+```{R, ny image, echo = F, out.width = '90%'}
+knitr::include_graphics("images/ml-writing.png")
+```
+---
+```{R, gender-race image, echo = F, out.width = '90%'}
+knitr::include_graphics("images/ml-issues.jpeg")
+```
+---
+# Takeaways?
+
+What are your main takeaways from these examples?
+
+--
+
+.note[Mine]
+
+- Interactions and nonlinearities likely matter
+- .it[Engineering] features/variables can be important
+- Flexibility is huge—but we still want to avoid overfitting
+
+---
+class: clear, middle
+
+.qa[Q] What have you learned/noticed in your first project?
+
+---
+class: clear, middle
+
+.note[Next time] Start formal building blocks of prediction.
+
+---
+name: sources
+layout: false
+
+# Sources
+
+Sources (articles) of images
+
+- [Deep learning and radiology ](https://www.smart2zero.com/news/algorithm-beats-radiologists-diagnosing-x-rays)
+- [Parking lot detection](https://www.smart2zero.com/news/algorithm-beats-radiologists-diagnosing-x-rays)
+- [.it[New Yorker] writing](https://www.newyorker.com/magazine/2019/10/14/can-a-machine-learn-to-write-for-the-new-yorker)
+- [Gender Shades](http://gendershades.org/overview.html)
+
+---
+# Table of contents
+
+.col-left[
+.small[
+#### Admin
+- [Today and upcoming](#admin)
+
+#### What's the goal?
+- [What's difference?](#different)
+- [Graphical example](#graph-example)
+- [Tradeoffs](#tradeoffs)
+- [More goals](#more-goals)
+- [Examples](#example-articles)
+
+#### Other
+- [Image sources](#sources)
+]
+]
+
+---
+exclude: true
+
+```{R, save pdfs, include = F}
+# PDF with pauses
+xaringan::decktape("000-slides.html", "000-slides.pdf")
+# PDF without pauses
+pagedown::chrome_print("000-slides.html", "000-slides-no-pause.pdf")
+```

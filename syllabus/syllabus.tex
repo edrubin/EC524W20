@@ -1,0 +1,276 @@
+\documentclass[10pt]{article}
+\usepackage{lmodern}
+\usepackage{amssymb,amsmath}
+\usepackage{fontspec}
+
+\usepackage[margin=1.15in]{geometry}
+\usepackage{setspace, titling}
+\newcommand{\subtitle}[1]{%
+  \posttitle{%
+    \par\end{center}
+    \begin{center}\large#1\end{center}
+    \vskip0.5em}%
+}
+
+%% FONTS
+\usepackage{fontspec}
+% See: https://tex.stackexchange.com/a/50593
+% \setromanfont[
+% BoldFont       = texgyrepagella-bold.otf,
+% ItalicFont     = texgyrepagella-italic.otf,
+% BoldItalicFont = texgyrepagella-bolditalic.otf
+% ]{texgyrepagella-regular.otf} %
+\setmainfont[
+BoldFont       = FiraSans-SemiBold.otf,
+ItalicFont     = FiraSans-Italic.otf,
+BoldItalicFont = FiraSans-SemiBoldItalic.otf
+]{FiraSans-Book.otf} %
+\setmonofont[
+BoldFont       = FiraCode-Bold.otf
+]{FiraCode-Regular.otf}
+\usepackage{marvosym} % For cool symbols.
+\usepackage{fontawesome} % Ditto
+
+\usepackage[dvipsnames]{xcolor}
+\definecolor{uo_green}{HTML}{154733}
+\definecolor{forest_green}{HTML}{006241}
+\definecolor{pine_green}{HTML}{007935}
+\definecolor{grass_green}{HTML}{62A70F}
+\definecolor{golden_yellow}{HTML}{FFD200}
+\definecolor{cool_gray}{HTML}{54565B}
+\definecolor{light_cool_gray}{HTML}{A8A8AA}
+
+\usepackage[colorlinks = true,
+linkcolor = pine_green,
+urlcolor  = pine_green,
+citecolor = pine_green,
+anchorcolor = black]{hyperref}
+\usepackage{graphicx}
+
+% For strikeout font: \sout()
+\usepackage[normalem]{ulem}
+% New emphasis style: Bold and underlined
+\newcommand{\emf}[1]{\textbf{\textcolor{grass_green}{#1}}}
+
+% For table formatting:
+\usepackage{array, booktabs, caption, siunitx}
+\newcommand{\ra}[1]{\renewcommand{\arraystretch}{#1}}
+\newcolumntype{d}[1]{D{.}{.}{#1}}
+
+\begin{document}
+
+\title{
+  % \vspace{-4em}
+	\texttt{\textbf{Prediction and machine learning} [EC524/424/]} \\[1em]
+	\large Winter 2020 Syllabus \\
+  \href{https://github.com/edrubin/EC524W20/}{\normalsize \texttt{https://github.com/edrubin/EC524W20/}}
+}
+\author{\textbf{Dr. Edward Rubin}\\ Dept. of Economics, University of Oregon}
+%\date{}  % Toggle commenting to test
+% \date{\vspace{-5ex}}
+
+\maketitle
+
+\vspace*{-4ex}
+
+% \section*{Basics}
+
+\begin{table}[!ht]
+	% \centering
+	\ra{1.2}
+\begin{tabular}{@{\extracolsep{5pt}} lll @{}}
+	& \underline{\textbf{{Instructor}}} & \underline{\textbf{{GE}}}\\
+	\faUser & Edward Rubin & Connor Lennon\\
+	\faPaperPlaneO & \href{mailto:edwardr@uoregon.edu?subject=EC524}{edwardr@uoregon.edu} & \href{mailto:clennon@uoregon.edu?subject=EC524}{clennon@uoregon.edu}\\
+	 & \multicolumn{2}{c}{Use ``\texttt{EC421}'' in email subject.} \\
+  \faBuildingO & PLC 519 & PLC 430 \\
+  \faHourglassStart & Th., 2p--3p; Fr., 1p--2pm & Mo., 1p--2p \\
+  \faChevronRight & \href{https://edrub.in}{https://edrub.in}
+\end{tabular}
+\end{table}
+
+\begin{table}[!ht]
+	\ra{1.2}
+\begin{tabular}{@{\extracolsep{5pt}} l l l l l l @{}}
+	& \underline{\textbf{{Lecture}}} & \underline{\textbf{{Lab}}} \\
+	\faClockO & Tu. \& Th., 10:00a--11:50a & 12:00p--12:50p & \\
+	\faMapMarker & \href{https://map.uoregon.edu/7f5d351d7}{105 Peterson Hall} & \href{https://map.uoregon.edu/c22d1782a}{102 Peterson Hall} \\
+	\faUser & Ed & Connor $|$ Ed  \\
+  \faChevronRight & \multicolumn{2}{l}{\href{https://github.com/edrubin/EC524W20/}{https://github.com/edrubin/EC524W20/}}
+\end{tabular}
+\end{table}
+
+\section*{Cellphone policy}
+
+\textbf{No phones.} \emf{You cannot use your phone in class}---texting included. Offenders will lose 1 percentage point off of their final grade for each offense. If you have a concern about this policy, please contact me via email or discuss in office hours during the first week of classes.
+
+\bigskip \noindent The only exceptions to this rule:
+\begin{enumerate}
+  \item actual emergencies
+  \item in-class activities in which I give you permission to use your phone
+\end{enumerate}
+If you are watching videos or partaking in other distracting activities on laptops/tablets, I will ask you to leave. \emf{Try to be considerate---don't be a jerk.}\footnote{\textit{Note:} This is great advice for life---not just the classroom.}
+
+\newpage
+
+\section*{Course summary}
+
+\paragraph{Description} Following the first course on econometrics and causal inference in this sequence, EC524 turns to examining the \emf{tools available and best practices for predicting outcomes}. Put simply, we are now focusing on $\hat{y}_i$ rather than $\hat{\beta}$ from the model $y_i = \alpha + \beta x_i + \varepsilon_i$.
+
+Learning statistical programming is inherent to practicing applied econometrics. Consequently, throughout this course we will also teach the statistical programming language \texttt{R}.
+
+\paragraph{Objectives}
+
+\begin{enumerate}
+  \item \emf{Distinguish} between settings that require \emf{causal inference} \textit{vs.} settings that want \emf{prediction}.
+  \item Understand the main \emf{themes and best practices} in modern \emf{prediction} methods.
+  \item Develop \emf{familiarity} with common machine-learning algorithms---and their strengths/weaknesses.
+  \item Build \emf{intuition} for prediction---especially the bias-variance tradeoff.
+  \item Expand \emf{R expertise}.
+\end{enumerate}
+
+\paragraph{Prerequisites} This course requires the previous course in our sequence---\textit{i.e.}, Economics 423/523. I also assume you are comfortable in \texttt{R}.
+
+\section*{Books} I know you are busy and reading for class is often difficult. However, \emf{if you are actually here to learn, then read these books}.
+
+\bigskip
+
+\noindent\textit{Note} Each book (except one of the recommended books) is available for \emf{free online}. The physical copies are also very reasonably priced---I suggest you buy physical versions for books that you like.
+
+\paragraph{Required books}
+
+\begin{enumerate}
+\item \href{https://www-bcf.usc.edu/~gareth/ISL/}{Introduction to Statistical Learning} \textit{ISL}
+\item \href{http://themlbook.com/}{The Hundred-Page Machine Learning Book} \textit{100ML}
+\item \href{https://socviz.co/}{Data Visualization} \textit{Data Viz}
+\end{enumerate}
+
+\paragraph{Suggested books}
+
+\begin{enumerate}
+\item \href{https://r4ds.had.co.nz/}{R for Data Science}
+\item \href{https://www.springer.com/us/book/9783319500164}{Introduction to Data Science} (not available without purchase)
+\item \href{http://web.stanford.edu/~hastie/ElemStatLearn/}{The Elements of Statistical Learning} (\textit{ESL}, the big brother of \textit{ISL})
+\end{enumerate}
+
+\section*{Software and tools}
+
+\begin{itemize}
+  \item We will use the statistical programming language \href{https://www.r-project.org/}{\textbf{\texttt{R}}}.
+  \item We will use \href{https://www.rstudio.com}{\textbf{\texttt{RStudio}}} to interact with \texttt{R}.
+\end{itemize}
+Learning \texttt{R} will require time and effort, but it is a powerful and versatile tool that is valued by many employers. Put in the requisite effort and time, and you will be rewarded.
+
+\section*{Labs, assignments, and exams}
+
+\paragraph{Attend the lab} This course includes a lab, which is \emf{integral to learning} the material in (and passing) this course. The lab includes both general econometrics instruction and computing resources necessary to complete the course and learn/master its topics.
+
+\paragraph{Assignments}
+\begin{itemize}
+  \item You will submit \emf{typed assignments via Canvas}.
+  \item Assignments will typically be due every Tuesday.
+  \item We will grade on a \emf{complete/incomplete scale}. Low-quality work will be returned to be re-submitted as late.
+\end{itemize}
+\paragraph{Low-quality submissions}
+
+\paragraph{Group work} Feel free to work together on the assignments. Unless explicitly stated, each student is required to write and submit independent answer sheets. This means that word-for-word copies will not be accepted and will be viewed as academic dishonesty. If you work with other students, you must list the students in your study group at the top of your assignment. If you fail to do so, you will receive a score of zero.
+
+\paragraph{Project} We will have one major project. Details coming.
+
+\paragraph{Exams}
+\begin{itemize}
+  \item We will proctor an \emf{in-class final on March 16, 2020 at 8:00am} (likely in 105 Peterson Hall).
+  \item A \emf{take-home final exam will be due March 16, 2020 by 11:59pm}.
+\end{itemize}
+If you will be out of town for the exams, you must take the exam at a testing center at a university in whichever town you will be visiting at the same time as the EC421 scheduled exam (or take a zero). For in-class exams, you may not wear hats, sunglasses, or hoods.
+
+\section*{Recommendations}
+
+\begin{enumerate}
+  \item \emf{Take responsibility} for your own education and try to \emf{learn} as much as you can.
+  \item \emf{Do your own work}.
+  \item Develop your \emf{intuition}---\textit{e.g.}, why would method $x$ work in one situation and fail in another?
+  \item \emf{Learn \texttt{R}}. Struggle while you try---and use \emf{Google} to figure things out.
+  \item Come to \emf{office hours}.\footnote{Two related articles from NPR on office hours: \href{https://www.npr.org/2019/10/05/678815966/college-students-how-to-make-office-hours-less-scary}{\textit{College Students: How to Make Office Hours Less Scary}} and \href{https://www.npr.org/2019/10/02/766568824/uncovering-a-huge-mystery-of-college-office-hours}{\textit{Uncovering A Huge Mystery Of College: Office Hours}}.}
+\end{enumerate}
+
+\section*{Honesty and academic integrity}
+
+\emf{You must do your own work.} Do not claim credit for any work other than your own. Cheating or plagiarizing of any sort on any component of this class will result in a failing grade for the term and a report of the offense to the university. Please acquaint yourself with the \href{http://studentlife.uoregon.edu}{Student Conduct Code}.
+
+\section*{Accessibility}
+
+If you have a documented disability and anticipate needing accommodations in this course, please make arrangements with me during the first week of the term. Please request that the \href{https://aec.uoregon.edu/}{Accessible Education Center} send me a letter verifying your disability.
+
+\section*{Grading}
+
+Grades will be assigned as follows.\footnote{Undergraduates are allowed to miss one additional assignment in the scheme.}
+
+\begin{table}[!ht]
+  \ra{1.5}
+  \begin{tabular}{@{\extracolsep{1cm}} cccc @{}}
+    \textbf{\underline{Grade}} & \textbf{\underline{Assignments}} & \textbf{\underline{Project}} & \textbf{\underline{Final exam}} \\
+    \textbf{A}
+    & \textit{Incomplete} on $\leq$ 1 assignment.
+    & $\geq$ \textit{Professional}
+    & $\geq$ 80\% \\
+    \textbf{B}
+    & \textit{Incomplete} on $\leq$ 2 assignments.
+    & $\geq$ \textit{Minor revision}
+    & $\geq$ 70\% \\
+    \textbf{C}
+    & \textit{Incomplete} on $\leq$ 3 assignments.
+    & $\geq$ \textit{Moderate revision}
+    & $\geq$ 60\% \\
+    \textbf{D}
+    & \textit{Incomplete} on $\leq$ 4 assignments.
+    & $\geq$ \textit{Major revision}
+    & $\geq$ 50\% \\
+  \end{tabular}
+\end{table}
+\noindent Recall that assignments are graded as \textit{Complete} \textit{vs.} \textit{Incomplete}---the standard for \textit{Complete} is much higher than simply submitting.
+
+\newpage
+
+\section*{Tentative, predicted outline}
+
+\paragraph{0. An introduction to prediction and statistical learning}
+\begin{enumerate}
+  \item What are we doing? \textbf{Readings} \textit{ISL} Ch1--Ch2
+  \item Prediction \textit{vs.} causal inference \textbf{Readings} \href{https://www.aeaweb.org/articles?id=10.1257/aer.p20151023}{\textit{Prediction Policy Problems}} by Kleinberg \textit{et al.} (2015)
+  \item Why don't we stick with regression? \textbf{Readings} \textit{ISL} Ch3--Ch4
+\end{enumerate}
+
+\paragraph{1. Exploratory data analysis}
+\begin{enumerate}
+  \item Building insights from graphics \textbf{Readings} \textit{Data Viz} Preface, Ch1
+  \item \texttt{ggplot2} \textbf{Readings} \textit{Data Viz} Ch3
+\end{enumerate}
+
+\paragraph{2. Supervised learning}
+\begin{enumerate}
+  \item An introduction to machine learning \textbf{Readings} \textit{100ML} Preface, Ch1--Ch4; \textit{ISL} 2.1--2.2
+  \item LASSO and Ridge regression \textbf{Readings} \textit{ISL} 6.1--6.3, 6.6
+  \item Classification trees \textbf{Readings} \textit{100ML} 3.3; \textit{ISL} 8.1
+  \item \textbf{\textit{Aside}} Resampling methods and other best practices \textbf{Readings} \textit{100ML} Ch5; \textit{ISL} Ch5
+  \item Regression trees \textbf{Readings} \textit{100ML} 3.3; \textit{ISL} 8.1
+  \item SVM \textbf{Readings} \textit{100ML} 3.4; \textit{ISL} 9.1--9.4
+  \item Neural nets \textbf{Readings} \textit{100ML} 6
+  \item Boosting and ensembles \textbf{Readings} \textit{100ML} 7.5 and Ch8
+  \item Random forests \textbf{Readings} \textit{ISL}
+  \item Additional topics \textbf{Readings} \textit{100ML} Ch7 anc Ch11
+\end{enumerate}
+
+\paragraph{3. Unsupervised learning}
+\begin{enumerate}
+  \item Introduction to unsupervised learning \textbf{Readings} \textit{100ML} Ch9; \textit{ISL} 10.1
+  \item Principal components analysis \textbf{Readings} \textit{ISL} 10.2; \textit{100ML} 9.3
+  \item Nearest-neighbor matching, \textit{K}-means, and hierarchical clustering \textbf{Readings} \textit{100ML} Ch9; \textit{ISL} 10.3
+\end{enumerate}
+
+\paragraph{4. Extensions}
+\begin{enumerate}
+  \item Bias and fairness \textbf{Readings} \href{https://www.technologyreview.com/s/612876/this-is-how-ai-bias-really-happensand-why-its-so-hard-to-fix/}{Hao (2019)}
+\end{enumerate}
+
+\end{document}

@@ -1,0 +1,79 @@
+---
+title: "`EC524`: Prediction and machine learning"
+output:
+  pdf_document: default
+urlcolor: #154733
+---
+
+Following your first course on econometrics and causal inference, this course turns to examining the tools available and best practices for predicting outcomes. Put simply, we are now focusing on $\hat{y}_i$ rather than $\hat{\beta}$ from the model $y_i = \alpha + \beta x_i + \varepsilon_i$.
+
+## Course objectives
+
+0. Distinguish between settings that require causality (and inference) and settings that want prediction.
+1. Understand the main themes and best practices in prediction methods.
+2. Develop familiarity with common machine-learing algorithms.
+3. Expand R expertise.
+
+## Contact information
+
+Professor Edward Rubin
+
+- Email: [edwardr@uoregon.edu](mailto:edwardr@uoregon.edu?subject=EC420)
+- Office hours: PLC 519, Thursdays: 1:30pm–2:30pm
+
+## Meeting times
+
+- Lecture:
+
+## Books
+
+Each book (except one of the recommended books) is available for free online.
+
+The physical copies are also very reasonably priced.
+
+**Required**
+
+- [Introduction to Statistical Learning](https://www-bcf.usc.edu/~gareth/ISL/) (*ISL*)
+- [The Hundred-Page Machine Learning Book](http://themlbook.com/) (*100ML*)
+- [Data Visualization](https://socviz.co/) (*Data Viz*)
+
+**Recommended**
+
+- [R for Data Science](https://r4ds.had.co.nz/)
+- [Introduction to Data Science](https://www.springer.com/us/book/9783319500164) (not available without purchase)
+- [The Elements of Statistical Learning](http://web.stanford.edu/~hastie/ElemStatLearn/) (*ESL*, the big brother of *ISL*)
+
+## Topics
+
+### 0. An introduction to prediction and statistical learning
+
+0. What are we doing?
+1. Prediction *vs.* causal inference **Readings** [*Prediction Policy Problems*](https://www.aeaweb.org/articles?id=10.1257/aer.p20151023) by Kleinberg *et al.* (2015)
+
+### 1. Exploratory data analysis
+
+0. Building insights from graphics **Readings** *Data Viz* Preface, Ch1
+1. Learning `ggplot2` **Readings** *Data Viz* Ch3
+
+### 2. Supervised learning
+
+0. An introduction to machine learning **Readings** *100ML* Preface, Ch1–Ch4; *ISL* 2.1–2.2
+1. LASSO and Ridge regression **Readings** *ISL* 6.1–6.3, 6.6
+2. Classification trees **Readings** *100ML* 3.3; *ISL* 8.1
+3. ***Aside*** Resampling methods and other best practices **Readings** *100ML* Ch5; *ISL* Ch5
+4. Regression trees **Readings** *100ML* 3.3; *ISL* 8.1
+5. SVM **Readings** *100ML* 3.4; *ISL* 9.1–9.4
+6. Neural nets **Readings** *100ML* 6
+7. Boosting and ensembles **Readings** *100ML* 7.5 and Ch8
+8. Random forests **Readings** *ISL*
+9. Additional topics **Readings** *100ML* Ch7 anc Ch11
+
+### 3. Unsupervised learning
+
+0. Introduction to unsupervised learning **Readings** *100ML* Ch9; *ISL* 10.1
+1. Principal components analysis **Readings** *ISL* 10.2; *100ML* 9.3
+2. Nearest-neighbor matching, *K*-means, and hierarchical clustering **Readings** *100ML* Ch9; *ISL* 10.3
+
+### 4. Extensions
+
+0. Bias and fairness **Readings** [*This is how AI bias really happens—and why it’s so hard to fix*](https://www.technologyreview.com/s/612876/this-is-how-ai-bias-really-happensand-why-its-so-hard-to-fix/)
