@@ -2,7 +2,11 @@
 
 Welcome to Economics 524 (424): Prediction and machine-learning in econometrics, taught by [Ed Rubin](https://edrub.in).
 
-Our syllabus will be posted shortly.
+[Syllabus](https://raw.githack.com/edrubin/EC524W20/master/syllabus/syllabus.pdf)
+
+## Notes
+
+1. [000 - Overview (Why predict?)](https://raw.githack.com/edrubin/EC524W20/master/slides/000/000-slides.html)
 
 ## Projects
 
