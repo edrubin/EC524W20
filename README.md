@@ -6,8 +6,12 @@ Welcome to Economics 524 (424): Prediction and machine-learning in econometrics,
 
 ## Notes
 
-1. [000 - Overview (Why predict?)](https://raw.githack.com/edrubin/EC524W20/master/slides/000/000-slides.html)
+- [000 - Overview (Why predict?)](https://raw.githack.com/edrubin/EC524W20/master/slides/000/000-slides.html)
 
 ## Projects
 
 1. [Predicting sales price in housing data (Kaggle)](https://github.com/edrubin/EC524W20/tree/master/projects/kaggle-house-prices)
+
+## Labs
+
+- [000 - Workflow and cleaning](https://raw.githack.com/edrubin/EC524W20/master/lab/000-cleaning/000-slides.html)

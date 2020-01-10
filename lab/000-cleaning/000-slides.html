@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+  <head>
+    <title>Lab .mono[000]</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Edward Rubin" />
+    <meta name="date" content="2020-01-10" />
+    <link href="000-slides_files/remark-css-0.0.1/default.css" rel="stylesheet" />
+    <link href="000-slides_files/remark-css-0.0.1/metropolis.css" rel="stylesheet" />
+    <link href="000-slides_files/remark-css-0.0.1/metropolis-fonts.css" rel="stylesheet" />
+    <script src="000-slides_files/htmlwidgets-1.5.1/htmlwidgets.js"></script>
+    <script src="000-slides_files/jquery-1.12.4/jquery.min.js"></script>
+    <link href="000-slides_files/datatables-css-0.0.0/datatables-crosstalk.css" rel="stylesheet" />
+    <script src="000-slides_files/datatables-binding-0.9/datatables.js"></script>
+    <link href="000-slides_files/dt-core-1.10.19/css/jquery.dataTables.min.css" rel="stylesheet" />
+    <link href="000-slides_files/dt-core-1.10.19/css/jquery.dataTables.extra.css" rel="stylesheet" />
+    <script src="000-slides_files/dt-core-1.10.19/js/jquery.dataTables.min.js"></script>
+    <link href="000-slides_files/crosstalk-1.0.0/css/crosstalk.css" rel="stylesheet" />
+    <script src="000-slides_files/crosstalk-1.0.0/js/crosstalk.min.js"></script>
+    <link rel="stylesheet" href="my-css.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Lab .mono[000]
+## Data cleaning and workflow (1/N)
+### Edward Rubin
+### 10 January 2020
+
+---
+
+exclude: true
+
+
+---
+class: inverse, middle
+# Admin
+---
+name: admin
+# Admin
+
+Basic .hi[workflow] (best) practices (_i.e._, _Projects_)
+- RStudio and projects
+- Naming conventions
+- Pipes (`%&gt;%`)
+- Data cleaning with `dplyr`
+
+.note[Reminder] Readings for next week
+- ISL Ch1–Ch2
+- [Prediction Policy Problems](https://www.aeaweb.org/articles?id=10.1257/aer.p20151023) by Kleinberg .it[et al.] (2015)
+---
+layout: true
+# Improving your workflow
+
+---
+class: inverse, middle
+---
+name: workflow-main
+
+Data cleaning, manipulation, and analysis can be grueling, but optimizing your workflow can speed things along and make them less painful..super[.pink[†]]
+
+.footnote[
+.pink[†] Notice that I said .pink[*less*] painful.
+]
+
+.hi-slate[A few dimensions that can help]
+
+- Understand how to interact with RStudio
+- Use .mono[R] projects
+- Follow reasonable naming conventions
+- `dplyr` and pipes
+- .grey-mid[Write your own functions (future lab)]
+- .grey-mid[Use loops and parallelization (future lab)]
+- .grey-light[Hire an intern/assistant to do your work for you]
+---
+layout: false
+class: clear, middle
+
+## Efficiency
+
+&lt;img src="images/xkcd-efficiency.png" width="80%" style="display: block; margin: auto;" /&gt;
+
+.grey-light[Source: [xkcd](https://xkcd.com/1445/)]
+---
+layout: false
+class: inverse, middle
+# RStudio
+
+---
+name: rstudio
+class: clear
+
+Let's recap some of the major features in .mono[RStudio]...
+
+&lt;img src="images/rstudio/rstudio.png" style="display: block; margin: auto;" /&gt;
+---
+class: clear
+
+First, you write your .mono[R] scripts (source code) in the .hi[Source] pane.
+
+&lt;img src="images/rstudio/rstudio_source_rec.png" style="display: block; margin: auto;" /&gt;
+---
+class: clear
+
+You can use the menubar or .mono[⇧+⌘+N] to create new .mono[R] scripts.
+
+&lt;img src="images/rstudio/rstudio_source_arrow.png" style="display: block; margin: auto;" /&gt;
+---
+class: clear
+
+To execute commands from your .mono[R] script, use .mono[⌘+Enter].
+
+&lt;img src="images/rstudio/rstudio_source_ex.png" style="display: block; margin: auto;" /&gt;
+---
+class: clear
+
+.mono[RStudio] will execute the command in the terminal.
+
+&lt;img src="images/rstudio/rstudio_source_ex2.png" style="display: block; margin: auto;" /&gt;
+---
+class: clear
+
+You can see our new object in the .hi[Environment] pane.
+
+&lt;img src="images/rstudio/rstudio_source_ex3.png" style="display: block; margin: auto;" /&gt;
+---
+class: clear
+
+The .hi-purple[History] tab (next to .hi[Environment]) records your old commands.
+
+&lt;img src="images/rstudio/rstudio_history.png" style="display: block; margin: auto;" /&gt;
+---
+class: clear
+
+The .hi[Files] pane is file explorer.
+
+&lt;img src="images/rstudio/rstudio_files.png" style="display: block; margin: auto;" /&gt;
+---
+class: clear
+
+The .hi[Plots] pane/tab shows... plots.
+
+&lt;img src="images/rstudio/rstudio_plots.png" style="display: block; margin: auto;" /&gt;
+---
+class: clear
+
+.hi[Packages] shows installed packages
+
+&lt;img src="images/rstudio/rstudio_packages.png" style="display: block; margin: auto;" /&gt;
+---
+count: false
+class: clear
+
+.hi[Packages] shows installed packages and whether they are .hi-purple[loaded].
+
+&lt;img src="images/rstudio/rstudio_packages2.png" style="display: block; margin: auto;" /&gt;
+---
+class: clear
+
+The .hi[Help] tab shows help documentation (also accessible via `?`).
+
+&lt;img src="images/rstudio/rstudio_help.png" style="display: block; margin: auto;" /&gt;
+---
+class: clear
+
+Finally, you can customize the actual layout
+
+&lt;img src="images/rstudio/rstudio_layout.png" style="display: block; margin: auto;" /&gt;
+---
+count: false
+class: clear
+
+Finally, you can customize the actual layout and many other items.
+
+&lt;img src="images/rstudio/rstudio_customize.png" style="display: block; margin: auto;" /&gt;
+---
+name: best-practices
+# .mono[R] and .mono[RStudio]
+## Related best practices
+
+1. Write code in .mono[R] scripts. Troubleshoot in .mono[RStudio]. Then run the scripts.
+
+1. Comment your code. (`# This is a comment`)
+
+1. Name objects/variables/files with intelligible, standardized names.
+  - .hi-purple[BAD] `ALLCARS`, `Vl123a8`, `a.fun`, `cens.12931`, `cens.12933`
+  - .hi-pink[GOOD] `unique_cars`, `health_df`, `sim_fun`, `is_female`, `age`
+
+1. Write code that is readable (see comments comment above).
+
+1. Use projects in .mono[RStudio] (next). And organize your projects.
+---
+layout: true
+# Projects
+
+---
+class: inverse, middle
+
+---
+name: projects
+
+Projects in .mono[R] offer several benefits
+
+1. Act as an .hi[anchor] for working with files.
+
+1. Make your work (projects) easily .hi[reproducible]..super[.pink[†]]
+
+1. Help you .hi[quickly jump back] into your work.
+
+.footnote[.pink[†] In this class, we're assuming reproducibility is good/desirable.]
+
+---
+layout: false
+class: clear
+
+To start a new project, hit the .hi[project icon].
+
+&lt;img src="images/rstudio/rstudio_projects.png" style="display: block; margin: auto;" /&gt;
+---
+class: clear
+
+You'll then choose the folder/directory where your project lives.
+
+&lt;img src="images/rstudio/rstudio_projects2.png" style="display: block; margin: auto;" /&gt;
+---
+class: clear
+
+If you open (double click) a project, .mono[RStudio] opens .mono[R] in that location.
+
+&lt;img src="images/rstudio/rstudio_projects3.png" style="display: block; margin: auto;" /&gt;
+---
+count: false
+class: clear
+
+.mono[RStudio] will 'load' your previous setup (pane setup, scripts, *etc.*).
+
+&lt;img src="images/rstudio/rstudio_projects3.png" style="display: block; margin: auto;" /&gt;
+---
+layout: true
+# .mono[R] and .mono[RStudio]
+## Projects
+
+---
+
+.hi-purple[Without a project], you will need to define long file paths that you'll need to keep updating as folder names/locations change.
+
+--
+
+`dir_class &lt;- "/Users/edwardarubin/Dropbox/UO/Teaching/EC525S19/"`
+&lt;br&gt;`dir_labs &lt;- paste0(dir_class, "NotesLab/")`
+&lt;br&gt;`dir_lab03 &lt;- paste0(dir_labs, "03RInput/")`
+&lt;br&gt;`sample_df &lt;- read.csv(paste0(dir_lab03, "sample.csv"))`
+
+--
+
+.hi-pink[With a project], .mono[R] automatically references the project's folder.
+
+`sample_df &lt;- read.csv("sample.csv")`
+
+--
+
+.note[Double-plus bonus] The [`here`](https://github.com/r-lib/here) package extends projects' reproducibility.
+---
+layout: true
+# Pipes and dplyr
+
+---
+class: inverse, middle
+
+---
+## Introduction
+
+1. Pipes (`%&gt;%`) make your life easier..super[.pink[†]]
+
+1. `dplyr` is your data-work friend.
+
+.footnote[.pink[†] Check out `magrittr` for more pipe options, _e.g._, `%&lt;&gt;%`.]
+---
+name: pipes
+
+## Pipes
+
+We can't go much deeper into the land of `dplyr` without mentioning pipes.
+
+--
+
+A *pipe* in programming allows you to take the output of one function and plug it into another function as an argument/input.
+
+--
+
+In `dplyr`, the expression for a pipe is `%&gt;%`.
+
+--
+
+.mono[R]'s pipe specifically plugs the returned object to the .pink[left] of the pipe into the first argument of the function on the .purple[right] fo the pipe, _e.g._,
+
+--
+
+
+```r
+rnorm(10) %&gt;% mean()
+```
+
+```
+#&gt; [1] -0.2079639
+```
+---
+
+## Pipes
+
+Pipes help avoid lots of nested functions, prevent excessive writing to your disc, and increase the readability of our .mono[R] scripts.
+
+--
+
+.ex[Example] Three ways to draw 100 N(0,1) observations and calculate the interquartile range (IQR: difference between the 75.super[th] and 25.super[th] percentiles).
+
+
+```r
+# Save each intermediate step
+draw &lt;- rnorm(100)
+end_points &lt;- quantile(draw, probs = c(0.25, 0.75))
+diff(end_points)
+# Lots of nesting
+diff(quantile(rnorm(100), probs = c(0.25, 0.75)))
+# Piping 💪
+rnorm(100) %&gt;% quantile(probs = c(0.25, 0.75)) %&gt;% diff()
+```
+---
+
+## Pipes
+
+By default, .mono[R] pipes the output from the LHS of the pipe into&lt;br&gt;the .hi[first] argument of the function on the RHS of the pipe.
+
+--
+
+*E.g.*, `a %&gt;% fun(3)` is equivalent to `fun(arg1 = a, arg2 = 3)`.
+
+--
+
+If you want to pipe output into a different argument, you use a period (`.`).
+
+--
+
+- `b %&gt;% fun(arg1 = 3, .)` is equivalent to `fun(arg1 = 3, arg2 = b)`.
+- `b %&gt;% fun(3, .)` is also equivalent to `fun(arg1 = 3, arg2 = b)`.
+
+--
+- `b %&gt;% fun(., .)` is equivalent to `fun(arg1 = b, arg2 = b)`.
+
+--
+
+The `magrittr` package contains even more piping power.&lt;sup&gt;.pink[†]&lt;/sup&gt;
+
+.footnote[.pink[†] `magrittr` = Magritte (of [*this is not a pipe*](https://en.wikipedia.org/wiki/The_Treachery_of_Images) fame) plus .mono[R].]
+---
+layout: true
+# dplyr
+---
+class: inverse, middle
+---
+name: dplyr
+
+## Intro
+
+It's a package.
+--
+ `dplyr` is not installed by default, so you'll need to install it.&lt;sup&gt;.pink[†]&lt;/sup&gt;
+
+.footnote[.pink[†] or just `p_load(dplyr)` after loading `pacman`.]
+
+--
+
+`dplyr` is part of the [`tidyverse`](https://dplyr.tidyverse.org/) (Hadleyverse), and it follows a grammar-based approach to programming/data work.
+
+--
+
+- `data` compose the subjects of your stories
+
+- `dplyr` provides the *verbs* (action words)
+:&lt;br&gt; `filter()`, `mutate()`, `select()`, `group_by()`, `summarize()`, `arrange()`
+
+--
+
+.hi-slate[*Bonus*] `dplyr` is pretty fast and able to interact with SQL databases.
+---
+name: mutate
+
+## Manipulating variables: `mutate()`
+
+`dplyr` streamlines adding/manipulating variables in your data frame.
+
+.hi-slate[Function] `mutate(.data, ...)`
+
+- .pink[Required argument] `.data`, an existing data frame
+
+- .pink[Additional arguments] Names and values of the new variables
+
+- .pink[Output] An updated data frame
+
+--
+
+.ex[Example]
+
+```r
+mutate(.data = our_df, new1 = 7, new2 = x * y)
+```
+
+---
+
+## `mutate()`
+
+.ex[Example] Take the data frame
+
+
+```r
+my_df &lt;- data.frame(x = 1:3, y = 5:7)
+```
+
+
+--
+
+`mutate()` allows us to create many new variables with one call.
+
+.pull-left[
+
+
+```r
+mutate(.data = my_df,
+  xy = x * y,
+  x2 = x^2,
+  xy2 = xy^2,
+  is_max = x == max(x)
+)
+```
+
+]
+--
+.pull-right[
+
+<div id="htmlwidget-04967a7bb11b52b32b24" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-04967a7bb11b52b32b24">{"x":{"filter":"none","data":[[1,2,3],[5,6,7],[5,12,21],[1,4,9],[25,144,441],[false,false,true]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>x<\/th>\n      <th>y<\/th>\n      <th>xy<\/th>\n      <th>x2<\/th>\n      <th>xy2<\/th>\n      <th>is_max<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"t","columnDefs":[{"className":"dt-right","targets":[0,1,2,3,4]}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+
+Notice `mutate()` returns the original *and* new columns.
+
+]
+---
+name: transmute
+
+## `mutate()` *vs.* `transmute()`
+
+As their names imply, `mutate()` and `transmute()` are very similar functions.
+
+- `mutate()` returns the .pink[original] *and* .purple[new] columns (variables).
+
+- `transmute()` returns only the .purple[new] columns (variables).
+
+--
+
+.slate[*Note*] Both functions return a new object as *output*—they do not update the object in .mono[R]'s memory. (This is the case for all functions in `dplyr`.)
+---
+
+## `%&gt;%` and `dplyr`
+
+Each `dplyr` function begins with a `.data` argument so that you can easily pipe in data frames (recall: `mutate(.data, ...)`).
+
+--
+
+The common workflow in `dplyr` will look something like
+
+`new_df &lt;- old_df %&gt;% mutate(cool stuff here)`
+
+which takes `old_df`, does some cool stuff with `mutate()`, and then saves the output of `mutate()` as `new_df`.
+---
+
+## `filter()`
+
+The `filter()` function does what its name implies: it .b[filters the rows] of your data frame .b[based upon logical conditions].
+
+---
+layout: true
+
+# dplyr
+## `filter()`
+
+The `filter()` function does what its name implies: it .b[filters the rows] of your data frame .b[based upon logical conditions].
+
+.ex[Example]
+
+.pull-left[
+
+```r
+# Create a dataset
+some_df &lt;- data.frame(
+  x = 1:10,
+  y = 11:20
+)
+```
+]
+
+---
+name: filter
+count: false
+
+--
+
+.pull-right[
+
+```r
+# Only keep rows where x is 3
+some_df %&gt;% filter(x == 3)
+```
+<div id="htmlwidget-e5a571c8ba99d986c97b" style="width:200px;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-e5a571c8ba99d986c97b">{"x":{"filter":"none","data":[[3],[13]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>x<\/th>\n      <th>y<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"t","columnDefs":[{"className":"dt-right","targets":[0,1]}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+]
+---
+
+.pull-right[
+
+```r
+# Only keep rows where x &gt; 7
+some_df %&gt;% filter(x &gt; 7)
+```
+<div id="htmlwidget-d750ccf7c200abb9e099" style="width:200px;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-d750ccf7c200abb9e099">{"x":{"filter":"none","data":[[8,9,10],[18,19,20]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>x<\/th>\n      <th>y<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"t","columnDefs":[{"className":"dt-right","targets":[0,1]}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+]
+---
+
+.pull-right[
+
+```r
+# Keep rows where y/x &gt; 3
+some_df %&gt;% filter(y/x &gt; 3)
+```
+<div id="htmlwidget-1502aeb711c61e15adbb" style="width:200px;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-1502aeb711c61e15adbb">{"x":{"filter":"none","data":[[1,2,3,4],[11,12,13,14]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>x<\/th>\n      <th>y<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"t","columnDefs":[{"className":"dt-right","targets":[0,1]}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+]
+---
+
+.pull-right[
+
+```r
+# Keep rows where x&gt;8 OR y&lt;12
+some_df %&gt;%
+  filter(x &gt; 8 | y &lt; 12)
+```
+<div id="htmlwidget-04c7b5d4e9f06e60d458" style="width:200px;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-04c7b5d4e9f06e60d458">{"x":{"filter":"none","data":[[1,9,10],[11,19,20]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>x<\/th>\n      <th>y<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"t","columnDefs":[{"className":"dt-right","targets":[0,1]}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+]
+---
+
+.pull-right[
+
+```r
+# Keep rows where 16&lt;=y&lt;=18
+some_df %&gt;%
+  filter(between(y, 16, 18))
+```
+<div id="htmlwidget-ebee017eddfdc7865866" style="width:200px;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-ebee017eddfdc7865866">{"x":{"filter":"none","data":[[6,7,8],[16,17,18]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>x<\/th>\n      <th>y<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"t","columnDefs":[{"className":"dt-right","targets":[0,1]}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+]
+---
+
+.pull-right[
+
+```r
+# Keep rows where y &gt; 20
+some_df %&gt;% filter(y &gt; 20)
+```
+<div id="htmlwidget-e3af493612bd295ac127" style="width:200px;height:100px;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-e3af493612bd295ac127">{"x":{"filter":"none","data":[[],[]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>x<\/th>\n      <th>y<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"t","columnDefs":[{"className":"dt-right","targets":[0,1]}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+]
+
+If you filter your data frame down to nothing, .mono[R] returns a 0-row data frame with the names/number of columns from the original data frame.
+---
+layout: true
+# dplyr
+---
+name: select
+
+## `select()`
+
+Just as .purple[`filter()`] grabs .purple[row-based subsets] of your data frame,
+&lt;br&gt;.pink[`select()`] grabs .pink[column-based subsets].
+
+--
+
+You can select columns using their .b[names]
+&lt;br&gt;.pad-left[`our_df %&gt;% select(var10, var100)`]
+
+--
+
+you can select columns using their .b[numbers]
+&lt;br&gt;.pad-left[`our_df %&gt;% select(10, 100)`]
+
+--
+
+or you can select columns using .b[helper fuctions]
+&lt;br&gt;.pad-left[`our_df %&gt;% select(starts_with("var10"))`]
+
+--
+
+`select()` helps you narrow down a dataset to its necessary features.
+---
+name: summarize
+
+## `summarize()`
+
+Hopefully you're starting to see that functions' names in `dplyr` tell you what the function does.
+
+`summarize()`&lt;sup&gt;.pink[†]&lt;/sup&gt; summarizes variables—you choose the variables and the summaries (_e.g._, `mean()` or `min()`).
+
+.footnote[.pink[†] or `summarise()` if you ❤️️ 🇬🇧]
+
+--
+
+
+```r
+the_df %&gt;% summarize(
+  mean(x), mean(y), mean(z),
+  min(x), max(x),
+)
+```
+would return a 1×5 data frame with the means of `x`, `y`, and `z`; the minimum of `x`; and the maximum of `x`.
+---
+name: group_summarize
+
+## `summarize()` and `group_by()`
+
+While sample-wide summarizes are certainly interesting, `dplyr` has one last gem for us: `group_by()`.
+
+`group_by()` groups your observations by the variable(s) that you name.
+
+--
+
+Specifically, `group_by()` returns a *grouped data frame* that you can then feed to `summarize()`, `mutate()`, or `transmuate` to perform grouped calculations, _e.g._, each group's mean.
+
+
+---
+
+## Example: Grouped summaries
+
+
+.pull-left[.small[
+
+```r
+# Create a new data frame
+our_df &lt;- data.frame(
+  x = 1:6,
+  y = c(0, 1),
+  grp = rep(c("A", "B"), each = 3)
+)
+```
+
+<div id="htmlwidget-645d774640f78d281359" style="width:50%;height:250px;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-645d774640f78d281359">{"x":{"filter":"none","data":[[1,2,3,4,5,6],[0,1,0,1,0,1],["A","A","A","B","B","B"]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>x<\/th>\n      <th>y<\/th>\n      <th>grp<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"t","columnDefs":[{"className":"dt-right","targets":[0,1]}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+]]
+
+--
+
+.pull-right[.small[
+
+```r
+# For dataset 'our_df'...
+our_df %&gt;%
+  # Group by 'grp'
+  group_by(grp) %&gt;%
+  # Take means of 'x' and 'y'
+  summarize(mean(x), mean(y))
+```
+
+<div id="htmlwidget-5d230572775401737a82" style="width:100%;height:110px;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-5d230572775401737a82">{"x":{"filter":"none","data":[["A","B"],[2,5],[0.333333333333333,0.666666666666667]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>grp<\/th>\n      <th>mean(x)<\/th>\n      <th>mean(y)<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"t","columnDefs":[{"className":"dt-right","targets":[1,2]}],"order":[],"autoWidth":false,"orderClasses":false,"rowCallback":"function(row, data) {\nDTWidget.formatRound(this, row, data, 1, 3, 3, \",\", \".\");\nDTWidget.formatRound(this, row, data, 2, 3, 3, \",\", \".\");\n}"}},"evals":["options.rowCallback"],"jsHooks":[]}</script>
+]]
+---
+
+## Example: Grouped mutation
+
+.pull-left[.small[
+
+```r
+# Create a new data frame
+our_df &lt;- data.frame(
+  x = 1:6,
+  y = c(0, 1),
+  grp = rep(c("A", "B"), each = 3)
+)
+```
+
+<div id="htmlwidget-36ac5d664ec931294bc1" style="width:50%;height:250px;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-36ac5d664ec931294bc1">{"x":{"filter":"none","data":[[1,2,3,4,5,6],[0,1,0,1,0,1],["A","A","A","B","B","B"]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>x<\/th>\n      <th>y<\/th>\n      <th>grp<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"t","columnDefs":[{"className":"dt-right","targets":[0,1]}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+]]
+
+--
+
+.pull-right[.small[
+
+```r
+# Add grp means for x and y
+our_df %&gt;%
+  group_by(grp) %&gt;%
+  mutate(
+    x_m = mean(x), y_m = mean(y)
+  )
+```
+
+<div id="htmlwidget-4bd79a9e405618f922de" style="width:100%;height:250px;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-4bd79a9e405618f922de">{"x":{"filter":"none","data":[[1,2,3,4,5,6],[0,1,0,1,0,1],["A","A","A","B","B","B"],[2,2,2,5,5,5],[0.333333333333333,0.333333333333333,0.333333333333333,0.666666666666667,0.666666666666667,0.666666666666667]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>x<\/th>\n      <th>y<\/th>\n      <th>grp<\/th>\n      <th>x_m<\/th>\n      <th>y_m<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"t","columnDefs":[{"className":"dt-right","targets":[0,1,3,4]}],"order":[],"autoWidth":false,"orderClasses":false,"rowCallback":"function(row, data) {\nDTWidget.formatRound(this, row, data, 3, 3, 3, \",\", \".\");\nDTWidget.formatRound(this, row, data, 4, 3, 3, \",\", \".\");\n}"}},"evals":["options.rowCallback"],"jsHooks":[]}</script>
+]]
+
+---
+name: arrange
+
+## `arrange()`
+
+`arrange()` will sorts the rows of a data frame using the inputted columns.
+
+.mono[R] defaults to starting with the "lowest" (smallest) at the top of the data frame. Use a `-` in front of the variable's name to reverse sort.
+
+---
+layout: false
+class: clear, middle
+
+.pull-left[
+
+```r
+# As is
+our_df
+```
+<div id="htmlwidget-bb1bdfd145d65305da24" style="width:100%;height:250px;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-bb1bdfd145d65305da24">{"x":{"filter":"none","data":[[1,2,3,4,5,6],[0,1,0,1,0,1],["A","A","A","B","B","B"]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>x<\/th>\n      <th>y<\/th>\n      <th>grp<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"t","columnDefs":[{"className":"dt-right","targets":[0,1]}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+]
+
+.pull-right[
+
+```r
+# Arrang by y, grp, then -x
+our_df %&gt;% arrange(y, grp, -x)
+```
+<div id="htmlwidget-5a76797fd20c6e0ea3ff" style="width:100%;height:250px;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-5a76797fd20c6e0ea3ff">{"x":{"filter":"none","data":[[3,1,5,2,6,4],[0,0,0,1,1,1],["A","A","B","A","B","B"]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>x<\/th>\n      <th>y<\/th>\n      <th>grp<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"t","columnDefs":[{"className":"dt-right","targets":[0,1]}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+]
+
+---
+name: tidyverse
+# The tidyverse
+
+There's more! `dplyr` and .purple[`tidyr`] offer even more....super[.pink[†]]
+
+.footnote[
+.pink[†] And these are only two of the packages in the `tidyverse`.
+]
+
+- .note[Viewing data] `glimpse()`, `top_n()`
+- .note[Sampling] `sample_n()`, `sample_frac()`
+- .note[Summaries] `first()`, `last()`, `nth()`, `n_distinct()`
+- .note[Duplicates] `distinct()`
+- .note[Missingness] `na_if()`, .purple[`replace_na()`], .purple[`drop_na()`], .purple[`fill()`]
+
+--
+
+The folks at RStudio have put together some great cheatsheets, *e.g.*,
+
+- [`dplyr`](https://raw.githack.com/edrubin/EC524W20/master/resources/cheatsheet-dplyr.pdf)
+- [data import](https://raw.githack.com/edrubin/EC524W20/master/resources/cheatsheet-data-import.pdf)
+- [data wrangling](https://raw.githack.com/edrubin/EC524W20/master/resources/cheatsheet-data-wrangling.pdf)
+---
+layout: false
+# Table of contents
+
+.col-left[
+.small[
+#### Admin
+- [Today and upcoming](#admin)
+
+#### Workflow
+- [General](#workflow-main)
+- [RStudio](#rstudio)
+- [Related best practies](#best-practices)
+- [Projects](#projects)
+]]
+
+.col-right[
+.small[
+#### `dplyr`
+- [Pipes](#pipes)
+- [`mutate`](#mutate)
+- [`transmute()`](#transmute)
+- [`arrange`](#arrange)
+- [`filter()`](#filter)
+- [`select()`](#select)
+- [`summarize`](#summarize)
+- [`summarize()` and `group_by()`](#group_summarize)
+- [The `tidyverse`](#tidyverse)
+]
+]
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
