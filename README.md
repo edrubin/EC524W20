@@ -39,6 +39,8 @@ Welcome to Economics 524 (424): Prediction and machine-learning in econometrics,
 2. How is prediction (and how are its tools) different from causal inference?
 3. Motivating examples
 
+**Formats** [.html](https://raw.githack.com/edrubin/EC524W20/master/slides/000/000-slides.html) | [.pdf](https://raw.githack.com/edrubin/EC524W20/master/slides/000/000-slides.pdf) | [.Rmd](https://raw.githack.com/edrubin/EC524W20/master/slides/000/000-slides.Rmd)
+
 ## Projects
 
 [Predicting sales price in housing data (Kaggle)](https://github.com/edrubin/EC524W20/tree/master/projects/kaggle-house-prices)
@@ -50,5 +52,7 @@ Welcome to Economics 524 (424): Prediction and machine-learning in econometrics,
 1. General best practices for coding
 2. Working with RStudio
 3. The pipe (`%>%`)
+
+**Formats** [.html](https://raw.githack.com/edrubin/EC524W20/master/lab/000-cleaning/000-slides.html) | [.pdf](https://raw.githack.com/edrubin/EC524W20/master/lab/000-cleaning/000-slides.pdf) | [.Rmd](https://raw.githack.com/edrubin/EC524W20/master/lab/000-cleaning/000-slides.Rmd)
 
 ## Problem sets
