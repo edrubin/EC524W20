@@ -928,8 +928,5 @@ I pulled the comic from [Twitter](https://twitter.com/athena_schools/status/1063
 exclude: true
 
 ```{R, save pdfs, include = F, eval = F}
-# PDF with pauses
-xaringan::decktape("000-slides.html", "000-slides.pdf")
-# PDF without pauses
-pagedown::chrome_print("000-slides.html", "000-slides-no-pause.pdf")
+system("`npm bin`/decktape remark 001-slides.html 001-slides.pdf --chrome-arg=--allow-file-access-from-files --slides 1-100")
 ```
