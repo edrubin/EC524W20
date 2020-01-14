@@ -1,0 +1,935 @@
+---
+title: "Lecture .mono[001]"
+subtitle: "Statistical learning: Foundations"
+author: "Edward Rubin"
+#date: "`r format(Sys.time(), '%d %B %Y')`"
+date: "14 January 2020"
+output:
+  xaringan::moon_reader:
+    css: ['default', 'metropolis', 'metropolis-fonts', 'my-css.css']
+    # self_contained: true
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+exclude: true
+
+```{R, setup, include = F}
+library(pacman)
+p_load(
+  broom, tidyverse,
+  ggplot2, ggthemes, ggforce, ggridges, cowplot,
+  latex2exp, viridis, extrafont, gridExtra, plotly,
+  kableExtra, snakecase, janitor,
+  data.table, dplyr,
+  lubridate, knitr, future, furrr,
+  estimatr, FNN, caret, parsnip,
+  huxtable, here, magrittr
+)
+# Define colors
+red_pink   = "#e64173"
+turquoise  = "#20B2AA"
+orange     = "#FFA500"
+red        = "#fb6107"
+blue       = "#3b3b9a"
+green      = "#8bb174"
+grey_light = "grey70"
+grey_mid   = "grey50"
+grey_dark  = "grey20"
+purple     = "#6A5ACD"
+slate      = "#314f4f"
+# Knitr options
+opts_chunk$set(
+  comment = "#>",
+  fig.align = "center",
+  fig.height = 7,
+  fig.width = 10.5,
+  warning = F,
+  message = F
+)
+opts_chunk$set(dev = "svg")
+options(device = function(file, width, height) {
+  svg(tempfile(), width = width, height = height)
+})
+options(knitr.table.format = "html")
+```
+---
+layout: true
+# Admin
+
+---
+class: inverse, middle
+---
+name: admin-today
+## Today
+
+.hi-slate[In-class]
+
+- .note[Course website:] [https://github.com/edrubin/EC524W20/](https://github.com/edrubin/EC524W20/)
+- .note[Resources]
+  - [RStudio](https://education.rstudio.com/learn/) cheatsheets, books, and tutorials
+  - [UO library](http://uoregon.libcal.com/calendar/dataservices/?cid=11979&t=g&d=0000-00-00&cal=11979,11173)
+  - See course page for more...
+- Formalizing statistical learning, notation, goals (and problems)
+---
+layout: false
+class: clear, middle
+
+```{R, eugene r, echo = F}
+knitr::include_graphics("images/eugene-r.png")
+```
+.smaller[[Tweet](https://twitter.com/ryann_crowley/status/1216880767072002048); [h/t: Grant McDermott](https://grantmcdermott.com/)]
+
+---
+name: admin-soon
+# Admin
+
+## Upcoming
+
+.hi-slate[Readings]
+
+- .note[Today]
+  - .it[ISL] Ch1–Ch2
+  - [Prediction Policy Problems](https://www.aeaweb.org/articles?id=10.1257/aer.p20151023) by Kleinberg .it[et al.] (2015)
+- .note[Next]
+  - .it[ISL] Ch. 3–4
+
+.hi-slate[Problem set] Likely assigned Thursday and due Tuesday.
+---
+layout: true
+# Statistical learning
+
+---
+class: inverse, middle
+---
+name: sl-definition
+## What is it?
+
+--
+
+.hi[Statistical learning] is a .attn[set of tools] developed .attn[to understand/model data].
+
+--
+
+Examples
+
+- .hi-slate[Regression analysis] quantifies the relationship between an outcome and a set of explanatory variables—most usefully in a causal setting.
+--
+
+- .hi-slate[Exploratory data analysis] (EDA) is a preliminary, often graphical, "exploration" of data to understand levels, variation, missingess, *etc.*
+
+--
+- .hi-slate[Classification trees] search through explanatory variables, splitting along the most "predictive" dimensions (random forests extend trees).
+
+--
+- .hi-slate[Regression trees] extend *classification trees* to numerical outcomes (random forests extend, as well).
+
+--
+- .hi-slate[K-means clustering] partitions observations into K groups (clusters) based upon a set of variables.
+
+---
+name: sl-classes
+## What is it good for?
+
+--
+
+A lot of things.
+--
+ We tend to break statistical-learning into two(-ish) classes:
+
+1. .hi-slate[Supervised learning] builds ("learns") a statistical model for predicting an .hi-orange[output] $\left( \color{#FFA500}{\mathbf{y}} \right)$ given a set of .hi-purple[inputs] $\left( \color{#6A5ACD}{\mathbf{x}_{1},\, \ldots,\, \mathbf{x}_{p}} \right)$,
+--
+ _i.e._, we want to build a model/function $\color{#20B2AA}{f}$
+$$\color{#FFA500}{\mathbf{y}} = \color{#20B2AA}{f}\!\left( \color{#6A5ACD}{\mathbf{x}_{1},\, \ldots,\, \mathbf{x}_{p}} \right)$$
+that accurately describes $\color{#FFA500}{\mathbf{y}}$ given some values of $\color{#6A5ACD}{\mathbf{x}_{1},\, \ldots,\, x_{p}}$.
+
+--
+
+2. .hi-slate[Unsupervised learning] learns relationships and structure using only .hi-purple[inputs] $\left( \color{#6A5ACD}{x_{1},\, \ldots,\, x_{p}} \right)$ without any *supervising* output
+--
+—letting the data "speak for itself."
+
+---
+layout: false
+class: clear, middle
+
+.hi-slate[Semi-supervised learning] falls somewhere between these supervised and unsupervised learning—generally applied to supervised tasks when labeled .hi-orange[outputs] are incomplete.
+---
+class: clear, middle
+
+```{R, comic, echo = F}
+knitr::include_graphics("images/comic-learning.jpg")
+```
+
+.it[.smaller[[Source](https://twitter.com/athena_schools/status/1063013435779223553)]]
+
+---
+layout: true
+# Statistical learning
+
+---
+## Output
+
+We tend to further break .hi-slate[supervised learning] into two groups, based upon the .hi-orange[output] (the .orange[outcome] we want to predict):
+
+--
+
+1. .hi-slate[Classification tasks] for which the values of $\color{#FFA500}{\mathbf{y}}$ are discrete categories
+<br>*E.g.*, race, sex, loan default, hazard, disease, flight status
+
+2. .hi-slate[Regression tasks] in which $\color{#FFA500}{\mathbf{y}}$ takes on continuous, numeric values.
+<br>*E.g.*, price, arrival time, number of emails, temperature
+
+.note[Note.sub[1]] The use of .it[regression] differs from our use of .it[linear regression].
+
+--
+
+.note[Note.sub[2]] Don't get tricked: Not all numbers represent continuous, numerical values—_e.g._, zip codes, industry codes, social security numbers..super[.pink[†]]
+
+.footnote[
+.pink[†] .qa[Q] Where would you put responses to 5-item Likert scales?
+]
+
+
+---
+## Why *Learning*?
+
+.qa[Q] What puts the "learning" in statistical/machine learning?
+
+--
+
+.qa[A] Most learning models/algorithms will .attn[tune model parameters] based upon the observed dataset—learning from the data.
+---
+layout: true
+# Notation
+
+---
+name: notation-source
+class: inverse, middle
+
+Our class will typically follow the notation and definitions of [.it[ISL]](http://faculty.marshall.usc.edu/gareth-james/ISL/).
+
+---
+name: notation-data
+## Data
+
+$\color{#e64173}{n}$ gives the .pink[number of observations]
+
+$\color{#6A5ACD}{p}$ represents the .purple[number of variables] available for predictions
+
+--
+
+$\mathbf{X}$ is our $\color{#e64173}{n}\times\color{#6A5ACD}{p}$ matrix of predictors
+- .note[Other names] ***features***, *inputs*, *independent/explanatory variables*, ...
+- $x_{\color{#e64173}{i},\color{#6A5ACD}{j}}$ is observation $\color{#e64173}{i}$ (in $\color{#e64173}{1,\ldots,n}$) on variable $\color{#6A5ACD}{j}$ (for $\color{#6A5ACD}{j}$ in $\color{#6A5ACD}{1,...,p}$)
+
+--
+
+$$
+\begin{align}
+  \mathbf{X} =
+  \begin{bmatrix}
+    x_{1,1} & x_{1,2} & \cdots & x_{1,\color{#6A5ACD}{p}} \\
+    x_{2,1} & x_{2,2} & \cdots & x_{2,\color{#6A5ACD}{p}} \\
+    \vdots  & \vdots  & \ddots & \vdots \\
+    x_{\color{#e64173}{n},1} & x_{\color{#e64173}{n},2} & \cdots & x_{\color{#e64173}{n},\color{#6A5ACD}{p}}
+  \end{bmatrix}
+\end{align}
+$$
+
+---
+name: notation-dimensions
+## Dimensions of $\mathbf{X}$
+
+Now let us split our $\mathbf{X}$ matrix of predictors by its two dimensions.
+
+--
+
+.col-left[
+.hi-pink[Observation] $\color{#e64173}{i}$ is a $\color{#6A5ACD}{p}$-length vector
+$$
+\begin{align}
+  x_{\color{#e64173}{i}} =
+  \begin{bmatrix}
+    x_{\color{#e64173}{i},\color{#6A5ACD}{1}} \\
+    x_{\color{#e64173}{i},\color{#6A5ACD}{2}} \\
+    \vdots  \\
+    x_{\color{#e64173}{i},\color{#6A5ACD}{p}}
+  \end{bmatrix}
+\end{align}
+$$
+]
+
+--
+
+.col-right[
+.hi-purple[Variable] $\color{#6A5ACD}{j}$ is a $\color{#e64173}{n}$-length vector
+$$
+\begin{align}
+  \mathbf{x}_{\color{#6A5ACD}{j}} =
+  \begin{bmatrix}
+    x_{\color{#e64173}{1},\color{#6A5ACD}{j}} \\
+    x_{\color{#e64173}{2},\color{#6A5ACD}{j}} \\
+    \vdots  \\
+    x_{\color{#e64173}{n},\color{#6A5ACD}{j}}
+  \end{bmatrix}
+\end{align}
+$$
+]
+
+--
+
+Applied to .mono[R]:
+- `dim(x_df)` = $\color{#e64173}{n}$ $\color{#6A5ACD}{p}$
+- `nrow(x_df)` $= \color{#e64173}{n}$; `ncol(x_df)` $= \color{#6A5ACD}{p}$
+- `x_df[1,]` $\left( \color{#e64173}{i = 1} \right)$; `x_df[,1]` $\left( \color{#6A5ACD}{j = 1} \right)$
+---
+name: notation-outcomes
+## Outcomes
+
+In supervised settings, we will denote our .hi-orange[outcome variable] as $\color{#FFA500}{\mathbf{y}}$.
+
+.note[Synonyms] *output*, *outcome*, *dependent/response variable*, ...
+
+--
+
+The .orange[outcome] for our .pink[i.super[th]] obsevation is $\color{#FFA500}{y}_{\color{#e64173}{i}}$. Together the $\color{#e64173}{n}$ observations form
+
+$$
+\begin{align}
+  \color{#FFA500}{\mathbf{y}} =
+  \begin{bmatrix}
+    y_{\color{#e64173}{1}} \\
+    y_{\color{#e64173}{2}} \\
+    \vdots  \\
+    y_{\color{#e64173}{n}}
+  \end{bmatrix}
+\end{align}
+$$
+
+--
+
+and our full dataset is composed of $\bigg\{ \left( x_{\color{#e64173}{1}},\color{#FFA500}{y}_{\color{#e64173}{1}} \right),\, \left( x_{\color{#e64173}{2}},\color{#FFA500}{y}_{\color{#e64173}{2}} \right),\, \ldots,\, \left( x_{\color{#e64173}{n}},\color{#FFA500}{y}_{\color{#e64173}{n}} \right) \bigg\}$.
+---
+layout: false
+class: clear, middle
+
+Back to the problem of (supervised) statistical learning...
+---
+layout: true
+# Statistical learning
+
+---
+name: sl-goal
+## The goal
+
+As defined before, we want to *learn* a model to understand our data.
+
+--
+
+1. Take our (numeric) .orange[output] $\color{#FFA500}{\mathbf{y}}$.
+2. Imagine there is a .turquoise[function] $\color{#20B2AA}{f}$ that takes .purple[inputs] $\color{#6A5ACD}{\mathbf{X}} = \color{#6A5ACD}{\mathbf{x}_1}, \ldots, \color{#6A5ACD}{\mathbf{x}_p}$ <br>and maps them, plus a random, mean-zero .pink[error term] $\color{#e64173}{\varepsilon}$, to the .orange[output].
+$$\color{#FFA500}{\mathbf{y}} = \color{#20B2AA}{f} \! \left( \color{#6A5ACD}{\mathbf{X}} \right) + \color{#e64173}{\varepsilon}$$
+
+--
+
+.qa[Q] What is $\color{#20B2AA}{f}$?
+--
+<br>.qa[A] .note[ISL:] $\color{#20B2AA}{f}$ represents the *systematic* information that $\color{#6A5ACD}{\mathbf{X}}$ provides about $\color{#FFA500}{\mathbf{y}}$.
+
+--
+
+.qa[Q] How else can you describe $\color{#20B2AA}{f}$?
+
+---
+## Our missing $f$
+
+$$\color{#FFA500}{\mathbf{y}} = \color{#20B2AA}{f} \! \left( \color{#6A5ACD}{\mathbf{X}} \right) + \color{#e64173}{\varepsilon}$$
+
+.qa[Q] $\color{#20B2AA}{f}$ is unknown (as is $\color{#e64173}{\varepsilon}$). What should we do?
+--
+<br>
+.qa[A] Use the observed data to learn/estimate $\color{#20B2AA}{f}(\cdot)$, _i.e._, construct $\widehat{\color{#20B2AA}{f}}$..super[.pink[†]]
+
+.footnote[
+.pink[†] More notation: hats $\left( \hat{} \right)$ are estimators/estimates.
+]
+
+--
+
+.qa[Q] Okay. How?
+--
+<br>
+.qa[A] .it[How do I estimate] $\color{#20B2AA}{f}$.it[?] is one way to phrase *all questions* that underly statistical learning—model selection, cross validation, evaluation, *etc.*
+
+--
+
+All of the techniques, algorithms, tools of stat. learning attempt to accurately recover $\color{#20B2AA}{f}$ based upon the settings' goals/limitations.
+
+--
+
+.grey-light[You'll have to wait on any real/specific answers...]
+---
+## Learning from $\hat{f}$
+
+There are two main reasons we want to learn about $\color{#20B2AA}{f}$
+
+1. .hi-slate[*Causal* inference settings] How do changes in $\color{#6A5ACD}{\mathbf{X}}$ affect $\color{#FFA500}{\mathbf{y}}$?
+<br> .grey-light[The territory of .mono[EC523] and .mono[EC525].]
+
+--
+
+1. .hi-slate[Prediction problems] Predict $\color{#FFA500}{\mathbf{y}}$ using our estimated $\color{#20B2AA}{f}$, _i.e._,
+$$\hat{\color{#FFA500}{\mathbf{y}}} = \hat{\color{#20B2AA}{f}}\!(\color{#6A5ACD}{\mathbf{X}})$$
+our *black-box setting* where we care less about $\color{#20B2AA}{f}$ than $\hat{\color{#FFA500}{\mathbf{y}}}$..super[.pink[†]]
+
+.footnote[
+.pink[†] You shouldn't actually treat your prediction methods as total black boxes.
+]
+
+--
+
+Similarly, in causal-inference settings, we don't particulary care about $\hat{\color{#FFA500}{\mathbf{y}}}$.
+---
+name: sl-prediction
+## Prediction errors
+
+As tends to be the case in life, you will make errors in predicting $\color{#FFA500}{\mathbf{y}}$.
+
+The accuracy of $\hat{\color{#FFA500}{\mathbf{y}}}$ depends upon .hi-slate[two errors]:
+
+--
+
+1. .hi-slate[Reducible error] The error due to $\hat{\color{#20B2AA}{f}}$ imperfectly estimating $\color{#20B2AA}{f}$.
+<br>*Reducible* in the sense that we could improve $\hat{\color{#20B2AA}{f}}$.
+
+--
+
+1. .hi-slate[Irreducible error] The error component that is outside of the model $\color{#20B2AA}{f}$.
+<br>*Irreducible* because we defined an error term $\color{#e64173}{\varepsilon}$ unexplained by $\color{#20B2AA}{f}$.
+
+--
+
+.note[Note] As its name implies, you can't get rid of .it[irreducible] error—but we can try to get rid of .it[reducible] errors.
+
+---
+## Prediction errors
+
+Why we're stuck with .it[irreducible] error
+
+$$
+\begin{aligned}
+  \mathop{E}\left[ \left\{ \color{#FFA500}{\mathbf{y}} - \hat{\color{#FFA500}{\mathbf{y}}} \right\}^2 \right]
+  &=
+  \mathop{E}\left[ \left\{ \color{#20B2AA}{f}(\color{#6A5ACD}{\mathbf{X}}) + \color{#e64173}{\varepsilon} + \hat{\color{#20B2AA}{f}}(\color{#6A5ACD}{\mathbf{X}}) \right\}^2 \right] \\
+  &= \underbrace{\left[ \color{#20B2AA}{f}(\color{#6A5ACD}{\mathbf{X}}) - \hat{\color{#20B2AA}{f}}(\color{#6A5ACD}{\mathbf{X}}) \right]^2}_{\text{Reducible}} + \underbrace{\mathop{\text{Var}} \left( \color{#e64173}{\varepsilon} \right)}_{\text{Irreducible}}
+\end{aligned}
+$$
+
+In less math:
+
+- If $\color{#e64173}{\varepsilon}$ exists, then $\color{#6A5ACD}{\mathbf{X}}$ cannot perfectly explain $\color{#FFA500}{\mathbf{y}}$.
+- So even if $\hat{\color{#20B2AA}{f}} = \color{#20B2AA}{f}$, we still have irreducible error.
+
+--
+
+Thus, to form our .hi-slate[best predictors], we will .hi-slate[minimize reducible error].
+---
+name: sl-parameters
+## Which type of $\hat{f}$?
+
+Once you have your .purple[inputs] $\left(\color{#6A5ACD}{\mathbf{X}} \right)$ and .orange[output] $\left( \color{#FFA500}{\mathbf{y}} \right)$ data, you still need to decide how parametric your $\hat{\color{#20B2AA}{f}}$ should be..super[.pink[†]]
+
+.footnote[
+.pink[†] I'm saying "how parametric" b/c some methods are much more parametric than others.
+]
+
+--
+
+.hi-slate[Parametric methods] assume a function typically involve two steps
+1. Select a functional form (shape) to represent $\color{#20B2AA}{f}$
+2. Train your selected model on your data $\color{#FFA500}{\mathbf{y}}$ and $\color{#6A5ACD}{\mathbf{X}}$.
+
+--
+
+.hi-slate[Non-parametric methods] avoid explicit assumption about the shape of $\color{#20B2AA}{f}$.
+<br>
+Attempt to .pink[flexibly fit] the data, while trying to .pink[avoid overfitting].
+
+---
+## Which type of $\hat{f}$?
+
+Methods' parametric assumptions come with tradeoffs.
+
+.hi-slate[Parametric methods]
+<br> .pink.mono[+] Simpler to estimate and interpret.
+<br> .purple.mono[-] If assumed functional form is bad, model performance will suffer.
+
+.hi-slate[Non-parametric methods]
+<br> .pink.mono[+] Fewer assumptions. More flexibility.
+<br> .purple.mono[-] Lower interpretability. Susceptible to overfitting. Want lots of data.
+---
+layout: true
+class: clear, middle
+
+---
+
+.hi-slate[Example:] Let's start with a pretty funky, nonlinear function.
+---
+exclude: true
+
+```{R, ex data, cache = T}
+# Sample size
+n = 70
+# Set seed
+set.seed(12345)
+# Define function
+f = function(x1, x2, e) x1 + x2 - x1 * x2 + (x1 > x2) * x1 + (x1 < x2) * x2^2 + e
+# Generate data
+sample_df = tibble(
+  x1 = runif(n = n, max = 10),
+  x2 = runif(n = n, max = 10),
+  e = rnorm(n = n, sd = 1),
+  y = f(x1, x2, e)
+)
+# Estimate linear-regression model
+est_lm = lm(y ~ x1 * x2, data = sample_df)
+# Estimate kNN models: k=10,5,1
+est_knn10 = knnreg(
+  y = sample_df$y,
+  x = sample_df[, c("x1", "x2")],
+  k = 10
+)
+est_knn5 = knnreg(
+  y = sample_df$y,
+  x = sample_df[, c("x1", "x2")],
+  k = 5
+)
+est_knn1 = knnreg(
+  y = sample_df$y,
+  x = sample_df[, c("x1", "x2")],
+  k = 1
+)
+# Add predictions
+sample_df %<>% mutate(
+  y_lm = est_lm$fitted.values,
+  y_knn10 = predict(est_knn10, newdata = sample_df[, c("x1", "x2")]),
+  y_knn5 = predict(est_knn5, newdata = sample_df[, c("x1", "x2")]),
+  y_knn1 = predict(est_knn1, newdata = sample_df[, c("x1", "x2")])
+)
+# Fit a linear-regression model
+# True data frame
+truth_df = tibble(x1 = seq(0, 10, 0.1), x2 = seq(0, 10, 0.1)) %>%
+  expand(x1, x2)
+truth_df %<>% mutate(
+  y = f(x1, x2, 0),
+  y_lm = predict(est_lm, newdata = truth_df),
+  y_knn10 = predict(est_knn10, newdata = truth_df[, c("x1", "x2")]),
+  y_knn5 = predict(est_knn5, newdata = truth_df[, c("x1", "x2")]),
+  y_knn1 = predict(est_knn1, newdata = truth_df[, c("x1", "x2")])
+)
+# Find range of x, y, and prediction errors
+range_x = c(0,10)
+range_y = c(
+  min(
+    sample_df %>% select(starts_with("y")),
+    truth_df %>% select(starts_with("y"))
+  ),
+  max(
+    sample_df %>% select(starts_with("y")),
+    truth_df %>% select(starts_with("y"))
+  )
+)
+range_error = c(
+  min(sample_df %>% transmute(y - y_lm, y - y_knn10, y - y_knn5, y - y_knn1)),
+  max(sample_df %>% transmute(y - y_lm, y - y_knn10, y - y_knn5, y - y_knn1))
+)
+```
+
+---
+name: ex-truth
+
+.hi-slate[Truth:] The (nonlinear) $f(\mathbf{X})$ that we hope to recover.
+```{R, ex truth, echo = F, fig.height = 7.5, cache = T, dependson = "ex data"}
+# True 'f(X)' (surface)
+plot_ly(
+  x = unique(truth_df$x1),
+  y = unique(truth_df$x2),
+  z = matrix(data = truth_df$y, ncol = sqrt(nrow(truth_df))),
+  colors = colorRamp(viridis::magma(8)),
+  cmin = range_y[1],
+  cmax = range_y[2]
+) %>% add_surface() %>%
+layout(scene = list(
+  xaxis = list(title = "x1", range = range_x),
+  yaxis = list(title = "x2", range = range_x),
+  zaxis = list(title = "y", range = range_y)
+)) %>% hide_colorbar()
+```
+
+---
+.hi-slate[The sample:] $n=70$ randomly drawn observations for $\mathbf{y} = f(\mathbf{x}_1,\, \mathbf{x}_2) + \varepsilon$
+```{R, ex sample, echo = F, fig.height = 7.5, cache = T, dependson = "ex data"}
+# Sample observations (3d scatter)
+plot_ly(
+  type = "scatter3d",
+  x = sample_df$x1,
+  y = sample_df$x2,
+  z = sample_df$y,
+  mode = "markers",
+  color = sample_df$y,
+  colors = colorRamp(viridis::magma(8)),
+) %>%
+layout(scene = list(
+  xaxis = list(title = "x1", range = range_x),
+  yaxis = list(title = "x2", range = range_x),
+  zaxis = list(title = "y", range = range_y)
+)) %>% hide_colorbar()
+```
+
+---
+name: ex-lm
+
+.hi-slate[Estimated linear-regression model:] $\hat{\mathbf{y}} = \hat\beta_0 + \hat\beta_1 \mathbf{x}_1 + \hat\beta_2 \mathbf{x}_2 + \hat\beta_3 \mathbf{x}_1 \mathbf{x}_2$
+```{R, ex lm, echo = F, fig.height = 7.5, cache = T, dependson = "ex data"}
+# Linear regression estimate (surface)
+plot_ly(
+  x = unique(truth_df$x1),
+  y = unique(truth_df$x2),
+  z = matrix(data = truth_df$y_lm, ncol = sqrt(nrow(truth_df))),
+  colors = colorRamp(viridis::magma(8)),
+  cmin = range_y[1],
+  cmax = range_y[2]
+) %>% add_surface() %>%
+layout(scene = list(
+  xaxis = list(title = "x1", range = range_x),
+  yaxis = list(title = "x2", range = range_x),
+  zaxis = list(title = "y", range = range_y)
+)) %>% colorbar(limits = range_y) %>% hide_colorbar()
+```
+
+---
+.hi-slate[Prediction error] from our fitted linear regression model
+```{R, ex lm errors, echo = F, fig.height = 7.5, cache = T, dependson = "ex data"}
+# Regression error (3d scatter)
+plot_ly(
+  type = "scatter3d",
+  x = sample_df$x1,
+  y = sample_df$x2,
+  z = sample_df$y - sample_df$y_lm,
+  mode = "markers",
+  color = sample_df$y - sample_df$y_lm,
+  colors = colorRamp(viridis::magma(8))
+) %>%
+layout(scene = list(
+  xaxis = list(title = "x1", range = range_x),
+  yaxis = list(title = "x2", range = range_x),
+  zaxis = list(title = "error", range = range_error)
+)) %>% colorbar(limits = range_error) %>% hide_colorbar()
+```
+
+---
+name: ex-knn
+
+.hi-slate[k-nearest neighbors] (kNN) using k=5 .grey-light[(a *non-parametric* method)]
+```{R, ex knn5, echo = F, fig.height = 7.5, cache = T, dependson = "ex data"}
+# knn model (k = 5) (surface)
+plot_ly(
+  x = unique(truth_df$x1),
+  y = unique(truth_df$x2),
+  z = matrix(data = truth_df$y_knn5, ncol = sqrt(nrow(truth_df))),
+  colors = colorRamp(viridis::magma(8)),
+  cmin = range_y[1],
+  cmax = range_y[2]
+) %>% add_surface() %>%
+layout(scene = list(
+  xaxis = list(title = "x1", range = range_x),
+  yaxis = list(title = "x2", range = range_x),
+  zaxis = list(title = "y", range = range_y)
+)) %>% hide_colorbar()
+```
+
+---
+.hi-slate[k-nearest neighbors] (kNN) using k=10 .grey-light[(notice increased smoothness)]
+```{R, ex knn10, echo = F, fig.height = 7.5, cache = T, dependson = "ex data"}
+# knn model (k = 10) (surface)
+plot_ly(
+  x = unique(truth_df$x1),
+  y = unique(truth_df$x2),
+  z = matrix(data = truth_df$y_knn10, ncol = sqrt(nrow(truth_df))),
+  colors = colorRamp(viridis::magma(8)),
+  cmin = range_y[1],
+  cmax = range_y[2]
+) %>% add_surface() %>%
+layout(scene = list(
+  xaxis = list(title = "x1", range = range_x),
+  yaxis = list(title = "x2", range = range_x),
+  zaxis = list(title = "y", range = range_y)
+)) %>% hide_colorbar()
+```
+---
+.hi-slate[k-nearest neighbors] (kNN) using k=1 .grey-light[(notice decreased smoothness)]
+```{R, ex knn1, echo = F, fig.height = 7.5, cache = T, dependson = "ex data"}
+# knn model (k = 1) (surface)
+plot_ly(
+  x = unique(truth_df$x1),
+  y = unique(truth_df$x2),
+  z = matrix(data = truth_df$y_knn1, ncol = sqrt(nrow(truth_df))),
+  colors = colorRamp(viridis::magma(8)),
+  cmin = range_y[1],
+  cmax = range_y[2]
+) %>% add_surface() %>%
+layout(scene = list(
+  xaxis = list(title = "x1", range = range_x),
+  yaxis = list(title = "x2", range = range_x),
+  zaxis = list(title = "y", range = range_y)
+)) %>% hide_colorbar()
+```
+
+---
+.hi-slate[Prediction error] from our fitted kNN (k=5) model
+```{R, ex knn 5 errors, echo = F, fig.height = 7.5, cache = T, dependson = "ex data"}
+# kNN 5 error (3d scatter)
+plot_ly(
+  type = "scatter3d",
+  x = sample_df$x1,
+  y = sample_df$x2,
+  z = sample_df$y - sample_df$y_knn5,
+  mode = "markers",
+  color = sample_df$y - sample_df$y_knn5,
+  colors = colorRamp(viridis::magma(8))
+) %>%
+layout(scene = list(
+  xaxis = list(title = "x1", range = range_x),
+  yaxis = list(title = "x2", range = range_x),
+  zaxis = list(title = "error", range = range_error)
+)) %>% colorbar(limits = range_error) %>% hide_colorbar()
+```
+
+---
+.hi-slate[Prediction error] from our fitted kNN (k=10) model
+```{R, ex knn 10 errors, echo = F, fig.height = 7.5, cache = T, dependson = "ex data"}
+# kNN 10 error (3d scatter)
+plot_ly(
+  type = "scatter3d",
+  x = sample_df$x1,
+  y = sample_df$x2,
+  z = sample_df$y - sample_df$y_knn10,
+  mode = "markers",
+  color = sample_df$y - sample_df$y_knn10,
+  colors = colorRamp(viridis::magma(8))
+) %>%
+layout(scene = list(
+  xaxis = list(title = "x1", range = range_x),
+  yaxis = list(title = "x2", range = range_x),
+  zaxis = list(title = "error", range = range_error)
+)) %>% colorbar(limits = range_error) %>% hide_colorbar()
+```
+---
+.hi-slate[Prediction error] from our fitted kNN (k=1) model
+```{R, ex knn 1 errors, echo = F, fig.height = 7.5, cache = T, dependson = "ex data"}
+# kNN 1 error (3d scatter)
+plot_ly(
+  type = "scatter3d",
+  x = sample_df$x1,
+  y = sample_df$x2,
+  z = sample_df$y - sample_df$y_knn1,
+  mode = "markers",
+  color = sample_df$y - sample_df$y_knn1,
+  colors = colorRamp(viridis::magma(8))
+) %>%
+layout(scene = list(
+  xaxis = list(title = "x1", range = range_x),
+  yaxis = list(title = "x2", range = range_x),
+  zaxis = list(title = "error", range = range_error)
+)) %>% colorbar(limits = range_error) %>% hide_colorbar()
+```
+
+---
+.note[Recall] .hi-slate[Prediction error] from our fitted linear regression model
+```{R, ex lm errors again, echo = F, fig.height = 7.5, cache = T, dependson = "ex data"}
+# Regression error (3d scatter)
+plot_ly(
+  type = "scatter3d",
+  x = sample_df$x1,
+  y = sample_df$x2,
+  z = sample_df$y - sample_df$y_lm,
+  mode = "markers",
+  color = sample_df$y - sample_df$y_lm,
+  colors = colorRamp(viridis::magma(8))
+) %>%
+layout(scene = list(
+  xaxis = list(title = "x1", range = range_x),
+  yaxis = list(title = "x2", range = range_x),
+  zaxis = list(title = "error", range = range_error)
+)) %>% colorbar(limits = range_error) %>% hide_colorbar()
+```
+
+---
+layout: true
+# Model accuracy
+
+---
+name: accuracy-questions
+
+## Questions
+
+1. Which of the methods was the most flexible? Inflexible?
+
+1. Why do you think kNN with k=1 had such low prediction error?
+
+1. How could we (better) assess model/predictive performance?
+
+1. Why would we ever want to choose a less flexible model?
+---
+## Measurement
+
+You probably will not be surprised to know that there is no one-size-fits-all solution in statistical learning.
+
+.qa[Q] How do we choose between competing models?
+
+--
+
+.qa[A] We're a few steps away, but before we do anything, we need a way to .hi-slate[define model performance].
+
+---
+name: accuracy-subtlety
+
+## Subtlety
+
+Defining performance can actually be quite tricky...
+
+.note[Regression setting, 1]  Which do you prefer?
+1. Lots of little errors and a few really large errors.
+1. Medium-sized errors for everyone.
+
+.note[Regression setting, 2]  Is a 1-unit error (*e.g.*, $1,000) equally bad for everyone?
+
+---
+## Subtlety
+
+Defining performance can actually be quite tricky...
+
+.note[Classification setting, 1] Which is worse?
+1. False positive (*e.g.*, incorrectly diagnosing cancer)
+1. False negative (*e.g.*, missing cancer)
+
+.note[Classification setting, 2] Which is more important?
+1. True positive (*e.g.*, correct diagnosis of cancer)
+1. True negative (*e.g.*, correct diagnosis of "no cancer")
+---
+name: mse
+## MSE
+
+.attn[Mean squared error (MSE)] is the most common.super[.pink[†]] way to measure model performance in a regression setting.
+
+.footnote[
+.pink[†] *Most common* does not mean best—it just means lots of people use it.
+]
+
+$$\text{MSE} = \dfrac{1}{n} \sum_{i=1}^n \left[ \color{#FFA500}{y}_i - \hat{\color{#20B2AA}{f}}(\color{#6A5ACD}{x}_i) \right]^2$$
+
+.note[Recall:]  $\color{#FFA500}{y}_i - \hat{\color{#20B2AA}{f}}(\color{#6A5ACD}{x}_i) = \color{#FFA500}{y}_i - \hat{\color{#FFA500}{y}}_i$ is our prediction error.
+
+--
+
+Two notes about MSE
+
+1. MSE will be (relatively) very small when .hi-slate[prediction error] is nearly zero.
+1. MSE .hi-slate[penalizes] big errors more than little errors (the squared part).
+---
+name: training-testing
+
+## Training or testing?
+
+Low MSE (accurate performance) on the data that trained the model isn't actually impressive—maybe the model is just overfitting our data..super[.pink[†]]
+
+.footnote[
+.pink[†] Recall the kNN performance for k=1.
+]
+
+.note[What we want:] How well does the model perform .hi-slate[on data it has never seen]?
+
+--
+
+This introduces an important distinction:
+
+1. .hi-slate[Training data]: The observations $(\color{#FFA500}{y}_i,\color{#e64173}{x}_i)$ used to .hi-slate[train] our model $\hat{\color{#20B2AA}{f}}$.
+1. .hi-slate[Testing data]: The observations $(\color{#FFA500}{y}_0,\color{#e64173}{x}_0)$ that our model has yet to see—and which we can use to evaluate the performance of $\hat{\color{#20B2AA}{f}}$.
+
+--
+
+.hi-slate[Real goal: Low test-sample MSE] (not the training MSE from before).
+---
+layout: false
+class: clear, middle
+
+.hi-slate[Next time:] model performance, the variance-bias tradeoff, and kNN
+---
+name: sources
+layout: false
+
+# Sources
+
+These notes draw upon
+
+- [An Introduction to Statistical Learning](http://faculty.marshall.usc.edu/gareth-james/ISL/) (*ISL*)<br>James, Witten, Hastie, and Tibshirani
+
+- [Python Data Science Handbook](https://jakevdp.github.io/PythonDataScienceHandbook/)<br>Jake VanderPlas
+
+I pulled the comic from [Twitter](https://twitter.com/athena_schools/status/1063013435779223553/photo/1).
+
+---
+# Table of contents
+
+.col-left[
+.smallest[
+#### Admin
+- [Today](#admin-today)
+- [Upcoming](#admin-soon)
+
+#### Statistical learning
+- [Definition](#sl-definition)
+- [Classes](#sl-classes)
+
+#### Notation
+- [Source](#notation-source)
+- [Data](#notation-data)
+- [Dimensions of $\mathbf{X}$](#notation-dimensions)
+- [Outcomes](#notation-outcomes)
+
+#### Statistical learning, continued
+- [The goal](#sl-goal)
+- [Prediction](#sl-prediction)
+- [Parameterization](#sl-parameters)
+]
+]
+
+.col-right[
+.smallest[
+#### Example
+- [Data-generating process (truth)](#ex-truth)
+- [Regression model](#ex-lm)
+- [kNN model](#ex-knn)
+
+#### Model accuracy
+- [Questions](#accuracy-questions)
+- [Subtlety](#accuracy-subtlety)
+- [MSE](#mse)
+- [Training *vs.* testing](#training-testing)
+
+#### Other
+- [Sources/references](#sources)
+]
+]
+
+---
+exclude: true
+
+```{R, save pdfs, include = F, eval = F}
+# PDF with pauses
+xaringan::decktape("000-slides.html", "000-slides.pdf")
+# PDF without pauses
+pagedown::chrome_print("000-slides.html", "000-slides-no-pause.pdf")
+```

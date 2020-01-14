@@ -33,13 +33,21 @@ Welcome to Economics 524 (424): Prediction and machine-learning in econometrics,
 
 ## Lecture notes
 
-[000 - Overview (Why predict?)](https://raw.githack.com/edrubin/EC524W20/master/slides/000/000-slides.html)
+[**000 - Overview (Why predict?)**](https://raw.githack.com/edrubin/EC524W20/master/lecture/000/000-slides.html)
 
 1. Why do we have a class on prediction?
 2. How is prediction (and how are its tools) different from causal inference?
 3. Motivating examples
 
-**Formats** [.html](https://raw.githack.com/edrubin/EC524W20/master/slides/000/000-slides.html) | [.pdf](https://raw.githack.com/edrubin/EC524W20/master/slides/000/000-slides.pdf) | [.Rmd](https://raw.githack.com/edrubin/EC524W20/master/slides/000/000-slides.Rmd)
+**Formats** [.html](https://raw.githack.com/edrubin/EC524W20/master/lecture/000/000-slides.html) | [.pdf](https://raw.githack.com/edrubin/EC524W20/master/lecture/000/000-slides.pdf) | [.Rmd](https://raw.githack.com/edrubin/EC524W20/master/lecture/000/000-slides.Rmd)
+
+[**001 - Statistical learning foundations**](https://raw.githack.com/edrubin/EC524W20/master/lecture/001/001-slides.html)
+
+1. Why do we have a class on prediction?
+2. How is prediction (and how are its tools) different from causal inference?
+3. Motivating examples
+
+**Formats** [.html](https://raw.githack.com/edrubin/EC524W20/master/lecture/001/001-slides.html) | [.pdf](https://raw.githack.com/edrubin/EC524W20/master/lecture/001/001-slides.pdf) | [.Rmd](https://raw.githack.com/edrubin/EC524W20/master/lecture/001/001-slides.Rmd)
 
 ## Projects
 
@@ -47,12 +55,37 @@ Welcome to Economics 524 (424): Prediction and machine-learning in econometrics,
 
 ## Lab notes
 
-[000 - Workflow and cleaning](https://raw.githack.com/edrubin/EC524W20/master/lab/000-cleaning/000-slides.html)
+[**000 - Workflow and cleaning**](https://raw.githack.com/edrubin/EC524W20/master/lab/000-cleaning/000-slides.html)
 
-1. General best practices for coding
+1. General "best practices" for coding
 2. Working with RStudio
 3. The pipe (`%>%`)
 
 **Formats** [.html](https://raw.githack.com/edrubin/EC524W20/master/lab/000-cleaning/000-slides.html) | [.pdf](https://raw.githack.com/edrubin/EC524W20/master/lab/000-cleaning/000-slides.pdf) | [.Rmd](https://raw.githack.com/edrubin/EC524W20/master/lab/000-cleaning/000-slides.Rmd)
 
 ## Problem sets
+
+## Additional resources
+
+### R
+
+- [RStudio's recommendations for learning R](https://education.rstudio.com/learn/), plus cheatsheets, books, and tutorials
+- [YaRrr! The Pirate’s Guide to R](https://bookdown.org/ndphillips/YaRrr/) (free online)
+- [UO library resources/workshops](http://uoregon.libcal.com/calendar/dataservices/?cid=11979&t=g&d=0000-00-00&cal=11979,11173)
+- [Eugene R Users](https://www.meetup.com/meetup-group-cwPiAlnB/)
+
+### Data Science
+
+- [Python Data Science Handbook](https://jakevdp.github.io/PythonDataScienceHandbook/) by Jake VanderPlas
+- [Elements of AI](https://course.elementsofai.com/)
+- [Caltech professor Yaser Abu-Mostafa: Lectures about machine learning on YouTube](https://www.youtube.com/user/caltech/search?query=Yaser+Abu-Mostafa)
+- From Google:
+  - [Machine-learning crash course](https://developers.google.com/machine-learning/crash-course/ml-intro)
+  - [Google Cloud training for data and machine learning](https://cloud.google.com/training/data-ml)
+  - [General Google education platform](https://ai.google/education/)
+
+### Spatial data
+
+- [Geocomputation with R](https://geocompr.robinlovelace.net) (free online)
+- [Spatial Data Science](https://keen-swartz-3146c4.netlify.com) (free online)
+- [Applied Spatial Data Analysis with R](https://asdar-book.org)
