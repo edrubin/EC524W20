@@ -79,6 +79,11 @@ You will need to sign into you Kaggle account and then hit "Copy and Edit" to ad
 
 **Formats** [.html](https://raw.githack.com/edrubin/EC524W20/master/lab/000-cleaning/000-slides.html) | [.pdf](https://raw.githack.com/edrubin/EC524W20/master/lab/000-cleaning/000-slides.pdf) | [.Rmd](https://raw.githack.com/edrubin/EC524W20/master/lab/000-cleaning/000-slides.Rmd)
 
+**dplyr and Kaggle notebooks**
+
+1. Finish [previous lab on `dplyr`](https://raw.githack.com/edrubin/EC524W20/master/lab/000-cleaning/000-slides.html#48)
+2. [Working in (Kaggle) notebooks](https://www.kaggle.com/voodoojanus/ec524-jan-17-20)
+
 ## Problem sets
 
 ## Additional resources
