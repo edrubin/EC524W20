@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+  <head>
+    <title>Lecture .mono[002]</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Edward Rubin" />
+    <meta name="date" content="2020-01-14" />
+    <link href="002-slides_files/remark-css-0.0.1/default.css" rel="stylesheet" />
+    <link href="002-slides_files/remark-css-0.0.1/metropolis.css" rel="stylesheet" />
+    <link href="002-slides_files/remark-css-0.0.1/metropolis-fonts.css" rel="stylesheet" />
+    <link rel="stylesheet" href="my-css.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Lecture .mono[002]
+## Model accuracy and selection
+### Edward Rubin
+### 14 January 2020
+
+---
+
+exclude: true
+
+
+---
+layout: true
+# Admin
+
+---
+class: inverse, middle
+---
+name: admin-today
+## Today
+
+.b[In-class]
+
+- Model accuracy
+- Loss for regression and classification
+- The variance bias-tradeoff
+- The Bayes classifier
+- KNN
+
+---
+name: admin-soon
+# Admin
+
+## Upcoming
+
+.b[Readings]
+
+- .note[Today]
+  - Finish .it[ISL] Ch2
+  - [Prediction Policy Problems](https://www.aeaweb.org/articles?id=10.1257/aer.p20151023) by Kleinberg .it[et al.] (2015)
+- .note[Next]
+  - .it[ISL] Ch. 3–4
+
+.b[Problem set] Today; due Tuesday before midnight (PST)
+---
+layout: true
+# Model accuracy
+
+---
+class: inverse, middle
+---
+name: accuracy-review
+## Review: Supervised learning
+
+1. Using .hi-slate[training data] `\(\left( \color{#FFA500}{\mathbf{y}},\, \color{#6A5ACD}{\mathbf{X}} \right)\)`, we train `\(\hat{\color{#20B2AA}{f}}\)`, estimating `\(\color{#FFA500}{\mathbf{y}} = \color{#20B2AA}{f}\!(\color{#6A5ACD}{\mathbf{X}}) + \varepsilon\)`.
+
+--
+
+1. Using this estimated model `\(\hat{\color{#20B2AA}{f}}\)`, we .it[can] calculate .hi-slate[training MSE]
+`$$\color{#314f4f}{\text{MSE}_\text{train}} = \dfrac{1}{n} \sum_{1}^n \underbrace{\left[ \color{#FFA500}{\mathbf{y}}_i - \hat{\color{#20B2AA}{f}}\!\left( \color{#6A5ACD}{x}_i \right) \right]^{2}}_{\text{Squared error}} = \dfrac{1}{n} \sum_{1}^n \left[ \color{#FFA500}{\mathbf{y}}_i - \hat{\color{#FFA500}{\mathbf{y}}} \right]^2$$`
+.note[Note:] Assuming `\(\color{#FFA500}{\mathbf{y}}\)` is numeric (regression problem).
+
+--
+
+1. We want the model to accurately predict previously unseen (.hi-pink[test]) data.
+This goal is sometimes call .attn[generalization] or .attn[external validity].
+.center[
+Average `\(\left[ \color{#e64173}{y_0} - \hat{\color{#20B2AA}{f}}\!\left( \color{#e64173}{x_0} \right) \right]^2\)` for obs. `\(\left( \color{#e64173}{y_0},\, \color{#e64173}{x_0} \right)\)` in our .hi-pink[test data].
+]
+
+---
+## Errors
+
+The item at the center of our focus is the (test-sample) .b[prediction error]
+`$$\color{#FFA500}{\mathbf{y}}_i - \hat{\color{#20B2AA}{f}}\!\left( \color{#6A5ACD}{x}_i \right) = \color{#FFA500}{\mathbf{y}}_i - \hat{\color{#FFA500}{\mathbf{y}}}_i$$`
+the difference between the label `\(\left( \color{#FFA500}{\mathbf{y}} \right)\)` and its prediction `\(\left( \hat{\color{#FFA500}{\mathbf{y}}} \right)\)`.
+
+The distance (_i.e._, non-negative value) between a true value and its prediction is often called .b[loss].
+
+---
+name: loss-functions
+## Loss functions
+
+.b[Loss functions] aggregate and quantify loss.
+
+.white[►] .b[L1] loss function: `\(\sum_i \big| y_i - \hat{y}_i \big|\)`     .b[Mean abs. error]: `\(\dfrac{1}{n}\sum_i \big| y_i - \hat{y}_i \big|\)`
+
+.white[►] .b[L2] loss function: `\(\sum_i \left( y_i - \hat{y}_i \right)^2\)`   .b[Mean squared error]: `\(\dfrac{1}{n}\sum_i \big| y_i - \hat{y}_i \big|\)`
+
+--
+
+Notice that .b[both functions impose assumptions].
+1. Both assume .b[overestimating] is equally bad as .b[underestimating].
+2. Both assume errors are similarly bad for .b[all individuals] `\((i)\)`.
+3. They differ in their assumptions about the .b[magnitude of errors].
+  - .b[L1] an additional unit of error is .b[equally bad] everywhere.
+  - .b[L2] an additional unit of error is .b[worse] when the error is already big.
+---
+layout: true
+class: clear, middle
+
+---
+A very simple, univariate dataset `\(\left(\mathbf{y},\, \mathbf{x} \right)\)`
+
+
+
+&lt;img src="002-slides_files/figure-html/graph loss 1-1.svg" style="display: block; margin: auto;" /&gt;
+---
+... on which we run a .pink[simple linear regression].
+
+&lt;img src="002-slides_files/figure-html/graph loss 2-1.svg" style="display: block; margin: auto;" /&gt;
+---
+Each point `\(\left( y_i,\, x_i \right)\)` has an associated .grey-mid[loss] (error).
+
+&lt;img src="002-slides_files/figure-html/graph loss 3-1.svg" style="display: block; margin: auto;" /&gt;
+---
+The L1 loss function weights all errors equally: `\(\sum_i \big| y_i - \hat{y}_i \big|\)`
+
+&lt;img src="002-slides_files/figure-html/graph loss 4-1.svg" style="display: block; margin: auto;" /&gt;
+---
+The L2 loss function .it[upweights] large weights: `\(\sum_i \left( y_i - \hat{y}_i \right)^2\)`
+
+&lt;img src="002-slides_files/figure-html/graph loss 5-1.svg" style="display: block; margin: auto;" /&gt;
+---
+name: overfitting
+layout: false
+# Model accuracy
+## Overfitting
+
+So what's the big deal? (.attn[Hint:] Look up.)
+
+--
+
+We're facing a tradeoff—increasing model flexibility
+- offers potential to better fit complex systems
+- risks overfitting our model to the training data
+
+--
+
+We can see these tradeoffs in our .hi-pink[test MSE] (but not the .hi-slate[training MSE]).
+---
+class: clear, middle
+layout: true
+
+---
+exclude: true
+
+
+---
+name: ex-nonlinear-splines
+
+.hi-slate[Training data] and example models (splines)
+
+&lt;img src="002-slides_files/figure-html/plot data for flexibility-1.svg" style="display: block; margin: auto;" /&gt;
+---
+
+&lt;img src="002-slides_files/figure-html/plot flexibility-1.svg" style="display: block; margin: auto;" /&gt;
+---
+The previous example has a pretty nonlinear relationship.
+
+.qa[Q] What happens when truth is actually linear?
+---
+exclude: true
+
+
+---
+name: ex-linear-splines
+
+.hi-slate[Training data] and example models (splines)
+
+&lt;img src="002-slides_files/figure-html/plot data for linear flexibility-1.svg" style="display: block; margin: auto;" /&gt;
+---
+
+&lt;img src="002-slides_files/figure-html/plot linear flexibility-1.svg" style="display: block; margin: auto;" /&gt;
+---
+layout: true
+# Model accuracy
+
+---
+name:
+
+## Solutions?
+
+Clearly we don't want to overfit our .hi-slate[training data].
+&lt;br&gt;It loos like our .hi-pink[testing data] can help.
+
+.qa[Q] How about the following routine?
+1. train a model `\(\hat{\color{#20B2AA}{f}}\)` on the .hi-slate[training data]
+2. use the .hi-pink[test data] to "tune" the model's flexibility
+3. repeat steps 1–2 until we find the optimal level of flexibility
+
+--
+
+.qa[A] .b[No]
+--
+.b[!]
+--
+.b[!!]
+--
+ This is an algorithm for .b[overfitting your .hi-pink[test data]].
+
+Okay... so maybe that was on overreaction, but we need to be careful.
+---
+name: bias-variance
+
+This tradeoff that we keep coming back to has an official name:
+&lt;br&gt;.b[bias-variance tradeoff]. .grey-light[(or the variance-bias tradeoff)]
+
+--
+
+.b[Variance] The amount `\(\hat{\color{#20B2AA}{f}}\)` would change with a different .hi-slate[training sample]
+- If new .hi-slate[training sets] drastically change `\(\hat{\color{#20B2AA}{f}}\)`, then we have a lot of uncertainty about `\(\color{#20B2AA}{f}\)` (and, in general, `\(\hat{\color{#20B2AA}{f}} \not\approx \color{#20B2AA}{f}\)`).
+- More flexible models generally add variance to `\(\color{#20B2AA}{f}\)`.
+
+--
+
+.b[Bias] The error that comes from inaccurately estimating `\(\color{#20B2AA}{f}\)`.
+- More flexible models are better equipped to recover complex relationships `\(\left( \color{#20B2AA}{f} \right)\)`, reducing bias. (Real life is seldom linear.)
+- Simpler (less flexible) models typically increase bias.
+---
+## The bias-variance tradeoff, formally
+
+The expected value.super[.pink[†]] of the .hi-pink[test MSE] can be written
+$$
+`\begin{align}
+  \mathop{E}\left[ \left(\color{#FFA500}{\mathbf{y}}_0 - \hat{\color{#20B2AA}{f}}\!(\color{#6A5ACD}{\mathbf{X}}_0) \right)^2 \right] =
+  \underbrace{\mathop{\text{Var}} \left( \hat{\color{#20B2AA}{f}}\!(\color{#6A5ACD}{\mathbf{X}}_0) \right)}_{(1)} +
+  \underbrace{\left[ \text{Bias}\left( \hat{\color{#20B2AA}{f}}\!(\color{#6A5ACD}{\mathbf{X}}_0) \right) \right]^2}_{(2)} +
+  \underbrace{\mathop{\text{Var}} \left( \varepsilon \right)}_{(3)}
+\end{align}`
+$$
+
+.footnote[
+.pink[†] Think: .it[mean] or .it[tendency]
+]
+
+--
+
+.qa[Q.sub[1]] What does this formula tell us? (Think intuition/interpretation.)
+&lt;br&gt;.qa[Q.sub[2]] How does model flexibility feed into this formula?
+&lt;br&gt;.qa[Q.sub[3]] What does this formula say about minimizing .hi-pink[test MSE]?
+
+--
+
+.qa[A.sub[2]] In general, model flexibility increases (1) and decreases (2).
+--
+&lt;br&gt;.qa[A.sub[3]] Rates of change for variance and bias will lead to optimal flexibility.
+&lt;br&gt; We often see U-shape curves of .hi-pink[test MSE] w.r.t. to model flexibility.
+---
+layout: false
+class: clear, middle
+
+.b[U-shaped test MSE] w.r.t. model flexibility
+&lt;br&gt;Increases in variance eventually overcome reductions in (squared) bias.
+
+&lt;img src="002-slides_files/figure-html/plot flexibility again-1.svg" style="display: block; margin: auto;" /&gt;
+---
+# Model accuracy
+## Bias-variance tradeoff
+
+The bias-variance tradeoff key to understanding many ML concepts.
+- Loss functions and model performance
+- Overfitting and model flexibility
+- Training and testing (and cross validating)
+
+Spend some time thinking about it and building intution.
+&lt;br&gt;It's time well spent.
+---
+class: clear, middle
+
+So far we've focused on regression problems; what about classification?
+---
+layout: true
+# Model accuracy
+
+---
+name: class-review
+## Classification problems
+
+.note[Recall] We're still supervised, but now we're predicting categorical labels.
+
+With categorical variables, MSE doesn't work—_e.g._,
+.center[
+`\(\color{#FFA500}{\mathbf{y}} - \hat{\color{#FFA500}{\mathbf{y}}} =\)` .orange[(Chihuahua)] - .orange[(Blueberry muffin)] `\(=\)` not math (does not compute)
+]
+
+Clearly we need a different way to define model performance.
+
+---
+## Classification problems
+
+The most common approach is exactly what you'd guess...
+
+.hi-slate[Training error rate] The share of training predictions that we get wrong.
+$$
+`\begin{align}
+  \dfrac{1}{n} \sum_{i=1}^{n} \mathbb{I}\!\left( \color{#FFA500}{y}_i \neq \hat{\color{#FFA500}{y}}_i \right)
+\end{align}`
+$$
+where `\(\mathbb{I}\!\left( \color{#FFA500}{y}_i \neq \hat{\color{#FFA500}{y}}_i \right)\)` is an indicator function that equals 1 whenever our prediction is wrong.
+
+--
+
+.hi-pink[Test error rate] The share of test predictions that we get wrong.
+.center[
+Average `\(\mathbb{I}\!\left( \color{#FFA500}{y}_0 \neq \hat{\color{#FFA500}{y}}_0 \right)\)` in our .hi-pink[test data]
+]
+---
+layout: false
+class: clear
+
+&lt;img src="images/chihuahua-muffin.jpg" width="72%" style="display: block; margin: auto;" /&gt;
+---
+layout: true
+# Model accuracy
+
+---
+name: bayes
+## The Bayes classifier
+
+.note[Recall] .hi-pink[Test error rate] is the share of test predictions that we get wrong.
+.center[
+Average `\(\mathbb{I}\!\left( \color{#FFA500}{y}_0 \neq \hat{\color{#FFA500}{y}}_0 \right)\)` in our .hi-pink[test data]
+]
+
+The .b[Bayes classifier] as the classifier that assigns an observation to its most probable groups, given the values of its predictors, _i.e._,
+.center[
+Assign obs. `\(i\)` to the class `\(j\)` for which `\(\mathop{\text{Pr}}\left(\color{#FFA500}{\mathbf{y}} = j | \color{#6A5ACD}{\mathbf{X}} = \mathbf{x}_0\right)\)` is the largest
+]
+
+The .b[Bayes classifier] minimizes the .hi-pink[test error rate].
+
+--
+
+.note[Note] `\(\mathop{\text{Pr}}\left(\mathbf{y}=j|\mathbf{X}=x_0\right)\)` is the probability that random variable `\(\mathbf{y}\)` equals `\(j\)`, given.super[.pink[†]] the variable(s) `\(\mathbf{X} = x_0\)`.
+
+.footnote[
+.pink[†] The "given" is also read as "conditional on". Think of it as subsetting to where `\(X=x_0\)`.
+]
+---
+## The Bayes classifier
+
+.note[Example]
+
+- Pr(.orange[y] = "chihuahua" | .purple[X] = "orange and purple") = 0.3
+- Pr(.orange[y] = "blueberry muffin" | .purple[X] = "orange and purple") = 0.4
+- Pr(.orange[y] = "squirrel" | .purple[X] = "orange and purple") = 0.2
+- Pr(.orange[y] = "other" | .purple[X] = "orange and purple") = 0.1
+
+Then the Bayes classifier says we should predict "blueberry muffin".
+---
+## The Bayes classifier
+
+More notes on the Bayes classifier
+
+1. In the .b[two-class case], we're basically looking for&lt;br&gt; `\(\text{Pr}(\color{#FFA500}{\mathbf{y}}=j|\color{#6A5ACD}{\mathbf{X}}=x_0)&gt;0.5\)` for one class.
+
+1. The .b[Bayes decision boundary] is the point where the probability is equal between the most likely groups (_i.e._, exactly 50% for two groups).
+
+1. The Bayes classifier produces the lowest possible .hi-pink[test error rate], which is called the .b[Bayes error rate].
+
+1. Just as with `\(\color{#20B2AA}{f}\)`, the probabilities `\(\mathop{\text{Pr}}\left(\color{#FFA500}{\mathbf{y}}=j|\color{#6A5ACD}{\mathbf{X}}=x_o\right)\)` that the Bayes classifier relies upon are .b[unknown]. We have to estimate.
+---
+exclude: true
+
+
+---
+layout: true
+class: clear, middle
+---
+name: ex-bayes
+The .hi-pink[Bayes decision boundary] between classes .orange[A] and .navy[B]
+&lt;img src="002-slides_files/figure-html/plot bayes boundary-1.svg" style="display: block; margin: auto;" /&gt;
+---
+Now we sample...
+&lt;img src="002-slides_files/figure-html/plot bayes sample-1.svg" style="display: block; margin: auto;" /&gt;
+---
+... and our sample gives us an .hi-purple[estimated decision boundary].
+&lt;img src="002-slides_files/figure-html/plot bayes est boundary-1.svg" style="display: block; margin: auto;" /&gt;
+---
+And a new sample gives us another .hi-turquoise[estimated decision boundary].
+&lt;img src="002-slides_files/figure-html/plot bayes est boundary 2-1.svg" style="display: block; margin: auto;" /&gt;
+---
+
+One non-parametric way to estimate these unknown conditional probabilities: K-nearest neighbors (KNN).
+---
+layout: true
+# K-nearest neighbors
+
+---
+name: knn-setup
+## Setup
+
+K-nearest neighbors (KNN) simply assigns a category based upon the nearest K neighbors votes (their values).
+
+--
+
+.note[More formally:] Using the K closest neighbors.super[.pink[†]] to test observation `\(\color{#6A5ACD}{\mathbf{x_0}}\)`, we calculate the share of the observations whose class equals `\(j\)`,
+$$
+`\begin{align}
+  \hat{\mathop{\text{Pr}}}\left(\mathbf{y} = j | \mathbf{X} = \color{#6A5ACD}{\mathbf{x_0}}\right) = \dfrac{1}{K} \sum_{i \in \mathcal{N}_0} \mathop{\mathbb{I}}\left( \color{#FFA500}{\mathbf{y}}_i = j \right)
+\end{align}`
+$$
+These shares are our estimates for the unknown conditional probabilities.
+
+We then assign observation `\(\color{#6A5ACD}{\mathbf{x_0}}\)` to the class with the highest probability.
+
+.footnote[
+.pink[†] In `\(\color{#6A5ACD}{\mathbf{X}}\)` space.
+]
+---
+name: knn-fig
+layout: false
+class: clear, middle
+
+.b[KNN in action]
+&lt;br&gt;.note[Left:] K=3 estimation for "x".       .note[Right:] KNN decision boundaries.
+&lt;img src="images/isl-knn.png" width="2867" style="display: block; margin: auto;" /&gt;
+.smaller.it[Source: ISL]
+---
+class: clear, middle
+
+The choice of K is very important—ranging from super flexible to inflexible.
+---
+name: ex-knn
+class: clear, middle
+
+Decision boundaries: .hi-pink[Bayes], .hi-purple[K=1], and .hi-turquoise[K=60]
+&lt;img src="002-slides_files/figure-html/plot knn k-1.svg" style="display: block; margin: auto;" /&gt;
+---
+class: clear, middle
+.b[KNN error rates], as K increases
+&lt;img src="images/isl-knn-error.png" width="85%" style="display: block; margin: auto;" /&gt;
+.smaller.it[Source: ISL]
+---
+# Model accuracy
+## Summary
+
+The bias-variance tradeoff is central to quality prediction.
+- Relevant for classification and regression settings
+- Benefits and costs of increasing model flexibility
+- U-shaped test error curves
+- Avoid overfitting—including in test data
+---
+name: sources
+layout: false
+# Sources
+
+These notes draw upon
+
+- [An Introduction to Statistical Learning](http://faculty.marshall.usc.edu/gareth-james/ISL/) (*ISL*)&lt;br&gt;James, Witten, Hastie, and Tibshirani
+
+- [Python Data Science Handbook](https://jakevdp.github.io/PythonDataScienceHandbook/)&lt;br&gt;Jake VanderPlas
+
+- ['Chihuahua or Muffin' is from Twitter](https://twitter.com/teenybiscuit/status/705232709220769792)
+---
+# Table of contents
+
+.col-left[
+.smallest[
+#### Admin
+- [Today](#admin-today)
+- [Upcoming](#admin-soon)
+
+#### Model accuracy: Regression
+- [Review](#accuracy-review)
+- [Loss (functions)](#loss-functions)
+- [Overfitting](#overfitting)
+- [The bias-variance tradeoff](#bias-variance)
+
+#### Model accuracy: Classification
+- [Returning to classification](#class-review)
+- [The Bayes classifier](#bayes)
+
+#### KNN
+- [Setup](#knn-setup)
+- [Figures](#knn-fig)
+]
+]
+
+.col-right[
+.smallest[
+
+#### Examples
+- [Train *vs.* test MSE: Nonlinear truth](#ex-nonlinear-splines)
+- [Train *vs.* test MSE: Linear truth](#ex-linear-splines)
+- [Bayes decision boundaries](#ex-bayes)
+- [KNN choice of K](#ex-knn)
+
+#### Other
+- [Sources/references](#sources)
+]
+]
+
+---
+exclude: true
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

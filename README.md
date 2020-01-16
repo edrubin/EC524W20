@@ -49,9 +49,25 @@ Welcome to Economics 524 (424): Prediction and machine-learning in econometrics,
 
 **Formats** [.html](https://raw.githack.com/edrubin/EC524W20/master/lecture/001/001-slides.html) | [.pdf](https://raw.githack.com/edrubin/EC524W20/master/lecture/001/001-slides.pdf) | [.Rmd](https://raw.githack.com/edrubin/EC524W20/master/lecture/001/001-slides.Rmd)
 
+[**002 - Model accuracy**](https://raw.githack.com/edrubin/EC524W20/master/lecture/002/002-slides.html)
+
+1. Model accuracy
+1. Loss for regression and classification
+1. The variance bias-tradeoff
+1. The Bayes classifier
+1. KNN
+
+**Formats** [.html](https://raw.githack.com/edrubin/EC524W20/master/lecture/002/002-slides.html) | [.pdf](https://raw.githack.com/edrubin/EC524W20/master/lecture/002/002-slides.pdf) | [.Rmd](https://raw.githack.com/edrubin/EC524W20/master/lecture/002/002-slides.Rmd)
+
 ## Projects
 
-[Predicting sales price in housing data (Kaggle)](https://github.com/edrubin/EC524W20/tree/master/projects/kaggle-house-prices)
+**Intro** [Predicting sales price in housing data (Kaggle)](https://github.com/edrubin/EC524W20/tree/master/projects/kaggle-house-prices)
+
+**001** [KNN and loss (Kaggle notebook)](https://www.kaggle.com/edwardarubin/ec524-knn-loss)
+
+You will need to sign into you Kaggle account and then hit "Copy and Edit" to add the notebook to your account.
+
+*Due* 21 January 2020 before midnight.
 
 ## Lab notes
 

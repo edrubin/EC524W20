@@ -1,0 +1,949 @@
+---
+title: "Lecture .mono[002]"
+subtitle: "Model accuracy and selection"
+author: "Edward Rubin"
+#date: "`r format(Sys.time(), '%d %B %Y')`"
+date: "14 January 2020"
+output:
+  xaringan::moon_reader:
+    css: ['default', 'metropolis', 'metropolis-fonts', 'my-css.css']
+    # self_contained: true
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+exclude: true
+
+```{R, setup, include = F}
+library(pacman)
+p_load(
+  broom, tidyverse,
+  ggplot2, ggthemes, ggforce, ggridges, cowplot,
+  latex2exp, viridis, extrafont, gridExtra, plotly, ggformula,
+  kableExtra, snakecase, janitor,
+  data.table, dplyr,
+  lubridate, knitr, future, furrr,
+  MASS, estimatr, FNN, caret, parsnip,
+  huxtable, here, magrittr, parallel
+)
+# Define colors
+red_pink   = "#e64173"
+turquoise  = "#20B2AA"
+orange     = "#FFA500"
+red        = "#fb6107"
+blue       = "#3b3b9a"
+green      = "#8bb174"
+grey_light = "grey70"
+grey_mid   = "grey50"
+grey_dark  = "grey20"
+purple     = "#6A5ACD"
+slate      = "#314f4f"
+# Knitr options
+opts_chunk$set(
+  comment = "#>",
+  fig.align = "center",
+  fig.height = 7,
+  fig.width = 10.5,
+  warning = F,
+  message = F
+)
+opts_chunk$set(dev = "svg")
+options(device = function(file, width, height) {
+  svg(tempfile(), width = width, height = height)
+})
+options(knitr.table.format = "html")
+```
+---
+layout: true
+# Admin
+
+---
+class: inverse, middle
+---
+name: admin-today
+## Today
+
+.b[In-class]
+
+- Model accuracy
+- Loss for regression and classification
+- The variance bias-tradeoff
+- The Bayes classifier
+- KNN
+
+---
+name: admin-soon
+# Admin
+
+## Upcoming
+
+.b[Readings]
+
+- .note[Today]
+  - Finish .it[ISL] Ch2
+  - [Prediction Policy Problems](https://www.aeaweb.org/articles?id=10.1257/aer.p20151023) by Kleinberg .it[et al.] (2015)
+- .note[Next]
+  - .it[ISL] Ch. 3–4
+
+.b[Problem set] Today; due Tuesday before midnight (PST)
+---
+layout: true
+# Model accuracy
+
+---
+class: inverse, middle
+---
+name: accuracy-review
+## Review: Supervised learning
+
+1. Using .hi-slate[training data] $\left( \color{#FFA500}{\mathbf{y}},\, \color{#6A5ACD}{\mathbf{X}} \right)$, we train $\hat{\color{#20B2AA}{f}}$, estimating $\color{#FFA500}{\mathbf{y}} = \color{#20B2AA}{f}\!(\color{#6A5ACD}{\mathbf{X}}) + \varepsilon$.
+
+--
+
+1. Using this estimated model $\hat{\color{#20B2AA}{f}}$, we .it[can] calculate .hi-slate[training MSE]
+$$\color{#314f4f}{\text{MSE}_\text{train}} = \dfrac{1}{n} \sum_{1}^n \underbrace{\left[ \color{#FFA500}{\mathbf{y}}_i - \hat{\color{#20B2AA}{f}}\!\left( \color{#6A5ACD}{x}_i \right) \right]^{2}}_{\text{Squared error}} = \dfrac{1}{n} \sum_{1}^n \left[ \color{#FFA500}{\mathbf{y}}_i - \hat{\color{#FFA500}{\mathbf{y}}} \right]^2$$
+.note[Note:] Assuming $\color{#FFA500}{\mathbf{y}}$ is numeric (regression problem).
+
+--
+
+1. We want the model to accurately predict previously unseen (.hi-pink[test]) data.
+This goal is sometimes call .attn[generalization] or .attn[external validity].
+.center[
+Average $\left[ \color{#e64173}{y_0} - \hat{\color{#20B2AA}{f}}\!\left( \color{#e64173}{x_0} \right) \right]^2$ for obs. $\left( \color{#e64173}{y_0},\, \color{#e64173}{x_0} \right)$ in our .hi-pink[test data].
+]
+
+---
+## Errors
+
+The item at the center of our focus is the (test-sample) .b[prediction error]
+$$\color{#FFA500}{\mathbf{y}}_i - \hat{\color{#20B2AA}{f}}\!\left( \color{#6A5ACD}{x}_i \right) = \color{#FFA500}{\mathbf{y}}_i - \hat{\color{#FFA500}{\mathbf{y}}}_i$$
+the difference between the label $\left( \color{#FFA500}{\mathbf{y}} \right)$ and its prediction $\left( \hat{\color{#FFA500}{\mathbf{y}}} \right)$.
+
+The distance (_i.e._, non-negative value) between a true value and its prediction is often called .b[loss].
+
+---
+name: loss-functions
+## Loss functions
+
+.b[Loss functions] aggregate and quantify loss.
+
+.white[►] .b[L1] loss function: $\sum_i \big| y_i - \hat{y}_i \big|$     .b[Mean abs. error]: $\dfrac{1}{n}\sum_i \big| y_i - \hat{y}_i \big|$
+
+.white[►] .b[L2] loss function: $\sum_i \left( y_i - \hat{y}_i \right)^2$   .b[Mean squared error]: $\dfrac{1}{n}\sum_i \big| y_i - \hat{y}_i \big|$
+
+--
+
+Notice that .b[both functions impose assumptions].
+1. Both assume .b[overestimating] is equally bad as .b[underestimating].
+2. Both assume errors are similarly bad for .b[all individuals] $(i)$.
+3. They differ in their assumptions about the .b[magnitude of errors].
+  - .b[L1] an additional unit of error is .b[equally bad] everywhere.
+  - .b[L2] an additional unit of error is .b[worse] when the error is already big.
+---
+layout: true
+class: clear, middle
+
+---
+A very simple, univariate dataset $\left(\mathbf{y},\, \mathbf{x} \right)$
+
+```{R, data loss, echo = F, cache = T}
+# Sample size
+n = 30
+# Sample
+set.seed(12345)
+loss_df = tibble(
+  x = runif(n = n, min = 0, max = 5),
+  y = 1 + x + rnorm(n, sd = 1.5),
+  y_hat = lm(y ~ x)$fitted.values,
+  loss = abs(y - y_hat)
+)
+# Base graph
+loss_gg = ggplot(data = loss_df, aes(x = x, y = y)) +
+theme_void()
+```
+
+```{R, graph loss 1, echo = F, cache = T, dependson = "data loss"}
+loss_gg +
+geom_point(size = 3.5)
+```
+---
+... on which we run a .pink[simple linear regression].
+
+```{R, graph loss 2, echo = F, cache = T, dependson = "data loss"}
+loss_gg +
+geom_smooth(color = red_pink, se = F, method = lm, size = 1.3) +
+geom_point(size = 3.5)
+```
+---
+Each point $\left( y_i,\, x_i \right)$ has an associated .grey-mid[loss] (error).
+
+```{R, graph loss 3, echo = F, cache = T, dependson = "data loss"}
+loss_gg +
+geom_segment(aes(x = x, xend = x, y = y, yend = y_hat), color = "grey70") +
+geom_smooth(color = red_pink, se = F, method = lm, size = 1.3) +
+geom_point(size = 3.5)
+```
+---
+The L1 loss function weights all errors equally: $\sum_i \big| y_i - \hat{y}_i \big|$
+
+```{R, graph loss 4, echo = F, cache = T, dependson = "data loss"}
+loss_gg +
+geom_segment(aes(x = x, xend = x, y = y, yend = y_hat, color = abs(loss))) +
+geom_smooth(color = red_pink, se = F, method = lm, size = 1.3) +
+geom_point(size = 3.5) +
+scale_color_viridis_c(option = "magma", end = 0.95) +
+theme(legend.position = "none")
+```
+---
+The L2 loss function .it[upweights] large weights: $\sum_i \left( y_i - \hat{y}_i \right)^2$
+
+```{R, graph loss 5, echo = F, cache = T, dependson = "data loss"}
+loss_gg +
+geom_segment(aes(x = x, xend = x, y = y, yend = y_hat, color = loss^2)) +
+geom_smooth(color = red_pink, se = F, method = lm, size = 1.3) +
+geom_point(size = 3.5) +
+scale_color_viridis_c(option = "magma", end = 0.95) +
+theme(legend.position = "none")
+```
+---
+name: overfitting
+layout: false
+# Model accuracy
+## Overfitting
+
+So what's the big deal? (.attn[Hint:] Look up.)
+
+--
+
+We're facing a tradeoff—increasing model flexibility
+- offers potential to better fit complex systems
+- risks overfitting our model to the training data
+
+--
+
+We can see these tradeoffs in our .hi-pink[test MSE] (but not the .hi-slate[training MSE]).
+---
+class: clear, middle
+layout: true
+
+---
+exclude: true
+
+```{R, sim flexibility, echo = F, cache = T, eval = T}
+# Function to generate our data
+sim_fun = function(x) (x - 3)^2 * (3 * x + 3) * (x + 5) / 100 + 7
+# Generate data
+set.seed(123)
+flex_train = tibble(
+  x = runif(n = 300, min = -4.25, max = 4.25),
+  y = sim_fun(x) + rnorm(300, sd = 3)
+) %>% data.matrix()
+flex_test = tibble(
+  x = runif(n = 300, min = -4.25, max = 4.25),
+  y = sim_fun(x) + rnorm(300, sd = 3)
+) %>% data.matrix()
+flex_range = seq(from = -4.25, to = 4.25, by = 0.01)
+# Iterate over flexibility parameter
+flex_df = mclapply(
+  X = seq(0.01, 1.5, 0.01),
+  FUN = function(s) {
+    # Fit spline on training data
+    spline_s = smooth.spline(x = flex_train, spar = s)
+    # MSE
+    mse_train = (flex_train[,"y"] - predict(spline_s, x = flex_train[,"x"])$y)^2 %>% mean()
+    mse_test = (flex_test[,"y"] - predict(spline_s, x = flex_test[,"x"])$y)^2 %>% mean()
+    # Return data frame
+    tibble(
+      s = rep(s, 2),
+      mse_type = c("train", "test"),
+      mse_value = c(mse_train, mse_test)
+    )
+  },
+  mc.cores = detectCores() - 2
+) %>% bind_rows()
+# Find minima
+min_train = flex_df %>% filter(mse_type == "train") %>% filter(mse_value == min(mse_value))
+min_test = flex_df %>% filter(mse_type == "test") %>% filter(mse_value == min(mse_value))
+```
+---
+name: ex-nonlinear-splines
+
+.hi-slate[Training data] and example models (splines)
+
+```{R, plot data for flexibility, echo = F}
+ggplot(data = flex_train %>% as.data.frame(), aes(x, y)) +
+stat_function(
+  aes(color = "1", size = "1"), fun = sim_fun, linetype = "longdash"
+) +
+stat_spline(
+  aes(color = "2", size = "2"), spar = min_test$s
+) +
+stat_spline(
+  aes(color = "3", size = "3"), spar = 1.5
+) +
+stat_spline(
+  aes(color = "4", size = "4"), spar = min_train$s
+) +
+geom_point(size = 3.5, shape = 1, color = "grey40") +
+xlab("x") +
+ylab("y") +
+theme_void(base_family = "Fira Sans Book") +
+scale_color_manual(
+  "",
+  values = c("black", magma(3, begin = 0.2, end = 0.9)),
+  labels = c(
+    "True model",
+    "Spline: Test-based flexibility",
+    "Linear fit",
+    "Spline: Training-based flexibility"
+  )
+) +
+scale_size_manual(
+  "",
+  values = c(0.5, 0.9, 0.9, 1.1),
+  labels = c(
+    "True model",
+    "Spline: Test-based flexibility",
+    "Linear fit",
+    "Spline: Training-based flexibility"
+  )
+) +
+theme(
+  legend.position = c(0.05, 0.99),
+  legend.justification = c(0,1),
+  axis.title = element_text(size = 20),
+  legend.text = element_text(size = 18)
+)
+```
+---
+
+```{R, plot flexibility, echo = F}
+ggplot(data = flex_df, aes(x = 1.5 - s, y = mse_value, color = mse_type)) +
+geom_hline(yintercept = 0) +
+geom_vline(xintercept = 0) +
+geom_line(size = 1.2) +
+geom_point(data = bind_rows(min_train, min_test), size = 3.5) +
+xlab("Model flexibility") +
+ylab("MSE") +
+scale_color_viridis_d(
+  "", labels = c("Test MSE", "Train MSE"),
+  option = "magma", begin = 0.2, end = 0.9
+) +
+theme_void(base_family = "Fira Sans Book") +
+theme(
+  legend.position = c(0.9, 0.65),
+  axis.title = element_text(size = 20, vjust = 1),
+  axis.title.y = element_text(angle = 90),
+  legend.text = element_text(size = 18)
+)
+```
+---
+The previous example has a pretty nonlinear relationship.
+
+.qa[Q] What happens when truth is actually linear?
+---
+exclude: true
+
+```{R, sim linear flexibility, echo = F, cache = T, eval = T}
+# Function to generate our data
+sim_linear = function(x) 7 + 3 * x
+# Generate data
+set.seed(123)
+lin_train = tibble(
+  x = runif(n = 300, min = -4.25, max = 4.25),
+  y = sim_linear(x) + rnorm(300, sd = 3)
+) %>% data.matrix()
+lin_test = tibble(
+  x = runif(n = 300, min = -4.25, max = 4.25),
+  y = sim_linear(x) + rnorm(300, sd = 3)
+) %>% data.matrix()
+lin_range = seq(from = -4.25, to = 4.25, by = 0.01)
+# Iterate over flexibility parameter
+lin_df = mclapply(
+  X = seq(0.01, 1.5, 0.01),
+  FUN = function(s) {
+    # Fit spline on training data
+    spline_s = smooth.spline(x = lin_train, spar = s)
+    # MSE
+    mse_train = (lin_train[,"y"] - predict(spline_s, x = lin_train[,"x"])$y)^2 %>% mean()
+    mse_test = (lin_test[,"y"] - predict(spline_s, x = lin_test[,"x"])$y)^2 %>% mean()
+    # Return data frame
+    tibble(
+      s = rep(s, 2),
+      mse_type = c("train", "test"),
+      mse_value = c(mse_train, mse_test)
+    )
+  },
+  mc.cores = detectCores() - 2
+) %>% bind_rows()
+# Find minima
+min_train_lin = lin_df %>% filter(mse_type == "train") %>% filter(mse_value == min(mse_value))
+min_test_lin = lin_df %>% filter(mse_type == "test") %>% filter(mse_value == min(mse_value))
+```
+---
+name: ex-linear-splines
+
+.hi-slate[Training data] and example models (splines)
+
+```{R, plot data for linear flexibility, echo = F}
+ggplot(data = lin_train %>% as.data.frame(), aes(x, y)) +
+stat_function(
+  aes(color = "1", size = "1"), fun = sim_linear, linetype = "longdash"
+) +
+stat_spline(
+  aes(color = "2", size = "2"), spar = min_test$s
+) +
+stat_spline(
+  aes(color = "3", size = "3"), spar = 1.5
+) +
+stat_spline(
+  aes(color = "4", size = "4"), spar = min_train$s
+) +
+geom_point(size = 3.5, shape = 1, color = "grey40") +
+xlab("x") +
+ylab("y") +
+theme_void(base_family = "Fira Sans Book") +
+scale_color_manual(
+  "",
+  values = c("black", magma(3, begin = 0.2, end = 0.9)),
+  labels = c(
+    "True model",
+    "Spline: Test-based flexibility",
+    "Linear fit",
+    "Spline: Training-based flexibility"
+  )
+) +
+scale_size_manual(
+  "",
+  values = c(0.5, 0.9, 0.9, 1.1),
+  labels = c(
+    "True model",
+    "Spline: Test-based flexibility",
+    "Linear fit",
+    "Spline: Training-based flexibility"
+  )
+) +
+theme(
+  legend.position = c(0.05, 0.99),
+  legend.justification = c(0,1),
+  axis.title = element_text(size = 20),
+  legend.text = element_text(size = 18)
+)
+```
+---
+
+```{R, plot linear flexibility, echo = F}
+ggplot(data = lin_df, aes(x = 1.5 - s, y = mse_value, color = mse_type)) +
+geom_hline(yintercept = 0) +
+geom_vline(xintercept = 0) +
+geom_line(size = 1.2) +
+geom_point(data = bind_rows(min_train_lin, min_test_lin), size = 3.5) +
+xlab("Model flexibility") +
+ylab("MSE") +
+scale_color_viridis_d(
+  "", labels = c("Test MSE", "Train MSE"),
+  option = "magma", begin = 0.2, end = 0.9
+) +
+theme_void(base_family = "Fira Sans Book") +
+theme(
+  legend.position = c(0.9, 0.65),
+  axis.title = element_text(size = 20, vjust = 1),
+  axis.title.y = element_text(angle = 90),
+  legend.text = element_text(size = 18)
+)
+```
+---
+layout: true
+# Model accuracy
+
+---
+name:
+
+## Solutions?
+
+Clearly we don't want to overfit our .hi-slate[training data].
+<br>It loos like our .hi-pink[testing data] can help.
+
+.qa[Q] How about the following routine?
+1. train a model $\hat{\color{#20B2AA}{f}}$ on the .hi-slate[training data]
+2. use the .hi-pink[test data] to "tune" the model's flexibility
+3. repeat steps 1–2 until we find the optimal level of flexibility
+
+--
+
+.qa[A] .b[No]
+--
+.b[!]
+--
+.b[!!]
+--
+ This is an algorithm for .b[overfitting your .hi-pink[test data]].
+
+Okay... so maybe that was on overreaction, but we need to be careful.
+---
+name: bias-variance
+
+This tradeoff that we keep coming back to has an official name:
+<br>.b[bias-variance tradeoff]. .grey-light[(or the variance-bias tradeoff)]
+
+--
+
+.b[Variance] The amount $\hat{\color{#20B2AA}{f}}$ would change with a different .hi-slate[training sample]
+- If new .hi-slate[training sets] drastically change $\hat{\color{#20B2AA}{f}}$, then we have a lot of uncertainty about $\color{#20B2AA}{f}$ (and, in general, $\hat{\color{#20B2AA}{f}} \not\approx \color{#20B2AA}{f}$).
+- More flexible models generally add variance to $\color{#20B2AA}{f}$.
+
+--
+
+.b[Bias] The error that comes from inaccurately estimating $\color{#20B2AA}{f}$.
+- More flexible models are better equipped to recover complex relationships $\left( \color{#20B2AA}{f} \right)$, reducing bias. (Real life is seldom linear.)
+- Simpler (less flexible) models typically increase bias.
+---
+## The bias-variance tradeoff, formally
+
+The expected value.super[.pink[†]] of the .hi-pink[test MSE] can be written
+$$
+\begin{align}
+  \mathop{E}\left[ \left(\color{#FFA500}{\mathbf{y}}_0 - \hat{\color{#20B2AA}{f}}\!(\color{#6A5ACD}{\mathbf{X}}_0) \right)^2 \right] =
+  \underbrace{\mathop{\text{Var}} \left( \hat{\color{#20B2AA}{f}}\!(\color{#6A5ACD}{\mathbf{X}}_0) \right)}_{(1)} +
+  \underbrace{\left[ \text{Bias}\left( \hat{\color{#20B2AA}{f}}\!(\color{#6A5ACD}{\mathbf{X}}_0) \right) \right]^2}_{(2)} +
+  \underbrace{\mathop{\text{Var}} \left( \varepsilon \right)}_{(3)}
+\end{align}
+$$
+
+.footnote[
+.pink[†] Think: .it[mean] or .it[tendency]
+]
+
+--
+
+.qa[Q.sub[1]] What does this formula tell us? (Think intuition/interpretation.)
+<br>.qa[Q.sub[2]] How does model flexibility feed into this formula?
+<br>.qa[Q.sub[3]] What does this formula say about minimizing .hi-pink[test MSE]?
+
+--
+
+.qa[A.sub[2]] In general, model flexibility increases (1) and decreases (2).
+--
+<br>.qa[A.sub[3]] Rates of change for variance and bias will lead to optimal flexibility.
+<br> We often see U-shape curves of .hi-pink[test MSE] w.r.t. to model flexibility.
+---
+layout: false
+class: clear, middle
+
+.b[U-shaped test MSE] w.r.t. model flexibility
+<br>Increases in variance eventually overcome reductions in (squared) bias.
+
+```{R, plot flexibility again, echo = F, fig.height = 6}
+ggplot(data = flex_df, aes(x = 1.5 - s, y = mse_value, color = mse_type)) +
+geom_hline(yintercept = 0) +
+geom_vline(xintercept = 0) +
+geom_line(size = 1.2) +
+geom_point(data = bind_rows(min_train, min_test), size = 3.5) +
+xlab("Model flexibility") +
+ylab("MSE") +
+scale_color_viridis_d(
+  "", labels = c("Test MSE", "Train MSE"),
+  option = "magma", begin = 0.2, end = 0.9
+) +
+theme_void(base_family = "Fira Sans Book") +
+theme(
+  legend.position = c(0.9, 0.65),
+  axis.title = element_text(size = 20, vjust = 1),
+  axis.title.y = element_text(angle = 90),
+  legend.text = element_text(size = 18)
+)
+```
+---
+# Model accuracy
+## Bias-variance tradeoff
+
+The bias-variance tradeoff key to understanding many ML concepts.
+- Loss functions and model performance
+- Overfitting and model flexibility
+- Training and testing (and cross validating)
+
+Spend some time thinking about it and building intution.
+<br>It's time well spent.
+---
+class: clear, middle
+
+So far we've focused on regression problems; what about classification?
+---
+layout: true
+# Model accuracy
+
+---
+name: class-review
+## Classification problems
+
+.note[Recall] We're still supervised, but now we're predicting categorical labels.
+
+With categorical variables, MSE doesn't work—_e.g._,
+.center[
+$\color{#FFA500}{\mathbf{y}} - \hat{\color{#FFA500}{\mathbf{y}}} =$ .orange[(Chihuahua)] - .orange[(Blueberry muffin)] $=$ not math (does not compute)
+]
+
+Clearly we need a different way to define model performance.
+
+---
+## Classification problems
+
+The most common approach is exactly what you'd guess...
+
+.hi-slate[Training error rate] The share of training predictions that we get wrong.
+$$
+\begin{align}
+  \dfrac{1}{n} \sum_{i=1}^{n} \mathbb{I}\!\left( \color{#FFA500}{y}_i \neq \hat{\color{#FFA500}{y}}_i \right)
+\end{align}
+$$
+where $\mathbb{I}\!\left( \color{#FFA500}{y}_i \neq \hat{\color{#FFA500}{y}}_i \right)$ is an indicator function that equals 1 whenever our prediction is wrong.
+
+--
+
+.hi-pink[Test error rate] The share of test predictions that we get wrong.
+.center[
+Average $\mathbb{I}\!\left( \color{#FFA500}{y}_0 \neq \hat{\color{#FFA500}{y}}_0 \right)$ in our .hi-pink[test data]
+]
+---
+layout: false
+class: clear
+
+```{R, pic chihuahua, echo = F, out.width = '72%'}
+include_graphics("images/chihuahua-muffin.jpg")
+```
+---
+layout: true
+# Model accuracy
+
+---
+name: bayes
+## The Bayes classifier
+
+.note[Recall] .hi-pink[Test error rate] is the share of test predictions that we get wrong.
+.center[
+Average $\mathbb{I}\!\left( \color{#FFA500}{y}_0 \neq \hat{\color{#FFA500}{y}}_0 \right)$ in our .hi-pink[test data]
+]
+
+The .b[Bayes classifier] as the classifier that assigns an observation to its most probable groups, given the values of its predictors, _i.e._,
+.center[
+Assign obs. $i$ to the class $j$ for which $\mathop{\text{Pr}}\left(\color{#FFA500}{\mathbf{y}} = j | \color{#6A5ACD}{\mathbf{X}} = \mathbf{x}_0\right)$ is the largest
+]
+
+The .b[Bayes classifier] minimizes the .hi-pink[test error rate].
+
+--
+
+.note[Note] $\mathop{\text{Pr}}\left(\mathbf{y}=j|\mathbf{X}=x_0\right)$ is the probability that random variable $\mathbf{y}$ equals $j$, given.super[.pink[†]] the variable(s) $\mathbf{X} = x_0$.
+
+.footnote[
+.pink[†] The "given" is also read as "conditional on". Think of it as subsetting to where $X=x_0$.
+]
+---
+## The Bayes classifier
+
+.note[Example]
+
+- Pr(.orange[y] = "chihuahua" | .purple[X] = "orange and purple") = 0.3
+- Pr(.orange[y] = "blueberry muffin" | .purple[X] = "orange and purple") = 0.4
+- Pr(.orange[y] = "squirrel" | .purple[X] = "orange and purple") = 0.2
+- Pr(.orange[y] = "other" | .purple[X] = "orange and purple") = 0.1
+
+Then the Bayes classifier says we should predict "blueberry muffin".
+---
+## The Bayes classifier
+
+More notes on the Bayes classifier
+
+1. In the .b[two-class case], we're basically looking for<br> $\text{Pr}(\color{#FFA500}{\mathbf{y}}=j|\color{#6A5ACD}{\mathbf{X}}=x_0)>0.5$ for one class.
+
+1. The .b[Bayes decision boundary] is the point where the probability is equal between the most likely groups (_i.e._, exactly 50% for two groups).
+
+1. The Bayes classifier produces the lowest possible .hi-pink[test error rate], which is called the .b[Bayes error rate].
+
+1. Just as with $\color{#20B2AA}{f}$, the probabilities $\mathop{\text{Pr}}\left(\color{#FFA500}{\mathbf{y}}=j|\color{#6A5ACD}{\mathbf{X}}=x_o\right)$ that the Bayes classifier relies upon are .b[unknown]. We have to estimate.
+---
+exclude: true
+
+```{R, gen bayes data, echo = F, cache = T}
+# Generate data
+set.seed(1234)
+n_b = 70
+bayes_gen = tibble(
+  x1 = runif(n_b, 10, 90),
+  x2 = x1 + rnorm(n_b, sd = 30),
+  y = (x1 - 0.9 * x2 + rnorm(10) > 0) %>% as.numeric()
+)
+bayes_truth = expand.grid(x1 = 1:100, x2 = 1:100) %>% as_tibble()
+est_knn = knn.reg(
+  train = bayes_gen[,c("x1", "x2")],
+  test = bayes_truth,
+  y = bayes_gen$y,
+  k = 5
+)
+bayes_truth$p = est_knn$pred
+bayes_truth$y = as.numeric(est_knn$pred > 0.5)
+# Sample data points
+bayes_sample = sample_n(bayes_truth, size = 100)
+bayes_sample %<>% mutate(y = rbernoulli(n = 100, p = p) * 1)
+bayes_sample2 = sample_n(bayes_truth, size = 100)
+bayes_sample2 %<>% mutate(y = rbernoulli(n = 100, p = p) * 1)
+# Train kNN
+est_boundary = knn.reg(
+  train = bayes_sample[,c("x1", "x2")],
+  test = bayes_truth[,c("x1", "x2")],
+  y = bayes_sample$y,
+  k = 5
+)
+est_boundary2 = knn.reg(
+  train = bayes_sample2[,c("x1", "x2")],
+  test = bayes_truth[,c("x1", "x2")],
+  y = bayes_sample2$y,
+  k = 5
+)
+est_boundary_k1 = knn.reg(
+  train = bayes_sample[,c("x1", "x2")],
+  test = bayes_truth[,c("x1", "x2")],
+  y = bayes_sample$y,
+  k = 1
+)
+est_boundary_k60 = knn.reg(
+  train = bayes_sample[,c("x1", "x2")],
+  test = bayes_truth[,c("x1", "x2")],
+  y = bayes_sample$y,
+  k = 60
+)
+# Now add estimates to full dataset
+bayes_truth$y_hat = as.numeric(est_boundary$pred > 0.5)
+bayes_truth$y_hat2 = as.numeric(est_boundary2$pred > 0.5)
+bayes_truth$y_hat_k1 = as.numeric(est_boundary_k1$pred > 0.5)
+bayes_truth$y_hat_k60 = as.numeric(est_boundary_k60$pred > 0.5)
+```
+---
+layout: true
+class: clear, middle
+---
+name: ex-bayes
+The .hi-pink[Bayes decision boundary] between classes .orange[A] and .navy[B]
+```{R, plot bayes boundary, echo = F, cache = T, dependson = "gen bayes data"}
+ggplot(data = bayes_truth, aes(x1, x2, color = y)) +
+geom_point(shape = 20, size = 0.7) +
+geom_contour(
+  aes(x = x1, y = x2, z = y),
+  bins = 1, color = red_pink, size = 1.3
+) +
+scale_color_viridis_c(option = "magma", begin = 0.1, end = 0.85) +
+theme_void() +
+theme(legend.position = "none")
+```
+---
+Now we sample...
+```{R, plot bayes sample, echo = F, cache = T, dependson = "gen bayes data"}
+ggplot(data = bayes_truth, aes(x1, x2, color = y)) +
+geom_point(shape = 20, size = 0.5) +
+geom_contour(
+  aes(x = x1, y = x2, z = y),
+  bins = 1, color = red_pink, size = 1.3
+) +
+geom_point(
+  data = bayes_sample,
+  aes(x1, x2, color = y),
+  size = 2
+) +
+scale_color_viridis_c(option = "magma", begin = 0.1, end = 0.85) +
+theme_void() +
+theme(legend.position = "none")
+```
+---
+... and our sample gives us an .hi-purple[estimated decision boundary].
+```{R, plot bayes est boundary, echo = F, cache = T, dependson = "gen bayes data"}
+ggplot(data = bayes_truth, aes(x1, x2, color = y)) +
+geom_point(shape = 20, size = 0.5) +
+geom_contour(
+  aes(x = x1, y = x2, z = y),
+  bins = 1, color = red_pink, size = 1.3
+) +
+geom_point(
+  data = bayes_sample,
+  aes(x1, x2, color = y),
+  size = 2
+) +
+geom_contour(
+  aes(x = x1, y = x2, z = y_hat),
+  bins = 1, color = purple, size = 1.3
+) +
+scale_color_viridis_c(option = "magma", begin = 0.1, end = 0.85) +
+theme_void() +
+theme(legend.position = "none")
+```
+---
+And a new sample gives us another .hi-turquoise[estimated decision boundary].
+```{R, plot bayes est boundary 2, echo = F, cache = T, dependson = "gen bayes data"}
+ggplot(data = bayes_truth, aes(x1, x2, color = y)) +
+geom_point(shape = 20, size = 0.5) +
+geom_contour(
+  aes(x = x1, y = x2, z = y),
+  bins = 1, color = red_pink, size = 1.3
+) +
+geom_point(
+  data = bayes_sample2,
+  aes(x1, x2, color = y),
+  size = 2
+) +
+geom_contour(
+  aes(x = x1, y = x2, z = y_hat),
+  bins = 1, color = purple, size = 1.3
+) +
+geom_contour(
+  aes(x = x1, y = x2, z = y_hat2),
+  bins = 1, color = turquoise , size = 1.3
+) +
+scale_color_viridis_c(option = "magma", begin = 0.1, end = 0.85) +
+theme_void() +
+theme(legend.position = "none")
+```
+---
+
+One non-parametric way to estimate these unknown conditional probabilities: K-nearest neighbors (KNN).
+---
+layout: true
+# K-nearest neighbors
+
+---
+name: knn-setup
+## Setup
+
+K-nearest neighbors (KNN) simply assigns a category based upon the nearest K neighbors votes (their values).
+
+--
+
+.note[More formally:] Using the K closest neighbors.super[.pink[†]] to test observation $\color{#6A5ACD}{\mathbf{x_0}}$, we calculate the share of the observations whose class equals $j$,
+$$
+\begin{align}
+  \hat{\mathop{\text{Pr}}}\left(\mathbf{y} = j | \mathbf{X} = \color{#6A5ACD}{\mathbf{x_0}}\right) = \dfrac{1}{K} \sum_{i \in \mathcal{N}_0} \mathop{\mathbb{I}}\left( \color{#FFA500}{\mathbf{y}}_i = j \right)
+\end{align}
+$$
+These shares are our estimates for the unknown conditional probabilities.
+
+We then assign observation $\color{#6A5ACD}{\mathbf{x_0}}$ to the class with the highest probability.
+
+.footnote[
+.pink[†] In $\color{#6A5ACD}{\mathbf{X}}$ space.
+]
+---
+name: knn-fig
+layout: false
+class: clear, middle
+
+.b[KNN in action]
+<br>.note[Left:] K=3 estimation for "x".       .note[Right:] KNN decision boundaries.
+```{R, fig knn, echo = F}
+include_graphics("images/isl-knn.png")
+```
+.smaller.it[Source: ISL]
+---
+class: clear, middle
+
+The choice of K is very important—ranging from super flexible to inflexible.
+---
+name: ex-knn
+class: clear, middle
+
+Decision boundaries: .hi-pink[Bayes], .hi-purple[K=1], and .hi-turquoise[K=60]
+```{R, plot knn k, echo = F, cache = T, dependson = "gen bayes data"}
+ggplot(data = bayes_truth, aes(x1, x2, color = y)) +
+geom_point(shape = 20, size = 0.5) +
+geom_contour(
+  aes(x = x1, y = x2, z = y),
+  bins = 1, color = red_pink, size = 1.3
+) +
+geom_point(
+  data = bayes_sample,
+  aes(x1, x2, color = y),
+  size = 2
+) +
+geom_contour(
+  aes(x = x1, y = x2, z = y_hat_k1),
+  bins = 1, color = purple, size = 1.3
+) +
+geom_contour(
+  aes(x = x1, y = x2, z = y_hat_k60),
+  bins = 1, color = turquoise, size = 1.3
+) +
+scale_color_viridis_c(option = "magma", begin = 0.1, end = 0.85) +
+theme_void() +
+theme(legend.position = "none")
+```
+---
+class: clear, middle
+.b[KNN error rates], as K increases
+```{R, fig knn error, echo = F, out.width = '85%'}
+include_graphics("images/isl-knn-error.png")
+```
+.smaller.it[Source: ISL]
+---
+# Model accuracy
+## Summary
+
+The bias-variance tradeoff is central to quality prediction.
+- Relevant for classification and regression settings
+- Benefits and costs of increasing model flexibility
+- U-shaped test error curves
+- Avoid overfitting—including in test data
+---
+name: sources
+layout: false
+# Sources
+
+These notes draw upon
+
+- [An Introduction to Statistical Learning](http://faculty.marshall.usc.edu/gareth-james/ISL/) (*ISL*)<br>James, Witten, Hastie, and Tibshirani
+
+- [Python Data Science Handbook](https://jakevdp.github.io/PythonDataScienceHandbook/)<br>Jake VanderPlas
+
+- ['Chihuahua or Muffin' is from Twitter](https://twitter.com/teenybiscuit/status/705232709220769792)
+---
+# Table of contents
+
+.col-left[
+.smallest[
+#### Admin
+- [Today](#admin-today)
+- [Upcoming](#admin-soon)
+
+#### Model accuracy: Regression
+- [Review](#accuracy-review)
+- [Loss (functions)](#loss-functions)
+- [Overfitting](#overfitting)
+- [The bias-variance tradeoff](#bias-variance)
+
+#### Model accuracy: Classification
+- [Returning to classification](#class-review)
+- [The Bayes classifier](#bayes)
+
+#### KNN
+- [Setup](#knn-setup)
+- [Figures](#knn-fig)
+]
+]
+
+.col-right[
+.smallest[
+
+#### Examples
+- [Train *vs.* test MSE: Nonlinear truth](#ex-nonlinear-splines)
+- [Train *vs.* test MSE: Linear truth](#ex-linear-splines)
+- [Bayes decision boundaries](#ex-bayes)
+- [KNN choice of K](#ex-knn)
+
+#### Other
+- [Sources/references](#sources)
+]
+]
+
+---
+exclude: true
+
+```{R, save pdfs, include = F, eval = F}
+system("`npm bin`/decktape remark 002-slides.html 002-slides.pdf --chrome-arg=--allow-file-access-from-files --slides 1-200")
+```

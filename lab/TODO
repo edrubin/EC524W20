@@ -3,8 +3,20 @@
 
 - Kaggle kernels and Jupyter notebooks
 - EDA
+  - Histograms
+  - Scatterplots
+  - Data debugging
+    - Outliers
+    - Missing-ness
+    - Duplicates
+  - Dashboards
+- Feature engineering
+  - Categorical data?
+  - Cap/transforming features
+  - Bins
 
-## R packages
+## R
 
-- Rmarkdown
-- `here`
+- rmd
+- `here` package
+- `plotly` (with EDA?)
