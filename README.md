@@ -64,9 +64,9 @@ Welcome to Economics 524 (424): Prediction and machine-learning in econometrics,
 **Intro** [Predicting sales price in housing data (Kaggle)](https://github.com/edrubin/EC524W20/tree/master/projects/kaggle-house-prices)
 
 **001** [KNN and loss (Kaggle notebook)](https://www.kaggle.com/edwardarubin/ec524-knn-loss)
-
+<br>
 You will need to sign into you Kaggle account and then hit "Copy and Edit" to add the notebook to your account.
-
+<br>
 *Due* 21 January 2020 before midnight.
 
 ## Lab notes
