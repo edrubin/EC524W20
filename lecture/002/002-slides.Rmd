@@ -130,7 +130,7 @@ name: loss-functions
 
 .white[►] .b[L1] loss function: $\sum_i \big| y_i - \hat{y}_i \big|$     .b[Mean abs. error]: $\dfrac{1}{n}\sum_i \big| y_i - \hat{y}_i \big|$
 
-.white[►] .b[L2] loss function: $\sum_i \left( y_i - \hat{y}_i \right)^2$   .b[Mean squared error]: $\dfrac{1}{n}\sum_i \big| y_i - \hat{y}_i \big|$
+.white[►] .b[L2] loss function: $\sum_i \left( y_i - \hat{y}_i \right)^2$   .b[Mean squared error]: $\dfrac{1}{n}\sum_i \left( y_i - \hat{y}_i \right)^2$
 
 --
 
@@ -266,6 +266,14 @@ flex_df = mclapply(
 min_train = flex_df %>% filter(mse_type == "train") %>% filter(mse_value == min(mse_value))
 min_test = flex_df %>% filter(mse_type == "test") %>% filter(mse_value == min(mse_value))
 ```
+
+```{R, save flexibility simulation, include = F, cache = T, dependson = "sim flexibility"}
+saveRDS(
+  object = flex_df,
+  file = here("other-files", "flex-sim.rds")
+)
+```
+
 ---
 name: ex-nonlinear-splines
 

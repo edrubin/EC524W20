@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+  <head>
+    <title>Lecture .mono[003]</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Edward Rubin" />
+    <meta name="date" content="2020-01-21" />
+    <link href="003-slides_files/remark-css-0.0.1/default.css" rel="stylesheet" />
+    <link href="003-slides_files/remark-css-0.0.1/metropolis.css" rel="stylesheet" />
+    <link href="003-slides_files/remark-css-0.0.1/metropolis-fonts.css" rel="stylesheet" />
+    <link rel="stylesheet" href="my-css.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Lecture .mono[003]
+## Resampling
+### Edward Rubin
+### 21 January 2020
+
+---
+
+exclude: true
+
+
+---
+layout: true
+# Admin
+
+---
+class: inverse, middle
+---
+name: admin-today
+## Class today
+
+.b[Review]
+- [Regression and loss](#review-loss-functions)
+- [Classification](#review-classification)
+- [KNN](#review-knn)
+- [The bias-variance tradeoff](#review-bias-variance)
+
+.b[Resampling methods]
+- Cross validation 🚸
+- The bootstrap 👢
+
+---
+name: admin-soon
+# Admin
+
+## Upcoming
+
+.b[Readings]
+
+Today: .it[ISL] Ch. 5 .grey-light[(changed—sorry)]
+
+Next: .it[ISL] Ch. 3–4
+
+.b[Problem set] due today (Tuesday) before midnight (PST)
+---
+layout: true
+# Review
+
+---
+class: inverse, middle
+---
+name: review-loss
+## Regression and loss
+
+For .b[regression settings], the loss is our .pink[prediction]'s distance from .orange[truth], _i.e._,
+$$
+`\begin{align}
+  \text{error}_i = \color{#FFA500}{y_i} - \color{#e64173}{\hat{y}_i} &amp;&amp; \text{loss}_i = \big| \color{#FFA500}{y_i} - \color{#e64173}{\hat{y}_i} \big| = \big| \text{error}_i \big|
+\end{align}`
+$$
+Depending upon our ultimate goal, we choose .b[loss/objective functions].
+$$
+`\begin{align}
+  \text{L1 loss} = \sum_i \big| \color{#FFA500}{y_i} - \color{#e64173}{\hat{y}_i} \big| &amp;&amp;&amp;&amp; \text{MAE} = \dfrac{1}{n}\sum_i \big| \color{#FFA500}{y_i} - \color{#e64173}{\hat{y}_i} \big| \\
+  \text{L2 loss} = \sum_i \left( \color{#FFA500}{y_i} - \color{#e64173}{\hat{y}_i} \right)^2 &amp;&amp;&amp;&amp; \text{MSE} = \dfrac{1}{n}\sum_i \left( \color{#FFA500}{y_i} - \color{#e64173}{\hat{y}_i} \right)^2 \\
+\end{align}`
+$$
+Whatever we're using, we care about .hi[test performance] (_e.g._, test MSE), rather than training performance.
+---
+name: review-classification
+## Classification
+
+For .b[classification problems], we often use the .hi[test error rate].
+$$
+`\begin{align}
+  \dfrac{1}{n} \sum_{i=1}^{n} \mathop{\mathbb{I}}\left( \color{#FFA500}{y_i} \neq \color{#e64173}{\hat{y}_i} \right)
+\end{align}`
+$$
+The .b[Bayes classifier]
+
+1. predicts class `\(\color{#e64173}{j}\)` when `\(\mathop{\text{Pr}}\left(\color{#FFA500}{y_0} = \color{#e64173}{j} \big | \color{#6A5ACD}{\mathbf{X}} = \mathbf{x}_0 \right)\)` exceeds all other classes.
+
+2. produces the .b[Bayes decision boundary]—the decision boundary with the lowest test error rate.
+
+3. is unknown: we must predict `\(\mathop{\text{Pr}}\left(\color{#FFA500}{y_0} = \color{#e64173}{j} \big | \color{#6A5ACD}{\mathbf{X}} = \mathbf{x}_0 \right)\)`.
+---
+name: review-knn
+## KNN
+
+.b[K-nearest neighbors] (KNN) is a non-parametric method for estimating
+$$
+`\begin{align}
+  \mathop{\text{Pr}}\left(\color{#FFA500}{y_0} = \color{#e64173}{j} \big | \color{#6A5ACD}{\mathbf{X}} = \mathbf{x}_0 \right)
+\end{align}`
+$$
+that makes a prediction using the most-common class among an observation's "nearest" K neighbors.
+
+- .b[Low values of K] (_e.g._, 1) are exteremly flexible but tend to overfit (increase variance).
+- .b[Large values of K] (_e.g._, N) are very inflexible—essentially making the same prediction for each observation.
+
+The .it[optimal] value of K will trade off between overfitting and accuracy.
+---
+name: review-bias-variance
+## The bias-variance tradeoff
+
+Finding the optimal level of flexibility highlights the .hi-pink[bias]-.hi-purple[variance] .b[tradeoff].
+
+.hi-pink[Bias] The error that comes from inaccurately estimating `\(\color{#20B2AA}{f}\)`.
+- More flexible models are better equipped to recover complex relationships `\(\left( \color{#20B2AA}{f} \right)\)`, reducing bias. (Real life is seldom linear.)
+- Simpler (less flexible) models typically increase bias.
+
+.hi-purple[Variance] The amount `\(\hat{\color{#20B2AA}{f}}\)` would change with a different .hi-slate[training sample]
+- If new .hi-slate[training sets] drastically change `\(\hat{\color{#20B2AA}{f}}\)`, then we have a lot of uncertainty about `\(\color{#20B2AA}{f}\)` (and, in general, `\(\hat{\color{#20B2AA}{f}} \not\approx \color{#20B2AA}{f}\)`).
+- More flexible models generally add variance to `\(\color{#20B2AA}{f}\)`.
+
+---
+## The bias-variance tradeoff
+
+The expected value.super[.pink[†]] of the .hi-pink[test MSE] can be written
+$$
+`\begin{align}
+  \mathop{E}\left[ \left(\color{#FFA500}{\mathbf{y_0}} - \mathop{\hat{\color{#20B2AA}{f}}}\left(\color{#6A5ACD}{\mathbf{X}_0}\right) \right)^2 \right] =
+  \underbrace{\mathop{\text{Var}} \left( \mathop{\hat{\color{#20B2AA}{f}}}\left(\color{#6A5ACD}{\mathbf{X}_0}\right) \right)}_{\text{Variance}} +
+  \underbrace{\left[ \text{Bias}\left( \mathop{\hat{\color{#20B2AA}{f}}}\left(\color{#6A5ACD}{\mathbf{X}_0}\right) \right) \right]^2}_{\text{Bias}} +
+  \underbrace{\mathop{\text{Var}} \left( \varepsilon \right)}_{\text{Irr. error}}
+\end{align}`
+$$
+
+.b[The tradeoff] in terms of model flexibility
+
+- Increasing flexibility .it[from total inflexibility] generally .b[reduces bias more] than it increases variance (reducing test MSE).
+
+- At some point, the marginal benefits of flexibility .b[equal] marginal costs.
+
+- Past this point (optimal flexibility), we .b[increase variance more] than we reduce bias (increasing test MSE).
+
+---
+layout: false
+class: clear, middle
+
+.hi[U-shaped test MSE] with respect to model flexibility (KNN here).
+&lt;br&gt;Increases in variance eventually overcome reductions in (squared) bias.
+
+&lt;img src="003-slides_files/figure-html/review-bias-variance-1.svg" style="display: block; margin: auto;" /&gt;
+---
+layout: true
+# Resampling methods
+
+---
+class: inverse, middle
+---
+name: resampling-intro
+## Intro
+
+.hi[Resampling methods] help understand uncertainty in statistical modeling.
+
+--
+- .ex[Ex.] .it[Linear regression:] How precise is your `\(\hat{\beta}_1\)`?
+- .ex[Ex.] .it[With KNN:] Which K minimizes (out-of-sample) test MSE?
+
+--
+
+The process behind the magic of resampling methods:
+1. .b[Repeatedly draw samples] from the .b[training data].
+1. .b[Fit your model](s) on each random sample.
+1. .b[Compare] model performance (or estimates) .b[across samples].
+1. Infer the .b[variability/uncertainty in your model] from (3).
+
+--
+
+.note[Warning.sub[1]] Resampling methods can be computationally intensive.
+&lt;br&gt;.note[Warning.sub[2]] Certain methods don't work in certain settings.
+---
+## Today
+
+Let's distinguish between two important .b[modeling tasks:]
+
+- .hi-purple[Model selection] Choosing and tuning a model
+
+- .hi-purple[Model assessment] Evaluating a model's accuracy
+
+--
+
+We're going to focus on two common .b[resampling methods:]
+
+1. .hi[Cross validation] used to estimate test error, evaluating performance or selecting a model's flexibility
+
+1. .hi[Bootstrap] used to assess accuracy—parameter estimates or methods
+---
+name: resampling-holdout
+## Hold out
+
+.note[Recall:] We want to find the model that .b[minimizes out-of-sample test error].
+
+If we have a large test dataset, we can use it (once).
+
+.qa[Q.sub[1]] What if we don't have a test set?
+&lt;br&gt;
+.qa[Q.sub[2]] What if we need to select and train a model?
+&lt;br&gt;
+.qa[Q.sub[3]] How can we avoid overfitting our training.super[.pink[†]] data during model selection?
+
+.footnote[
+.normal[.pink[†]] Also relevant for .it[testing] data.
+]
+
+--
+
+.qa[A.sub[1,2,3]] .b[Hold-out methods] (_e.g._, cross validation) use training data to estimate test performance—.b[holding out] a mini "test" sample of the training data that we use to estimate the test error.
+---
+name: resampling-validation
+layout: true
+# Hold-out methods
+## Option 1: The .it[validation set] approach
+
+To estimate the .hi-pink[test error], we can .it[hold out] a subset of our .hi-purple[training data] and then .hi-slate[validate] (evaluate) our model on this held out .hi-slate[validation set].
+
+- The .hi-slate[validation error rate] estimates the .hi-pink[test error rate]
+- The model only "sees" the non-validation subset of the .hi-purple[training data].
+
+---
+
+
+
+---
+
+&lt;img src="003-slides_files/figure-html/plot-validation-set-1.svg" style="display: block; margin: auto;" /&gt;
+
+.col-left[.hi-purple[Initial training set]]
+
+
+---
+
+&lt;img src="003-slides_files/figure-html/plot-validation-set-2-1.svg" style="display: block; margin: auto;" /&gt;
+
+.col-left[.hi-slate[Validation (sub)set]]
+.col-right[.hi-purple[Training set:] .purple[Model training]]
+
+---
+
+&lt;img src="003-slides_files/figure-html/plot-validation-set-3-1.svg" style="display: block; margin: auto;" /&gt;
+
+.col-left[.hi-slate[Validation (sub)set]]
+.col-right[.hi-purple[Training set:] .purple[Model training]]
+
+---
+layout: true
+# Hold-out methods
+## Option 1: The .it[validation set] approach
+
+---
+.ex[Example] We could use the validation-set approach to help select the degree of a polynomial for a linear-regression model ([Kaggle]((https://www.kaggle.com/edwardarubin/ec524-lecture-003/)).
+
+--
+
+The goal of the validation set is to .hi-pink[.it[estimate] out-of-sample (test) error.]
+
+.qa[Q] So what?
+
+--
+
+- Estimates come with .b[uncertainty]—varying from sample to sample.
+
+- Variability (standard errors) is larger with .b[smaller samples].
+
+.qa[Problem] This estimated error is often based upon a fairly small sample (&lt;30% of our training data). So its variance can be large.
+---
+exclude: true
+
+
+
+
+---
+name: validation-simulation
+layout: false
+class: clear, middle
+
+.b[Validation MSE] for 10 different validation samples
+&lt;img src="003-slides_files/figure-html/plot-vset-sim-1.svg" style="display: block; margin: auto;" /&gt;
+---
+layout: false
+class: clear, middle
+
+.b[True test MSE] compared to validation-set estimates
+&lt;img src="003-slides_files/figure-html/plot-vset-sim-2-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+# Hold-out methods
+## Option 1: The .it[validation set] approach
+
+Put differently: The validation-set approach has (≥) two major drawbacks:
+
+1. .hi[High variability] Which observations are included in the validation set can greatly affect the validation MSE.
+
+2. .hi[Inefficiency in training our model] We're essentially throwing away the validation data when training the model—"wasting" observations.
+
+--
+
+(2) ⟹ validation MSE may overestimate test MSE.
+
+Even if the validation-set approach provides an unbiased estimator for test error, it is likely a pretty noisy estimator.
+---
+layout: true
+# Hold-out methods
+## Option 2: Leave-one-out cross validation
+
+---
+name: resampling-loocv
+
+.hi[Cross validation] solves the validation-set method's main problems.
+- Use more (= all) of the data for training (lower variability; less bias).
+- Still maintains separation between training and validation subsets.
+
+--
+
+.hi[Leave-one-out cross validation] (LOOCV) is perhaps the cross-validation method most similar to the validation-set approach.
+- Your validation set is exactly one observation.
+- .note[New] You repeat the validation exercise for every observation.
+- .note[New] Estimate MSE as the mean across all observations.
+
+---
+layout: true
+# Hold-out methods
+## Option 2: Leave-one-out cross validation
+
+Each observation takes a turn as the .hi-slate[validation set],
+&lt;br&gt;while the other n-1 observations get to .hi-purple[train the model].
+&lt;br&gt;
+&lt;br&gt;
+
+---
+exclude: true
+
+
+
+---
+&lt;img src="003-slides_files/figure-html/plot-loocv-1-1.svg" style="display: block; margin: auto;" /&gt;
+
+.slate[Observation 1's turn for validation produces MSE.sub[1]].
+---
+&lt;img src="003-slides_files/figure-html/plot-loocv-2-1.svg" style="display: block; margin: auto;" /&gt;
+
+.slate[Observation 2's turn for validation produces MSE.sub[2]].
+---
+&lt;img src="003-slides_files/figure-html/plot-loocv-3-1.svg" style="display: block; margin: auto;" /&gt;
+
+.slate[Observation 3's turn for validation produces MSE.sub[3]].
+---
+&lt;img src="003-slides_files/figure-html/plot-loocv-4-1.svg" style="display: block; margin: auto;" /&gt;
+
+.slate[Observation 4's turn for validation produces MSE.sub[4]].
+---
+&lt;img src="003-slides_files/figure-html/plot-loocv-5-1.svg" style="display: block; margin: auto;" /&gt;
+
+.slate[Observation 5's turn for validation produces MSE.sub[5]].
+---
+&lt;img src="003-slides_files/figure-html/plot-loocv-n-1.svg" style="display: block; margin: auto;" /&gt;
+
+.slate[Observation n's turn for validation produces MSE.sub[n]].
+---
+layout: true
+# Hold-out methods
+## Option 2: Leave-one-out cross validation
+
+---
+Because .hi-pink[LOOCV uses n-1 observations] to train the model,.super[.pink[†]] MSE.sub[i] (validation MSE from observation i) is approximately unbiased for test MSE.
+
+.footnote[
+.pink[†] And because often n-1 ≈ n.
+]
+
+.qa[Problem] MSE.sub[i] is a terribly noisy estimator for test MSE (albeit ≈unbiased).
+--
+&lt;br&gt;.qa[Solution] Take the mean!
+$$
+`\begin{align}
+  \text{CV}_{(n)} = \dfrac{1}{n} \sum_{i=1}^{n} \text{MSE}_i
+\end{align}`
+$$
+--
+1. LOOCV .b[reduces bias] by using n-1 (almost all) observations for training.
+2. LOOCV .b[resolves variance]: it makes all possible comparison&lt;br&gt;(no dependence upon which validation-test split you make).
+---
+exclude: true
+
+
+---
+name: ex-loocv
+layout: false
+class: clear, middle
+
+.b[True test MSE] and .hi-orange[LOOCV MSE] compared to .hi-purple[validation-set estimates]
+&lt;img src="003-slides_files/figure-html/plot-loocv-mse-1.svg" style="display: block; margin: auto;" /&gt;
+---
+layout: true
+# Hold-out methods
+## Option 3: k-fold cross validation
+
+---
+name: resampling-kcv
+
+Leave-one-out cross validation is a special case of a broader strategy:
+&lt;br&gt;.hi[k-fold cross validation].
+
+1. .b[Divide] the training data into `\(k\)` equally sized groups (folds).
+2. .b[Iterate] over the `\(k\)` folds, treating each as a validation set once&lt;br&gt;(training the model on the other `\(k-1\)` folds).
+3. .b[Average] the folds' MSEs to estimate test MSE.
+
+--
+
+Benefits?
+--
+1. .b[Less computationally demanding] (fit model `\(k=\)` 5 or 10 times; not `\(n\)`).
+--
+2. .b[Greater accuracy] (in general) due to bias-variance tradeoff!
+--
+  - Somewhat higher bias, relative to LOOCV: `\(n-1\)` *vs.* `\((k-1)/k\)`.
+--
+  - Lower variance due to high-degree of correlation in LOOCV MSE.sub[i].
+--
+🤯
+---
+exclude: true
+
+
+
+---
+layout: true
+# Hold-out methods
+## Option 3: k-fold cross validation
+
+With `\(k\)`-fold cross validation, we estimate test MSE as
+$$
+`\begin{align}
+  \text{CV}_{(k)} = \dfrac{1}{k} \sum_{i=1}^{k} \text{MSE}_{i}
+\end{align}`
+$$
+---
+
+&lt;img src="003-slides_files/figure-html/plot-cvk-0a-1.svg" style="display: block; margin: auto;" /&gt;
+
+Our `\(k=\)` 5 folds.
+---
+
+&lt;img src="003-slides_files/figure-html/plot-cvk-0b-1.svg" style="display: block; margin: auto;" /&gt;
+
+Each fold takes a turn at .hi-slate[validation]. The other `\(k-1\)` folds .hi-purple[train].
+---
+
+&lt;img src="003-slides_files/figure-html/plot-cvk-1-1.svg" style="display: block; margin: auto;" /&gt;
+
+For `\(k=5\)`, fold number `\(1\)` as the .hi-slate[validation set] produces MSE.sub[k=1].
+---
+
+&lt;img src="003-slides_files/figure-html/plot-cvk-2-1.svg" style="display: block; margin: auto;" /&gt;
+
+For `\(k=5\)`, fold number `\(2\)` as the .hi-slate[validation set] produces MSE.sub[k=2].
+---
+
+&lt;img src="003-slides_files/figure-html/plot-cvk-3-1.svg" style="display: block; margin: auto;" /&gt;
+
+For `\(k=5\)`, fold number `\(3\)` as the .hi-slate[validation set] produces MSE.sub[k=3].
+---
+
+&lt;img src="003-slides_files/figure-html/plot-cvk-4-1.svg" style="display: block; margin: auto;" /&gt;
+
+For `\(k=5\)`, fold number `\(4\)` as the .hi-slate[validation set] produces MSE.sub[k=4].
+---
+
+&lt;img src="003-slides_files/figure-html/plot-cvk-5-1.svg" style="display: block; margin: auto;" /&gt;
+
+For `\(k=5\)`, fold number `\(5\)` as the .hi-slate[validation set] produces MSE.sub[k=5].
+---
+exclue: true
+
+
+---
+name: ex-cv-sim
+layout: false
+class: clear, middle
+
+.b[Test MSE] .it[vs.] estimates: .orange[LOOCV], .pink[5-fold CV] (20x), and .purple[validation set] (10x)
+&lt;img src="003-slides_files/figure-html/plot-cv-mse-1.svg" style="display: block; margin: auto;" /&gt;
+---
+layout: false
+class: clear, middle
+
+.note[Note:] Each of these methods extends to classification settings, _e.g._, LOOCV
+$$
+`\begin{align}
+   \text{CV}_{(n)} = \dfrac{1}{n} \sum_{i=1}^{n} \mathop{\mathbb{I}}\left( \color{#FFA500}{y_i} \neq \color{#FFA500}{\hat{y}_i} \right)
+\end{align}`
+$$
+---
+layout: true
+# The bootstrap
+
+---
+class: inverse, middle
+---
+name: resampling-boot
+## Intro
+
+The .b[bootstrap] is a resampling method often used to quantify the uncertainty (variability) underlying an estimator or learning method.
+
+Calculating the standard error of an estimate often involves assumptions and theory (recall the standard-error estimator for OLS).
+
+However, there are times this derivation is difficult or impossible, *e.g.*,
+$$
+`\begin{align}
+  \mathop{\text{Var}}\left(\dfrac{\hat{\beta}_1}{1-\hat{\beta}_2}\right)
+\end{align}`
+$$
+
+
+This is where the bootstrap helps.
+---
+## Defined
+
+.hi-purple[Previous resampling methods]
+- Split data into .hi-purple[subsets]: `\(n_v\)` validation and `\(n_t\)` training `\((n_v + n_t = n)\)`.
+- Repeat estimation on each subset.
+- Estimate the true test error (to help tune flexibility).
+
+.hi-pink[Bootstrap]
+- Randomly samples from training data .hi-pink[with replacement] to generate `\(B\)` "samples", each of size `\(n\)`.
+- Repeat estimation on each subset.
+- Estimate the variance estimate using variability across `\(B\)` samples.
+
+---
+## Intuition
+.note[Idea:] Bootstrapping builds a distribution for the estimate using the variability embedded in the training sample.
+
+---
+name: sources
+layout: false
+# Sources
+
+These notes draw upon
+
+- [An Introduction to Statistical Learning](http://faculty.marshall.usc.edu/gareth-james/ISL/) (*ISL*)&lt;br&gt;James, Witten, Hastie, and Tibshirani
+
+- [Python Data Science Handbook](https://jakevdp.github.io/PythonDataScienceHandbook/)&lt;br&gt;Jake VanderPlas
+
+---
+# Table of contents
+
+.col-left[
+.smallest[
+#### Admin
+- [Today](#admin-today)
+- [Upcoming](#admin-soon)
+
+#### Review
+- [Regression and loss](#review-loss-functions)
+- [Classification](#review-classification)
+- [KNN](#review-knn)
+- [The bias-variance tradeoff](#review-bias-variance)
+
+#### Examples
+- [Validation-set simulation](#validation-simulation)
+- [LOOCV MSE](#ex-loocvs)
+- [k-fold CV](#ex-cv-sim)
+
+]
+]
+
+.col-right[
+.smallest[
+
+#### Resampling
+- [Intro](#resampling-intro)
+- [Hold-out methods](#resampling-holdout)
+  - [Validation sets](#resampling-validation)
+  - [LOOCV](#resampling-loocv)
+  - [k-fold cross validation](#resampling-kcv)
+- [The bootstrap](#resampling-boot)
+
+#### Other
+- [Sources/references](#sources)
+
+]
+]
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

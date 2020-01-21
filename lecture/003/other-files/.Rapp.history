@@ -1,0 +1,8 @@
+load("/Users/edwardarubin/Dropbox/UO/Teaching/EC524W20/lecture/003/other-files/review-bias-variance.RData")
+ls()
+load("/Users/edwardarubin/Dropbox/UO/Teaching/EC524W20/lecture/003/other-files/sim flexibility_32419a9e5a92f89d311144f0f6a9e9e7.RData")
+ls()
+dir()
+load("sim flexibility_32419a9e5a92f89d311144f0f6a9e9e7.RData")
+ls()
+dir()

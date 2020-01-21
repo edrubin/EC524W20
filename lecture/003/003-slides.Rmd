@@ -1,0 +1,979 @@
+---
+title: "Lecture .mono[003]"
+subtitle: "Resampling"
+author: "Edward Rubin"
+#date: "`r format(Sys.time(), '%d %B %Y')`"
+date: "21 January 2020"
+output:
+  xaringan::moon_reader:
+    css: ['default', 'metropolis', 'metropolis-fonts', 'my-css.css']
+    # self_contained: true
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+exclude: true
+
+```{R, setup, include = F}
+library(pacman)
+p_load(
+  tidyverse,
+  ggplot2, ggthemes,
+  latex2exp, viridis, extrafont, gridExtra, plotly, ggformula,
+  kableExtra, snakecase, janitor,
+  data.table,
+  lubridate, knitr,
+  FNN, caret, parsnip,
+  huxtable,
+  here, magrittr, parallel
+)
+# Define colors
+red_pink   = "#e64173"
+turquoise  = "#20B2AA"
+orange     = "#FFA500"
+red        = "#fb6107"
+blue       = "#3b3b9a"
+green      = "#8bb174"
+grey_light = "grey70"
+grey_mid   = "grey50"
+grey_dark  = "grey20"
+purple     = "#6A5ACD"
+slate      = "#314f4f"
+# Knitr options
+opts_chunk$set(
+  comment = "#>",
+  fig.align = "center",
+  fig.height = 7,
+  fig.width = 10.5,
+  warning = F,
+  message = F
+)
+opts_chunk$set(dev = "svg")
+options(device = function(file, width, height) {
+  svg(tempfile(), width = width, height = height)
+})
+options(knitr.table.format = "html")
+```
+---
+layout: true
+# Admin
+
+---
+class: inverse, middle
+---
+name: admin-today
+## Class today
+
+.b[Review]
+- [Regression and loss](#review-loss-functions)
+- [Classification](#review-classification)
+- [KNN](#review-knn)
+- [The bias-variance tradeoff](#review-bias-variance)
+
+.b[Resampling methods]
+- Cross validation 🚸
+- The bootstrap 👢
+
+---
+name: admin-soon
+# Admin
+
+## Upcoming
+
+.b[Readings]
+
+Today: .it[ISL] Ch. 5 .grey-light[(changed—sorry)]
+
+Next: .it[ISL] Ch. 3–4
+
+.b[Problem set] due today (Tuesday) before midnight (PST)
+---
+layout: true
+# Review
+
+---
+class: inverse, middle
+---
+name: review-loss
+## Regression and loss
+
+For .b[regression settings], the loss is our .pink[prediction]'s distance from .orange[truth], _i.e._,
+$$
+\begin{align}
+  \text{error}_i = \color{#FFA500}{y_i} - \color{#e64173}{\hat{y}_i} && \text{loss}_i = \big| \color{#FFA500}{y_i} - \color{#e64173}{\hat{y}_i} \big| = \big| \text{error}_i \big|
+\end{align}
+$$
+Depending upon our ultimate goal, we choose .b[loss/objective functions].
+$$
+\begin{align}
+  \text{L1 loss} = \sum_i \big| \color{#FFA500}{y_i} - \color{#e64173}{\hat{y}_i} \big| &&&& \text{MAE} = \dfrac{1}{n}\sum_i \big| \color{#FFA500}{y_i} - \color{#e64173}{\hat{y}_i} \big| \\
+  \text{L2 loss} = \sum_i \left( \color{#FFA500}{y_i} - \color{#e64173}{\hat{y}_i} \right)^2 &&&& \text{MSE} = \dfrac{1}{n}\sum_i \left( \color{#FFA500}{y_i} - \color{#e64173}{\hat{y}_i} \right)^2 \\
+\end{align}
+$$
+Whatever we're using, we care about .hi[test performance] (_e.g._, test MSE), rather than training performance.
+---
+name: review-classification
+## Classification
+
+For .b[classification problems], we often use the .hi[test error rate].
+$$
+\begin{align}
+  \dfrac{1}{n} \sum_{i=1}^{n} \mathop{\mathbb{I}}\left( \color{#FFA500}{y_i} \neq \color{#e64173}{\hat{y}_i} \right)
+\end{align}
+$$
+The .b[Bayes classifier]
+
+1. predicts class $\color{#e64173}{j}$ when $\mathop{\text{Pr}}\left(\color{#FFA500}{y_0} = \color{#e64173}{j} \big | \color{#6A5ACD}{\mathbf{X}} = \mathbf{x}_0 \right)$ exceeds all other classes.
+
+2. produces the .b[Bayes decision boundary]—the decision boundary with the lowest test error rate.
+
+3. is unknown: we must predict $\mathop{\text{Pr}}\left(\color{#FFA500}{y_0} = \color{#e64173}{j} \big | \color{#6A5ACD}{\mathbf{X}} = \mathbf{x}_0 \right)$.
+---
+name: review-knn
+## KNN
+
+.b[K-nearest neighbors] (KNN) is a non-parametric method for estimating
+$$
+\begin{align}
+  \mathop{\text{Pr}}\left(\color{#FFA500}{y_0} = \color{#e64173}{j} \big | \color{#6A5ACD}{\mathbf{X}} = \mathbf{x}_0 \right)
+\end{align}
+$$
+that makes a prediction using the most-common class among an observation's "nearest" K neighbors.
+
+- .b[Low values of K] (_e.g._, 1) are exteremly flexible but tend to overfit (increase variance).
+- .b[Large values of K] (_e.g._, N) are very inflexible—essentially making the same prediction for each observation.
+
+The .it[optimal] value of K will trade off between overfitting and accuracy.
+---
+name: review-bias-variance
+## The bias-variance tradeoff
+
+Finding the optimal level of flexibility highlights the .hi-pink[bias]-.hi-purple[variance] .b[tradeoff].
+
+.hi-pink[Bias] The error that comes from inaccurately estimating $\color{#20B2AA}{f}$.
+- More flexible models are better equipped to recover complex relationships $\left( \color{#20B2AA}{f} \right)$, reducing bias. (Real life is seldom linear.)
+- Simpler (less flexible) models typically increase bias.
+
+.hi-purple[Variance] The amount $\hat{\color{#20B2AA}{f}}$ would change with a different .hi-slate[training sample]
+- If new .hi-slate[training sets] drastically change $\hat{\color{#20B2AA}{f}}$, then we have a lot of uncertainty about $\color{#20B2AA}{f}$ (and, in general, $\hat{\color{#20B2AA}{f}} \not\approx \color{#20B2AA}{f}$).
+- More flexible models generally add variance to $\color{#20B2AA}{f}$.
+
+---
+## The bias-variance tradeoff
+
+The expected value.super[.pink[†]] of the .hi-pink[test MSE] can be written
+$$
+\begin{align}
+  \mathop{E}\left[ \left(\color{#FFA500}{\mathbf{y_0}} - \mathop{\hat{\color{#20B2AA}{f}}}\left(\color{#6A5ACD}{\mathbf{X}_0}\right) \right)^2 \right] =
+  \underbrace{\mathop{\text{Var}} \left( \mathop{\hat{\color{#20B2AA}{f}}}\left(\color{#6A5ACD}{\mathbf{X}_0}\right) \right)}_{\text{Variance}} +
+  \underbrace{\left[ \text{Bias}\left( \mathop{\hat{\color{#20B2AA}{f}}}\left(\color{#6A5ACD}{\mathbf{X}_0}\right) \right) \right]^2}_{\text{Bias}} +
+  \underbrace{\mathop{\text{Var}} \left( \varepsilon \right)}_{\text{Irr. error}}
+\end{align}
+$$
+
+.b[The tradeoff] in terms of model flexibility
+
+- Increasing flexibility .it[from total inflexibility] generally .b[reduces bias more] than it increases variance (reducing test MSE).
+
+- At some point, the marginal benefits of flexibility .b[equal] marginal costs.
+
+- Past this point (optimal flexibility), we .b[increase variance more] than we reduce bias (increasing test MSE).
+
+---
+layout: false
+class: clear, middle
+
+.hi[U-shaped test MSE] with respect to model flexibility (KNN here).
+<br>Increases in variance eventually overcome reductions in (squared) bias.
+
+```{R, review-bias-variance, echo = F, fig.height = 6}
+# Load data (from lecture 002)
+flex_df = here("other-files", "flex-sim.rds") %>% readRDS()
+# Find minima
+min_train = flex_df %>% filter(mse_type == "train") %>% filter(mse_value == min(mse_value))
+min_test = flex_df %>% filter(mse_type == "test") %>% filter(mse_value == min(mse_value))
+# Plot
+ggplot(data = flex_df, aes(x = 1.5 - s, y = mse_value, color = mse_type)) +
+geom_segment(
+  data = bind_rows(min_train, min_test),
+  aes(x = 1.5 - s, xend = 1.5 - s, y = 0, yend = mse_value),
+  color = "grey80",
+  size = 0.3,
+  linetype = "longdash"
+) +
+geom_hline(yintercept = 0) +
+geom_vline(xintercept = 0) +
+geom_line(size = 1.2) +
+geom_point(data = bind_rows(min_train, min_test), size = 3.5) +
+xlab("Model flexibility") +
+ylab("MSE") +
+scale_color_viridis_d(
+  "", labels = c("Test MSE", "Train MSE"),
+  option = "magma", begin = 0.2, end = 0.9
+) +
+theme_void(base_family = "Fira Sans Book") +
+theme(
+  legend.position = c(0.9, 0.65),
+  axis.title = element_text(size = 20, vjust = 1),
+  axis.title.y = element_text(angle = 90),
+  legend.text = element_text(size = 18)
+)
+```
+---
+layout: true
+# Resampling methods
+
+---
+class: inverse, middle
+---
+name: resampling-intro
+## Intro
+
+.hi[Resampling methods] help understand uncertainty in statistical modeling.
+
+--
+- .ex[Ex.] .it[Linear regression:] How precise is your $\hat{\beta}_1$?
+- .ex[Ex.] .it[With KNN:] Which K minimizes (out-of-sample) test MSE?
+
+--
+
+The process behind the magic of resampling methods:
+1. .b[Repeatedly draw samples] from the .b[training data].
+1. .b[Fit your model](s) on each random sample.
+1. .b[Compare] model performance (or estimates) .b[across samples].
+1. Infer the .b[variability/uncertainty in your model] from (3).
+
+--
+
+.note[Warning.sub[1]] Resampling methods can be computationally intensive.
+<br>.note[Warning.sub[2]] Certain methods don't work in certain settings.
+---
+## Today
+
+Let's distinguish between two important .b[modeling tasks:]
+
+- .hi-purple[Model selection] Choosing and tuning a model
+
+- .hi-purple[Model assessment] Evaluating a model's accuracy
+
+--
+
+We're going to focus on two common .b[resampling methods:]
+
+1. .hi[Cross validation] used to estimate test error, evaluating performance or selecting a model's flexibility
+
+1. .hi[Bootstrap] used to assess accuracy—parameter estimates or methods
+---
+name: resampling-holdout
+## Hold out
+
+.note[Recall:] We want to find the model that .b[minimizes out-of-sample test error].
+
+If we have a large test dataset, we can use it (once).
+
+.qa[Q.sub[1]] What if we don't have a test set?
+<br>
+.qa[Q.sub[2]] What if we need to select and train a model?
+<br>
+.qa[Q.sub[3]] How can we avoid overfitting our training.super[.pink[†]] data during model selection?
+
+.footnote[
+.normal[.pink[†]] Also relevant for .it[testing] data.
+]
+
+--
+
+.qa[A.sub[1,2,3]] .b[Hold-out methods] (_e.g._, cross validation) use training data to estimate test performance—.b[holding out] a mini "test" sample of the training data that we use to estimate the test error.
+---
+name: resampling-validation
+layout: true
+# Hold-out methods
+## Option 1: The .it[validation set] approach
+
+To estimate the .hi-pink[test error], we can .it[hold out] a subset of our .hi-purple[training data] and then .hi-slate[validate] (evaluate) our model on this held out .hi-slate[validation set].
+
+- The .hi-slate[validation error rate] estimates the .hi-pink[test error rate]
+- The model only "sees" the non-validation subset of the .hi-purple[training data].
+
+---
+
+```{R, data-validation-set, include = F, cache = T}
+# Generate data
+X = 40
+Y = 12
+set.seed(12345)
+v_df = expand_grid(
+  x = 1:X,
+  y = 1:Y
+) %>% mutate(grp = sample(
+  x = c("Train", "Validate"),
+  size = X * Y,
+  replace = T,
+  prob = c(0.7, 0.3)
+)) %>% mutate(
+  grp2 = c(
+    rep("Validate", sum(grp == "Validate")),
+    rep("Train", sum(grp == "Train"))
+  )
+)
+```
+
+---
+
+```{R, plot-validation-set, echo = F, dependson = "data-validation-set", fig.height = 3, cache = T}
+ggplot(data = v_df, aes(x, y, fill = grp, color = grp)) +
+geom_point(shape = 21, size = 4.5, stroke = 0.5, color = purple, fill = "white") +
+theme_void() +
+theme(legend.position = "none")
+```
+
+.col-left[.hi-purple[Initial training set]]
+
+
+---
+
+```{R, plot-validation-set-2, echo = F, dependson = "data-validation-set", fig.height = 3, cache = T}
+ggplot(data = v_df, aes(x, y, fill = grp, color = grp)) +
+geom_point(shape = 21, size = 4.5, stroke = 0.5) +
+scale_fill_manual("", values = c("white", slate)) +
+scale_color_manual("", values = c(purple, slate)) +
+theme_void() +
+theme(legend.position = "none")
+```
+
+.col-left[.hi-slate[Validation (sub)set]]
+.col-right[.hi-purple[Training set:] .purple[Model training]]
+
+---
+
+```{R, plot-validation-set-3, echo = F, dependson = "data-validation-set", fig.height = 3, cache = T}
+ggplot(data = v_df, aes(x, y, fill = grp2, color = grp2)) +
+geom_point(shape = 21, size = 4.5, stroke = 0.5) +
+scale_fill_manual("", values = c("white", slate)) +
+scale_color_manual("", values = c(purple, slate)) +
+theme_void() +
+theme(legend.position = "none")
+```
+
+.col-left[.hi-slate[Validation (sub)set]]
+.col-right[.hi-purple[Training set:] .purple[Model training]]
+
+---
+layout: true
+# Hold-out methods
+## Option 1: The .it[validation set] approach
+
+---
+.ex[Example] We could use the validation-set approach to help select the degree of a polynomial for a linear-regression model ([Kaggle]((https://www.kaggle.com/edwardarubin/ec524-lecture-003/)).
+
+--
+
+The goal of the validation set is to .hi-pink[.it[estimate] out-of-sample (test) error.]
+
+.qa[Q] So what?
+
+--
+
+- Estimates come with .b[uncertainty]—varying from sample to sample.
+
+- Variability (standard errors) is larger with .b[smaller samples].
+
+.qa[Problem] This estimated error is often based upon a fairly small sample (<30% of our training data). So its variance can be large.
+---
+exclude: true
+
+```{R, sim-validation, include = F, cache = T}
+# Generate population and sample
+N = 1e5
+set.seed(12345)
+pop_dt = data.table(
+  x1 = runif(N, min = -1, max = 1),
+  x2 = runif(N, min = -1, max = 1),
+  x3 = runif(N, min = -1, max = 1),
+  er = rnorm(N, sd = 3)
+)
+pop_dt %<>% mutate(
+  y = 3 + 5 * x1 - 4 * x2 + 3 * x1 * x2 * x3 + x3 - 2 * x3^2 + 0.1 * x3^3 + er
+)
+# Grab our sample
+sample_dt = pop_dt[1:1e3,]
+# For 10 seeds, grab validation set and estimate flexibility
+vset_dt = mclapply(
+  X = 1:10,
+  mc.cores = 8,
+  FUN = function(i) {
+    # Set seed
+    set.seed(i)
+    # Grab validation set
+    v_i = sample.int(1e3, size = 500, replace = F)
+    vset_i = sample_dt[v_i,]
+    tset_i = sample_dt[setdiff(1:1e3, v_i),]
+    # Train models for y~x3 and grab their validation MSEs
+    mse_i = lapply(
+      X = 1:10,
+      FUN = function(p) {
+        # Train the model
+        model_ip = lm(y ~ poly(x3, p, raw = T), data = tset_i)
+        # Predict
+        mean((vset_i$y - predict(model_ip, newdata = vset_i, se.fit = F))^2)
+      }
+    ) %>% unlist()
+    # Create dataset
+    data.table(iter = i, degree = 1:10, mse = mse_i)
+  }
+) %>% rbindlist()
+# Repeat using full training model to train and full population to test
+mse_true = lapply(
+  X = 1:10,
+  FUN = function(p) {
+    # Train the model
+    model_p = lm(y ~ poly(x3, p, raw = T), data = sample_dt)
+    # Predict
+    mean((pop_dt[-(1:1e3),]$y - predict(model_p, newdata = pop_dt[-(1:1e3),], se.fit = F))^2)
+  }
+) %>% unlist()
+true_dt = data.table(degree = 1:10, mse = mse_true, iter = 1)
+```
+
+
+---
+name: validation-simulation
+layout: false
+class: clear, middle
+
+.b[Validation MSE] for 10 different validation samples
+```{R, plot-vset-sim, echo = F, dependson = "sim-validation", cache = T}
+ggplot(data = vset_dt, aes(x = degree, y = mse, color = iter, group = iter)) +
+geom_line() +
+geom_point(shape = 1) +
+scale_x_continuous("Polynomial degree of x", breaks = seq(2, 10, 2)) +
+ylab("Validation-set MSE") +
+theme_minimal(base_size = 18, base_family = "Fira Sans Book") +
+scale_color_viridis_c(option = "magma", begin = 0.3, end = 0.9) +
+theme(legend.position = "none")
+```
+---
+layout: false
+class: clear, middle
+
+.b[True test MSE] compared to validation-set estimates
+```{R, plot-vset-sim-2, echo = F, dependson = "sim-validation", cache = T}
+ggplot(data = vset_dt, aes(x = degree, y = mse, color = iter, group = iter)) +
+geom_line() +
+geom_point(shape = 1) +
+geom_line(data = true_dt, aes(x = degree, y = mse), color = "black", size = 1) +
+geom_point(data = true_dt, aes(x = degree, y = mse), color = "black", size = 3) +
+scale_x_continuous("Polynomial degree of x", breaks = seq(2, 10, 2)) +
+ylab("MSE") +
+theme_minimal(base_size = 18, base_family = "Fira Sans Book") +
+scale_color_viridis_c(option = "magma", begin = 0.3, end = 0.9) +
+theme(legend.position = "none")
+```
+
+---
+# Hold-out methods
+## Option 1: The .it[validation set] approach
+
+Put differently: The validation-set approach has (≥) two major drawbacks:
+
+1. .hi[High variability] Which observations are included in the validation set can greatly affect the validation MSE.
+
+2. .hi[Inefficiency in training our model] We're essentially throwing away the validation data when training the model—"wasting" observations.
+
+--
+
+(2) ⟹ validation MSE may overestimate test MSE.
+
+Even if the validation-set approach provides an unbiased estimator for test error, it is likely a pretty noisy estimator.
+---
+layout: true
+# Hold-out methods
+## Option 2: Leave-one-out cross validation
+
+---
+name: resampling-loocv
+
+.hi[Cross validation] solves the validation-set method's main problems.
+- Use more (= all) of the data for training (lower variability; less bias).
+- Still maintains separation between training and validation subsets.
+
+--
+
+.hi[Leave-one-out cross validation] (LOOCV) is perhaps the cross-validation method most similar to the validation-set approach.
+- Your validation set is exactly one observation.
+- .note[New] You repeat the validation exercise for every observation.
+- .note[New] Estimate MSE as the mean across all observations.
+
+---
+layout: true
+# Hold-out methods
+## Option 2: Leave-one-out cross validation
+
+Each observation takes a turn as the .hi-slate[validation set],
+<br>while the other n-1 observations get to .hi-purple[train the model].
+<br>
+<br>
+
+---
+exclude: true
+
+```{R, data-loocv, include = F, cache = T}
+# Generate data
+X = 40
+Y = 12
+loocv_df = expand_grid(
+  x = 1:X,
+  y = -(1:Y)
+) %>% mutate(
+  i = 1:(X * Y),
+  grp_1 = if_else(i == 1, "Validate", "Train"),
+  grp_2 = if_else(i == 2, "Validate", "Train"),
+  grp_3 = if_else(i == 3, "Validate", "Train"),
+  grp_4 = if_else(i == 4, "Validate", "Train"),
+  grp_5 = if_else(i == 5, "Validate", "Train"),
+  grp_n = if_else(i == X*Y, "Validate", "Train")
+)
+```
+
+---
+```{R, plot-loocv-1, echo = F, fig.height = 3, dependson = "data-loocv"}
+ggplot(data = loocv_df, aes(x, y, fill = grp_1, color = grp_1)) +
+geom_point(shape = 21, size = 4.5, stroke = 0.5) +
+scale_fill_manual("", values = c("white", slate)) +
+scale_color_manual("", values = c(purple, slate)) +
+theme_void() +
+theme(legend.position = "none")
+```
+
+.slate[Observation 1's turn for validation produces MSE.sub[1]].
+---
+```{R, plot-loocv-2, echo = F, fig.height = 3, dependson = "data-loocv"}
+ggplot(data = loocv_df, aes(x, y, fill = grp_2, color = grp_2)) +
+geom_point(shape = 21, size = 4.5, stroke = 0.5) +
+scale_fill_manual("", values = c("white", slate)) +
+scale_color_manual("", values = c(purple, slate)) +
+theme_void() +
+theme(legend.position = "none")
+```
+
+.slate[Observation 2's turn for validation produces MSE.sub[2]].
+---
+```{R, plot-loocv-3, echo = F, fig.height = 3, dependson = "data-loocv"}
+ggplot(data = loocv_df, aes(x, y, fill = grp_3, color = grp_3)) +
+geom_point(shape = 21, size = 4.5, stroke = 0.5) +
+scale_fill_manual("", values = c("white", slate)) +
+scale_color_manual("", values = c(purple, slate)) +
+theme_void() +
+theme(legend.position = "none")
+```
+
+.slate[Observation 3's turn for validation produces MSE.sub[3]].
+---
+```{R, plot-loocv-4, echo = F, fig.height = 3, dependson = "data-loocv"}
+ggplot(data = loocv_df, aes(x, y, fill = grp_4, color = grp_4)) +
+geom_point(shape = 21, size = 4.5, stroke = 0.5) +
+scale_fill_manual("", values = c("white", slate)) +
+scale_color_manual("", values = c(purple, slate)) +
+theme_void() +
+theme(legend.position = "none")
+```
+
+.slate[Observation 4's turn for validation produces MSE.sub[4]].
+---
+```{R, plot-loocv-5, echo = F, fig.height = 3, dependson = "data-loocv"}
+ggplot(data = loocv_df, aes(x, y, fill = grp_5, color = grp_5)) +
+geom_point(shape = 21, size = 4.5, stroke = 0.5) +
+scale_fill_manual("", values = c("white", slate)) +
+scale_color_manual("", values = c(purple, slate)) +
+theme_void() +
+theme(legend.position = "none")
+```
+
+.slate[Observation 5's turn for validation produces MSE.sub[5]].
+---
+```{R, plot-loocv-n, echo = F, fig.height = 3, dependson = "data-loocv"}
+ggplot(data = loocv_df, aes(x, y, fill = grp_n, color = grp_n)) +
+geom_point(shape = 21, size = 4.5, stroke = 0.5) +
+scale_fill_manual("", values = c("white", slate)) +
+scale_color_manual("", values = c(purple, slate)) +
+theme_void() +
+theme(legend.position = "none")
+```
+
+.slate[Observation n's turn for validation produces MSE.sub[n]].
+---
+layout: true
+# Hold-out methods
+## Option 2: Leave-one-out cross validation
+
+---
+Because .hi-pink[LOOCV uses n-1 observations] to train the model,.super[.pink[†]] MSE.sub[i] (validation MSE from observation i) is approximately unbiased for test MSE.
+
+.footnote[
+.pink[†] And because often n-1 ≈ n.
+]
+
+.qa[Problem] MSE.sub[i] is a terribly noisy estimator for test MSE (albeit ≈unbiased).
+--
+<br>.qa[Solution] Take the mean!
+$$
+\begin{align}
+  \text{CV}_{(n)} = \dfrac{1}{n} \sum_{i=1}^{n} \text{MSE}_i
+\end{align}
+$$
+--
+1. LOOCV .b[reduces bias] by using n-1 (almost all) observations for training.
+2. LOOCV .b[resolves variance]: it makes all possible comparison<br>(no dependence upon which validation-test split you make).
+---
+exclude: true
+
+```{R, mse-loocv, include = F, cache = T, dependson = "sim-validation"}
+# Calculate LOOCV MSE for each p
+mse_loocv = lapply(
+  X = 1:10,
+  FUN = function(p) {
+    # Train the model
+    model_p = lm(y ~ poly(x3, p, raw = T), data = sample_dt)
+    # Leverage
+    h_p = hatvalues(model_p)
+    # y and predictions
+    y_p = sample_dt$y
+    y_hat_p = model_p$fitted.values
+    # MSE
+    data.table(
+      degree = p,
+      mse = 1 / nrow(sample_dt) * sum(((y_p - y_hat_p) / (1 - h_p))^2),
+      iter = 1
+    )
+  }
+) %>% rbindlist()
+```
+---
+name: ex-loocv
+layout: false
+class: clear, middle
+
+.b[True test MSE] and .hi-orange[LOOCV MSE] compared to .hi-purple[validation-set estimates]
+```{R, plot-loocv-mse, echo = F, dependson = "mse-loocv", cache = T}
+ggplot(data = vset_dt, aes(x = degree, y = mse, group = iter)) +
+geom_line(alpha = 0.35, color = purple) +
+geom_point(alpha = 0.35, color = purple, shape = 1) +
+geom_line(data = true_dt, aes(x = degree, y = mse), color = "black", size = 1) +
+geom_point(data = true_dt, aes(x = degree, y = mse), color = "black", size = 3) +
+geom_line(data = mse_loocv, aes(x = degree, y = mse), color = orange, size = 1) +
+geom_point(data = mse_loocv, aes(x = degree, y = mse), color = orange, size = 3) +
+scale_x_continuous("Polynomial degree of x", breaks = seq(2, 10, 2)) +
+ylab("MSE") +
+theme_minimal(base_size = 18, base_family = "Fira Sans Book") +
+scale_color_viridis_c(option = "magma", begin = 0.3, end = 0.9) +
+theme(legend.position = "none")
+```
+---
+layout: true
+# Hold-out methods
+## Option 3: k-fold cross validation
+
+---
+name: resampling-kcv
+
+Leave-one-out cross validation is a special case of a broader strategy:
+<br>.hi[k-fold cross validation].
+
+1. .b[Divide] the training data into $k$ equally sized groups (folds).
+2. .b[Iterate] over the $k$ folds, treating each as a validation set once<br>(training the model on the other $k-1$ folds).
+3. .b[Average] the folds' MSEs to estimate test MSE.
+
+--
+
+Benefits?
+--
+1. .b[Less computationally demanding] (fit model $k=$ 5 or 10 times; not $n$).
+--
+2. .b[Greater accuracy] (in general) due to bias-variance tradeoff!
+--
+  - Somewhat higher bias, relative to LOOCV: $n-1$ *vs.* $(k-1)/k$.
+--
+  - Lower variance due to high-degree of correlation in LOOCV MSE.sub[i].
+--
+🤯
+---
+exclude: true
+
+```{R, data-cv, include = F, cache = T}
+# Generate data
+X = 40
+Y = 12
+set.seed(12345)
+cv_df = expand_grid(
+  x = 1:X,
+  y = 1:Y
+) %>% mutate(
+  id = 1:(X*Y),
+  grp = sample(X * Y) %% 5 + 1
+)
+# Find groups
+a = seq(1, X*Y, by = X*Y/5)
+b = c(a[-1] - 1, X*Y)
+```
+
+---
+layout: true
+# Hold-out methods
+## Option 3: k-fold cross validation
+
+With $k$-fold cross validation, we estimate test MSE as
+$$
+\begin{align}
+  \text{CV}_{(k)} = \dfrac{1}{k} \sum_{i=1}^{k} \text{MSE}_{i}
+\end{align}
+$$
+---
+
+```{R, plot-cvk-0a, echo = F, fig.height = 3, dependson = "data-cv"}
+ggplot(data = cv_df, aes(x, y, color = grp)) +
+geom_point(size = 4.5) +
+scale_color_viridis_c(option = "magma", end = 0.925) +
+theme_void() +
+theme(legend.position = "none")
+```
+
+Our $k=$ 5 folds.
+---
+
+```{R, plot-cvk-0b, echo = F, fig.height = 3, dependson = "data-cv"}
+ggplot(data = cv_df, aes(x, y, color = grp == 1, fill = grp == 1)) +
+geom_point(shape = 21, size = 4.5, stroke = 0.5) +
+scale_fill_manual("", values = c("white", slate)) +
+scale_color_manual("", values = c(purple, slate)) +
+theme_void() +
+theme(legend.position = "none")
+```
+
+Each fold takes a turn at .hi-slate[validation]. The other $k-1$ folds .hi-purple[train].
+---
+
+```{R, plot-cvk-1, echo = F, fig.height = 3, dependson = "data-cv"}
+ggplot(
+  data = cv_df,
+  aes(x, y, color = between(id, a[1], b[1]), fill = between(id, a[1], b[1]))
+) +
+geom_point(shape = 21, size = 4.5, stroke = 0.5) +
+scale_fill_manual("", values = c("white", slate)) +
+scale_color_manual("", values = c(purple, slate)) +
+theme_void() +
+theme(legend.position = "none")
+```
+
+For $k=5$, fold number $1$ as the .hi-slate[validation set] produces MSE.sub[k=1].
+---
+
+```{R, plot-cvk-2, echo = F, fig.height = 3, dependson = "data-cv"}
+ggplot(
+  data = cv_df,
+  aes(x, y, color = between(id, a[2], b[2]), fill = between(id, a[2], b[2]))
+) +
+geom_point(shape = 21, size = 4.5, stroke = 0.5) +
+scale_fill_manual("", values = c("white", slate)) +
+scale_color_manual("", values = c(purple, slate)) +
+theme_void() +
+theme(legend.position = "none")
+```
+
+For $k=5$, fold number $2$ as the .hi-slate[validation set] produces MSE.sub[k=2].
+---
+
+```{R, plot-cvk-3, echo = F, fig.height = 3, dependson = "data-cv"}
+ggplot(
+  data = cv_df,
+  aes(x, y, color = between(id, a[3], b[3]), fill = between(id, a[3], b[3]))
+) +
+geom_point(shape = 21, size = 4.5, stroke = 0.5) +
+scale_fill_manual("", values = c("white", slate)) +
+scale_color_manual("", values = c(purple, slate)) +
+theme_void() +
+theme(legend.position = "none")
+```
+
+For $k=5$, fold number $3$ as the .hi-slate[validation set] produces MSE.sub[k=3].
+---
+
+```{R, plot-cvk-4, echo = F, fig.height = 3, dependson = "data-cv"}
+ggplot(
+  data = cv_df,
+  aes(x, y, color = between(id, a[4], b[4]), fill = between(id, a[4], b[4]))
+) +
+geom_point(shape = 21, size = 4.5, stroke = 0.5) +
+scale_fill_manual("", values = c("white", slate)) +
+scale_color_manual("", values = c(purple, slate)) +
+theme_void() +
+theme(legend.position = "none")
+```
+
+For $k=5$, fold number $4$ as the .hi-slate[validation set] produces MSE.sub[k=4].
+---
+
+```{R, plot-cvk-5, echo = F, fig.height = 3, dependson = "data-cv"}
+ggplot(
+  data = cv_df,
+  aes(x, y, color = between(id, a[5], b[5]), fill = between(id, a[5], b[5]))
+) +
+geom_point(shape = 21, size = 4.5, stroke = 0.5) +
+scale_fill_manual("", values = c("white", slate)) +
+scale_color_manual("", values = c(purple, slate)) +
+theme_void() +
+theme(legend.position = "none")
+```
+
+For $k=5$, fold number $5$ as the .hi-slate[validation set] produces MSE.sub[k=5].
+---
+exclue: true
+
+```{R, sim-cvk, include = F, cache = T, dependson = "sim-validation"}
+# 5-fold cross validation, 20 times
+cv_sim = mclapply(X = 1:20, mc.cores = 12, FUN = function(s) {
+  set.seed(s)
+  # Assign folds for CV
+  sample_cv = copy(sample_dt) %T>% setDT()
+  sample_cv[, fold := sample(1:.N) %% 5 + 1]
+  # Iterate over polynomial degrees
+  mse_s = lapply(X = 1:10, function(p) {
+    # Iterate over folds
+    lapply(X = 1:5, FUN = function(k) {
+      # Train the model
+      model_spk = lm(y ~ poly(x3, p, raw = T), data = sample_cv[fold != k])
+      # Predict
+      mean(
+        (sample_cv[fold == k,y] - predict(
+          model_spk,
+          newdata = sample_cv[fold == k],
+          se.fit = F
+        )
+      )^2)
+    }) %>% unlist() %>% mean()
+  }) %>% unlist()
+  data.table(degree = 1:10, mse = mse_s, iter = s)
+}) %>% rbindlist()
+```
+---
+name: ex-cv-sim
+layout: false
+class: clear, middle
+
+.b[Test MSE] .it[vs.] estimates: .orange[LOOCV], .pink[5-fold CV] (20x), and .purple[validation set] (10x)
+```{R, plot-cv-mse, echo = F, dependson = c("sim-validation", "mse-loocv", "sim-cvk"), cache = T}
+ggplot(data = vset_dt, aes(x = degree, y = mse, group = iter)) +
+geom_line(alpha = 0.5, color = purple) +
+geom_point(alpha = 0.5, color = purple, shape = 1) +
+geom_line(data = true_dt, aes(x = degree, y = mse), color = "black", size = 1) +
+geom_point(data = true_dt, aes(x = degree, y = mse), color = "black", size = 3) +
+geom_line(data = cv_sim, aes(x = degree, y = mse, group = iter), color = red_pink, size = 1) +
+geom_point(data = cv_sim, aes(x = degree, y = mse, group = iter), color = red_pink, size = 3) +
+geom_line(data = mse_loocv, aes(x = degree, y = mse), color = orange, size = 1) +
+geom_point(data = mse_loocv, aes(x = degree, y = mse), color = orange, size = 3) +
+scale_x_continuous("Polynomial degree of x", breaks = seq(2, 10, 2)) +
+ylab("MSE") +
+theme_minimal(base_size = 18, base_family = "Fira Sans Book") +
+scale_color_viridis_c(option = "magma", begin = 0.3, end = 0.9) +
+theme(legend.position = "none")
+```
+---
+layout: false
+class: clear, middle
+
+.note[Note:] Each of these methods extends to classification settings, _e.g._, LOOCV
+$$
+\begin{align}
+   \text{CV}_{(n)} = \dfrac{1}{n} \sum_{i=1}^{n} \mathop{\mathbb{I}}\left( \color{#FFA500}{y_i} \neq \color{#FFA500}{\hat{y}_i} \right)
+\end{align}
+$$
+---
+layout: true
+# The bootstrap
+
+---
+class: inverse, middle
+---
+name: resampling-boot
+## Intro
+
+The .b[bootstrap] is a resampling method often used to quantify the uncertainty (variability) underlying an estimator or learning method.
+
+Calculating the standard error of an estimate often involves assumptions and theory (recall the standard-error estimator for OLS).
+
+However, there are times this derivation is difficult or impossible, *e.g.*,
+$$
+\begin{align}
+  \mathop{\text{Var}}\left(\dfrac{\hat{\beta}_1}{1-\hat{\beta}_2}\right)
+\end{align}
+$$
+
+
+This is where the bootstrap helps.
+---
+## Defined
+
+.hi-purple[Previous resampling methods]
+- Split data into .hi-purple[subsets]: $n_v$ validation and $n_t$ training $(n_v + n_t = n)$.
+- Repeat estimation on each subset.
+- Estimate the true test error (to help tune flexibility).
+
+.hi-pink[Bootstrap]
+- Randomly samples from training data .hi-pink[with replacement] to generate $B$ "samples", each of size $n$.
+- Repeat estimation on each subset.
+- Estimate the variance estimate using variability across $B$ samples.
+
+---
+## Intuition
+.note[Idea:] Bootstrapping builds a distribution for the estimate using the variability embedded in the training sample.
+
+---
+name: sources
+layout: false
+# Sources
+
+These notes draw upon
+
+- [An Introduction to Statistical Learning](http://faculty.marshall.usc.edu/gareth-james/ISL/) (*ISL*)<br>James, Witten, Hastie, and Tibshirani
+
+- [Python Data Science Handbook](https://jakevdp.github.io/PythonDataScienceHandbook/)<br>Jake VanderPlas
+
+---
+# Table of contents
+
+.col-left[
+.smallest[
+#### Admin
+- [Today](#admin-today)
+- [Upcoming](#admin-soon)
+
+#### Review
+- [Regression and loss](#review-loss-functions)
+- [Classification](#review-classification)
+- [KNN](#review-knn)
+- [The bias-variance tradeoff](#review-bias-variance)
+
+#### Examples
+- [Validation-set simulation](#validation-simulation)
+- [LOOCV MSE](#ex-loocvs)
+- [k-fold CV](#ex-cv-sim)
+
+]
+]
+
+.col-right[
+.smallest[
+
+#### Resampling
+- [Intro](#resampling-intro)
+- [Hold-out methods](#resampling-holdout)
+  - [Validation sets](#resampling-validation)
+  - [LOOCV](#resampling-loocv)
+  - [k-fold cross validation](#resampling-kcv)
+- [The bootstrap](#resampling-boot)
+
+#### Other
+- [Sources/references](#sources)
+
+]
+]

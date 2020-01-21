@@ -59,6 +59,18 @@ Welcome to Economics 524 (424): Prediction and machine-learning in econometrics,
 
 **Formats** [.html](https://raw.githack.com/edrubin/EC524W20/master/lecture/002/002-slides.html) | [.pdf](https://raw.githack.com/edrubin/EC524W20/master/lecture/002/002-slides.pdf) | [.Rmd](https://raw.githack.com/edrubin/EC524W20/master/lecture/002/002-slides.Rmd)
 
+[**003 - Resampling methods**](https://raw.githack.com/edrubin/EC524W20/master/lecture/003/003-slides.html)
+
+1. Review
+1. Hold-out methods
+  - The validation-set approach
+  - Cross validation
+1. The bootstrap
+
+[*In-class:* Validation-set exercise (Kaggle)](https://www.kaggle.com/edwardarubin/ec524-lecture-003/)
+
+**Formats** [.html](https://raw.githack.com/edrubin/EC524W20/master/lecture/003/003-slides.html) | [.pdf](https://raw.githack.com/edrubin/EC524W20/master/lecture/003/003-slides.pdf) | [.Rmd](https://raw.githack.com/edrubin/EC524W20/master/lecture/003/003-slides.Rmd)
+
 ## Projects
 
 **Intro** [Predicting sales price in housing data (Kaggle)](https://github.com/edrubin/EC524W20/tree/master/projects/kaggle-house-prices)
