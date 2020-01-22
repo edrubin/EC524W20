@@ -593,6 +593,7 @@ theme(legend.position = "none")
 .slate[Observation 5's turn for validation produces MSE.sub[5]].
 ---
 ```{R, plot-loocv-n, echo = F, fig.height = 3, dependson = "data-loocv", cache = T}
+# The final observation
 ggplot(data = loocv_df, aes(x, y, fill = grp_n, color = grp_n)) +
 geom_point(shape = 21, size = 4.5, stroke = 0.5) +
 scale_fill_manual("", values = c("white", slate)) +

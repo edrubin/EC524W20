@@ -62,9 +62,9 @@ Welcome to Economics 524 (424): Prediction and machine-learning in econometrics,
 [**003 - Resampling methods**](https://raw.githack.com/edrubin/EC524W20/master/lecture/003/003-slides.html)
 
 1. Review
-1. Hold-out methods
-  - The validation-set approach
-  - Cross validation
+1. The validation-set approach
+1. Leave-out-out cross validation
+1. k-fold cross validation
 1. The bootstrap
 
 [*In-class:* Validation-set exercise (Kaggle)](https://www.kaggle.com/edwardarubin/ec524-lecture-003/)
