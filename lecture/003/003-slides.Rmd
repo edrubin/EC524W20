@@ -537,7 +537,7 @@ loocv_df = expand_grid(
 ```
 
 ---
-```{R, plot-loocv-1, echo = F, fig.height = 3, dependson = "data-loocv"}
+```{R, plot-loocv-1, echo = F, fig.height = 3, dependson = "data-loocv", cache = T}
 ggplot(data = loocv_df, aes(x, y, fill = grp_1, color = grp_1)) +
 geom_point(shape = 21, size = 4.5, stroke = 0.5) +
 scale_fill_manual("", values = c("white", slate)) +
@@ -548,7 +548,7 @@ theme(legend.position = "none")
 
 .slate[Observation 1's turn for validation produces MSE.sub[1]].
 ---
-```{R, plot-loocv-2, echo = F, fig.height = 3, dependson = "data-loocv"}
+```{R, plot-loocv-2, echo = F, fig.height = 3, dependson = "data-loocv", cache = T}
 ggplot(data = loocv_df, aes(x, y, fill = grp_2, color = grp_2)) +
 geom_point(shape = 21, size = 4.5, stroke = 0.5) +
 scale_fill_manual("", values = c("white", slate)) +
@@ -559,7 +559,7 @@ theme(legend.position = "none")
 
 .slate[Observation 2's turn for validation produces MSE.sub[2]].
 ---
-```{R, plot-loocv-3, echo = F, fig.height = 3, dependson = "data-loocv"}
+```{R, plot-loocv-3, echo = F, fig.height = 3, dependson = "data-loocv", cache = T}
 ggplot(data = loocv_df, aes(x, y, fill = grp_3, color = grp_3)) +
 geom_point(shape = 21, size = 4.5, stroke = 0.5) +
 scale_fill_manual("", values = c("white", slate)) +
@@ -570,7 +570,7 @@ theme(legend.position = "none")
 
 .slate[Observation 3's turn for validation produces MSE.sub[3]].
 ---
-```{R, plot-loocv-4, echo = F, fig.height = 3, dependson = "data-loocv"}
+```{R, plot-loocv-4, echo = F, fig.height = 3, dependson = "data-loocv", cache = T}
 ggplot(data = loocv_df, aes(x, y, fill = grp_4, color = grp_4)) +
 geom_point(shape = 21, size = 4.5, stroke = 0.5) +
 scale_fill_manual("", values = c("white", slate)) +
@@ -581,7 +581,7 @@ theme(legend.position = "none")
 
 .slate[Observation 4's turn for validation produces MSE.sub[4]].
 ---
-```{R, plot-loocv-5, echo = F, fig.height = 3, dependson = "data-loocv"}
+```{R, plot-loocv-5, echo = F, fig.height = 3, dependson = "data-loocv", cache = T}
 ggplot(data = loocv_df, aes(x, y, fill = grp_5, color = grp_5)) +
 geom_point(shape = 21, size = 4.5, stroke = 0.5) +
 scale_fill_manual("", values = c("white", slate)) +
@@ -592,7 +592,7 @@ theme(legend.position = "none")
 
 .slate[Observation 5's turn for validation produces MSE.sub[5]].
 ---
-```{R, plot-loocv-n, echo = F, fig.height = 3, dependson = "data-loocv"}
+```{R, plot-loocv-n, echo = F, fig.height = 3, dependson = "data-loocv", cache = T}
 ggplot(data = loocv_df, aes(x, y, fill = grp_n, color = grp_n)) +
 geom_point(shape = 21, size = 4.5, stroke = 0.5) +
 scale_fill_manual("", values = c("white", slate)) +
