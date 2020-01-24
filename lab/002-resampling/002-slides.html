@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+  <head>
+    <title>Lab .mono[002]</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Edward Rubin" />
+    <meta name="date" content="2020-01-24" />
+    <link href="002-slides_files/remark-css-0.0.1/default.css" rel="stylesheet" />
+    <link href="002-slides_files/remark-css-0.0.1/metropolis.css" rel="stylesheet" />
+    <link href="002-slides_files/remark-css-0.0.1/metropolis-fonts.css" rel="stylesheet" />
+    <script src="002-slides_files/htmlwidgets-1.5.1/htmlwidgets.js"></script>
+    <script src="002-slides_files/jquery-1.12.4/jquery.min.js"></script>
+    <link href="002-slides_files/datatables-css-0.0.0/datatables-crosstalk.css" rel="stylesheet" />
+    <script src="002-slides_files/datatables-binding-0.8/datatables.js"></script>
+    <link href="002-slides_files/dt-core-1.10.16/css/jquery.dataTables.min.css" rel="stylesheet" />
+    <link href="002-slides_files/dt-core-1.10.16/css/jquery.dataTables.extra.css" rel="stylesheet" />
+    <script src="002-slides_files/dt-core-1.10.16/js/jquery.dataTables.min.js"></script>
+    <link href="002-slides_files/crosstalk-1.0.0/css/crosstalk.css" rel="stylesheet" />
+    <script src="002-slides_files/crosstalk-1.0.0/js/crosstalk.min.js"></script>
+    <link rel="stylesheet" href="my-css.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Lab .mono[002]
+## Cross validation and simulation
+### Edward Rubin
+### 24 January 2020
+
+---
+
+exclude: true
+
+
+---
+layout: true
+# Admin
+
+---
+class: inverse, middle
+---
+name: admin
+
+.b[In lab today]
+- Check in
+- Cross validation and parameter tuning (with `caret`)
+- Simulation
+
+.b.it[Upcoming]
+- Keep up with readings (.it[ISL] 3–4, 6)
+- Assignment will be posted soon
+---
+name: check-in
+layout: false
+# Check in
+## Some questions
+
+(Be honest)
+
+1. How is .b[this class] going?
+
+  - Are there areas/topics you would like more coverage/review?
+  - How is the speed?
+  - How were the assignments?
+  - Is there more we or you could be doing?
+--
+
+1. How is your .b[quarter] going?
+
+1. How is your .b[program] going?
+--
+
+1. .b[Anything] else?
+---
+layout: true
+# Cross validation
+
+---
+class: inverse, middle
+---
+name: cv-review
+## Review
+
+.b[Cross validation].super[.pink[†]] (CV) aims to .pink[estimate out-of-sample performance]
+
+.footnote[
+.pink[†] Plus other resampling (and specifically hold-out) methods
+]
+
+1. .hi-pink[efficiently], using the full dataset to both .it[train] and .it[test] (validate)
+
+1. .hi-pink[without overfitting], separating observations used to .it[train] or .it[test]
+
+--
+
+.b[CV] (_e.g._, LOOCV and `\(k\)`-fold) aids with .purple[several tasks]
+
+- .hi-purple[model selection]: choosing key parameters for a model's flexibility
+&lt;br&gt;_e.g._, .it[K] in KNN, polynomials and interactions for regression (.it[AKA] tuning)
+
+- .hi-purple[model assessment]: determining how well the model performs
+&lt;br&gt;_e.g._, estimating the true test MSE, MAE, or error rate
+
+---
+layout: true
+# Cross validation
+## `\(k\)`-fold cross validation, review
+
+1. .b[Divide] training data into `\(k\)` folds (mutally exclusive groups)
+1. .it[For each fold] `\(i\)`:
+  - .b[Train] your model on all observations, excluding members of `\(i\)`
+  - .b[Test] and .b[assess] model.sub[i] on the members of fold `\(i\)`, _e.g._, MSE.sub[i]
+1. .b[Estimate test performance] by averaging across folds, _e.g._, Avg(MSE.sub[i])
+
+---
+
+--
+
+
+
+&lt;img src="002-slides_files/figure-html/plot-cvk-0b-1.svg" style="display: block; margin: auto;" /&gt;
+Each fold takes a turn at .hi-slate[validation]. The other `\(k-1\)` folds .hi-purple[train].
+---
+
+&lt;img src="002-slides_files/figure-html/plot-cvk-1-1.svg" style="display: block; margin: auto;" /&gt;
+For `\(k=5\)`, fold number `\(1\)` as the .hi-slate[validation set] produces MSE.sub[k=1].
+---
+
+&lt;img src="002-slides_files/figure-html/plot-cvk-2-1.svg" style="display: block; margin: auto;" /&gt;
+For `\(k=5\)`, fold number `\(2\)` as the .hi-slate[validation set] produces MSE.sub[k=2].
+---
+
+&lt;img src="002-slides_files/figure-html/plot-cvk-3-1.svg" style="display: block; margin: auto;" /&gt;
+For `\(k=5\)`, fold number `\(3\)` as the .hi-slate[validation set] produces MSE.sub[k=3].
+---
+
+&lt;img src="002-slides_files/figure-html/plot-cvk-4-1.svg" style="display: block; margin: auto;" /&gt;
+For `\(k=5\)`, fold number `\(4\)` as the .hi-slate[validation set] produces MSE.sub[k=4].
+---
+
+&lt;img src="002-slides_files/figure-html/plot-cvk-5-1.svg" style="display: block; margin: auto;" /&gt;
+For `\(k=5\)`, fold number `\(5\)` as the .hi-slate[validation set] produces MSE.sub[k=5].
+---
+layout: true
+# Cross validation
+
+---
+name: cv-independence
+## Independence
+
+.b[Resampling methods] assume something similar to independence: our resampling must match the original sampling procedure.
+
+--
+
+If observations are "linked" but we resample independently, CV may break.
+
+--
+
+If we have .hi-pink[repeated observations] on individuals `\(i\)` through time `\(t\)`:
+- It's pretty likely `\(y_{i,t}\)` and `\(y_{i,t+1}\)` are related—and maybe `\(y_{i,t+\ell}\)`.
+- Initial sample may draw individuals `\(i\)`, but .it[standard] CV ignores time.
+
+--
+
+In other case, .hi-pink[some individuals are linked with other individuals], *e.g.*,
+- `\(y_{i,t}\)` and `\(y_{j,t}\)` my be correlated if `\(i\)` and `\(j\)` live togother
+- Also: `\(y_{i,t}\)` and `\(y_{j,t+\ell}\)` could be correlated
+
+---
+## Independence
+
+In other words: Spatial or temporal .b[dependence] between observations .b[breaks the separation between training and testing samples].
+
+--
+
+Breaking this separation train-test separation leads us back to
+
+- .b[Overfitting] the sample—since training and testing samples are linked
+
+- .b[Overestimating model performance]—the estimated test MSE will be more of a training MSE.
+
+--
+
+.b[Solutions] to this problem involve .hi-pink[matching the resampling process] to the .hi-pink[original sampling and underlying dependence].
+
+.ex[Examples:] Spatial `\(k\)`-fold CV (SKCV) and blocked time-series CV
+
+---
+## Dependence
+
+.qa[Q] So how big of a deal is this type of depedence?
+
+--
+
+.qa[A] Let's see! (Sounds like it's time for a simulation.)
+
+---
+layout: true
+# Simulations
+
+---
+class: inverse, middle
+
+---
+name: sim-mc
+## Monte Carlo
+
+.b[Monte Carlo simulation].super[.pink[†]] allows us model probabilistic questions.
+
+.footnote[
+.pink[†] Also called Monte Carlo methods, experiments, *etc.*
+]
+
+1. .b[Generate a population] defined by some data-generating process (DGP), a model of how your fake/simulated world works.
+--
+1. Repeatedly .b[draw samples] `\(s\)` from your population. .it[For each] `\(s\)`:
+  - Apply the relevant methods, sampling techniques, estimators, *etc.*
+  - Record your outcome(s) of interest (_e.g._, MSE or error rate), `\(O_s\)`
+--
+1. Use the .b[distribution] of the `\(O_s\)` to .it[learn] about your methods, sampling techniques, and/or estimators—the mean, bias, variability *etc.*
+
+--
+
+.note[Ex.sub[1]] We can change DGP in (1) to see how performance (3) changes.
+&lt;br&gt;.note[Ex.sub[2]] Holding DGP (1) constant, we can compare competing methods (2).
+
+---
+layout: false
+class: clear, middle
+
+Sound familiar? Monte Carlo is very related to resampling methods.
+
+---
+layout: true
+# Monte Carlo
+
+---
+name: sim-intro
+## Introductory example: Define the question
+
+It's always helpful to clearly define the question you want to answer, _e.g._:
+
+.b[Example question:] Is OLS unbiased when `\(\varepsilon_i\sim\)` Uniform(0, 1)?
+
+--
+
+Now we know our goal: Determine unbiasedness (mean of distribution).
+
+---
+## Introductory example: DGP and population
+
+We'll use the DGP `\(y_i = 3 + 6 x_i + \varepsilon_i\)`,
+&lt;br&gt;where `\(\varepsilon_i\sim\)` Uniform(0, 1), and `\(x_i\sim\)` N(0, 1).
+
+
+--
+
+
+```r
+# Set seed
+set.seed(123)
+# Define population size
+pop_size = 1e4
+# Generate population
+ols_pop = tibble(
+  # Generate disturbances: Using Uniform(0,1)
+  e = runif(pop_size, min = 0, max = 1),
+  # Generate x: Using N(0,1)
+  x = rnorm(pop_size),
+  # Calculate y
+  y = 3 + 6 * x + e
+)
+```
+
+---
+## Introductory example: A single iteration
+
+Now we want to write a function that
+1. .b[samples] from the population `ols_pop`
+2. .b[estimates OLS] regression on the sample
+3. .b[records] the OLS estimate
+
+--
+
+
+```r
+ols_function = function(iter, sample_size) {
+  # Draw a sample of size 'sample_size'
+  ols_sample = sample_n(ols_pop, size = sample_size)
+  # Estimate OLS
+  ols_est = lm(y ~ x, data = ols_sample)
+  # Return coefficients and iteration number
+  data.frame(b0 = coef(ols_est)[1], b1 = coef(ols_est)[2], iter)
+}
+```
+
+---
+## Introductory example: Run the simulation
+
+For the simulation, we run our single-iteration function `ols_function()`
+&lt;br&gt;.b[a bunch] of times (like 10,000) and then collect the results..super[.pink[†]]
+
+.footnote[
+.pink[†] The `apply()` family and parallelization are both key here (`future.apply` combines them).
+]
+
+
+
+
+
+
+```r
+# Set up parallelization (with 12 cores)
+# Warning: Can take a little time to run (esp w/out 12 cores)
+plan(multiprocess, workers = 12)
+# Set seed
+set.seed(12345)
+# Run simulation
+ols_sim = future_lapply(
+  X = 1:1e4,
+  FUN = ols_function,
+  sample_size = 50,
+  future.seed = T
+) %&gt;% bind_rows()
+```
+
+---
+## Introductory example: Results
+
+Now we're ready to summarize the results.
+
+We wanted to know .b[if OLS is still unbiased].
+
+Thus, plotting the .b[distributions of estimates] for `\(\beta_0\)` and `\(\beta_1\)` will be of interest—.b[especially the means] of these distributions.
+
+.note[Recall:] If an estimator is unbiased, then the mean of its distribution should like up with the parameter it is attempting to estimate.
+---
+layout: true
+class: clear, middle
+
+---
+
+.b[Considering OLS's unbiasedness:] The distribution of `\(\hat{\beta}_0\)`
+&lt;img src="002-slides_files/figure-html/plot-ex-b0-1.svg" style="display: block; margin: auto;" /&gt;
+---
+
+.b[Considering OLS's unbiasedness:] The distribution of `\(\hat{\beta}_1\)`
+&lt;img src="002-slides_files/figure-html/plot-ex-b1-1.svg" style="display: block; margin: auto;" /&gt;
+---
+layout: false
+# Monte Carlo
+## Introductory example: Conclusion
+
+When our disturbances are distributed as Uniform(0,1)
+
+1. OLS is biased for `\(\beta_0\)` (the intercept)
+1. OLS is still unbiased for `\(\beta_1\)` (the slope)
+
+... and we were able to learn all of this information by simulation.
+
+---
+class: clear, middle
+
+Now back to our question on `\(k\)`-fold cross validation and interdependence.
+
+---
+layout: true
+# Simulation: `\(k\)`-fold CV and dependence
+
+---
+name: sim-kcv-intro
+## Our question
+
+Let's write our previous question in a way we can try to answer it.
+
+--
+
+.b[Question:] How does correlation between observations affect the performance of `\(k\)`-fold cross validation?
+
+---
+layout: true
+# Simulation: `\(k\)`-fold CV and dependence
+## Our question
+
+Let's write our previous question in a way we can try to answer it.
+
+.b[Question:] How does .hi-purple[correlation between observations] affect the .hi-orange[performance] of `\(\color{#e64173}{k}\)`.hi-pink[-fold cross validation]?
+
+---
+
+We need to define some terms.
+
+---
+
+.hi-purple.it[correlation between observations]
+
+- Observations can correlate in many ways. Let's keep it simple: we will simulate repeated observations (through time, `\(t\)`) on individuals, `\(i\)`.
+- .hi-purple[DGP:] Continuous `\(y_{i,t}\)` has a predictor `\(x_{i,t}\)` and two random disturbances
+$$
+`\begin{align}
+  y_{i,t} &amp;= 3 x_{i,t} - 2 x_{i,t}^2 + 0.1 x_{i,t}^4 + \gamma_i + \varepsilon_{i,t} \\
+  x_{i,t} &amp;= 0.9 x_{i,t-1} + \eta_{i,t} \\
+  \varepsilon_{i,t} &amp;= 0.9 \varepsilon_{i,t-1} + \nu_{i,t} &amp;
+\end{align}`
+$$
+
+---
+
+.hi-orange.it[performance]
+- We will focus on .hi-orange[MSE] for observations the model never saw.
+- .it[Note:] .it[En route], we will meet .it[root] mean squared error (RMSE).
+$$
+`\begin{align}
+  \text{RMSE}=\sqrt{\text{MSE}}
+\end{align}`
+$$
+
+---
+
+`\(\color{#e64173}{k}\)`.hi-pink[-fold cross validation]
+- We'll stick with 5-fold cross validation.
+- Our answer shouldn't change too much based upon `\(k\)`.
+- Feel free to experiment later...
+
+---
+layout: true
+class: clear
+---
+name: sim-kcv-population
+### Set up population
+- Set seed
+- Define number of individuals `N` and time periods `T`
+
+
+```r
+# Set seed
+set.seed(12345)
+# Size of the population
+N = 1000
+# Number of time periods per individual
+T = 50
+# Create the indices of our population
+pop_df = expand_grid(
+  i = 1:N,
+  t = 1:T
+)
+```
+
+---
+### Build population
+- Generate temporally correlated disturbances and predictor `\((x_{i,t})\)`
+- Calculate outcome variable `\(y_{i,t}\)`
+
+
+```r
+# Disturbance for (i,t): Correlated within time (not across individuals)
+pop_df %&lt;&gt;%
+  group_by(i) %&gt;%
+  mutate(
+    x = arima.sim(model = list(ar = c(0.9)), n = T) %&gt;% as.numeric(),
+    e_it = arima.sim(model = list(ar = c(0.9)), n = T) %&gt;% as.numeric()
+  ) %&gt;% ungroup()
+# Disturbance for (i): Constant within individual
+pop_df %&lt;&gt;%
+  group_by(i) %&gt;%
+  mutate(e_i = runif(n = 1, min = -100, max = 100)) %&gt;%
+  ungroup()
+# Calculate 'y'; drop disturbances
+pop_df %&lt;&gt;% mutate(
+  y = e_i + 3 * x - 2 * x^2 + 0.1 * x^4 + e_it
+) %&gt;% select(i, t, y, x)
+```
+
+---
+class: clear
+
+Notice the .b[correlation within observation] across time.
+&lt;img src="002-slides_files/figure-html/plot-sim-cv-i-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+class: clear
+
+Viewing the correlation in `\(x_{i,t}\)` and `\(y_{i,t}\)`.
+&lt;img src="002-slides_files/figure-html/plot-sim-cv-it-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+class: middle
+
+.b[Next steps:] Write out a single iteration (to become a function).
+
+1. Draw a sample.
+
+1. Estimate a model: We're going to use KNN regression.
+
+1. Tune our model: We will use 5-fold CV to choose 'K'.
+
+1. Assess the model's performance (CV and in the population).
+---
+name: sim-kcv-sample
+### Draw a sample
+
+
+```r
+# Define sample size (will be in input of our function)
+n_i = 50
+# Draw sample
+i_sampled = sample.int(N, size = n_i)
+# Draw a sample
+sample_df = pop_df %&gt;% filter(i %in% i_sampled)
+```
+
+`sample.int(n, size)` draws `size` integers between 1 and `n`.
+
+Note that we are .b[sampling individuals] (`i`).
+
+---
+name: sim-kcv-model
+### Tune and estimate a model
+
+
+
+
+
+
+```r
+# Define number of folds
+k_folds = 5
+# k-fold CV
+cv_output = train(
+  # The relationship: y as a function of w and x
+  y ~ .,
+  # The method of estimating the model (linear regression)
+  method = "knn",
+  # The training data (which will be used for cross validation)
+  data = sample_df %&gt;% select(y, x),
+  # Controls for the model training: k-fold cross validation
+  trControl = trainControl(method = "cv", number = k_folds),
+  # Allow cross validation to choose best value of K (# nearest neighbors)
+  tuneGrid = expand.grid(k = seq(1, 500, by = 5))
+)
+```
+
+`train()` (from the `caret` package) assists in many training/tuning tasks (note `tuneGrid` argument)—including pre-processing data.
+---
+You can actually plot the results from `train()`, _i.e._,
+
+
+```r
+ggplot(cv_output) + theme_minimal()
+```
+
+&lt;img src="002-slides_files/figure-html/plot-cv-real-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+
+The output from `train()` also contains a lot of additional information, _e.g._,
+
+
+```r
+cv_output$results
+```
+
+<div id="htmlwidget-f947a71553fc5e8c0bef" style="width:95%;height:25%;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-f947a71553fc5e8c0bef">{"x":{"filter":"none","data":[[1,6,11,16,21,26,31,36,41,46,51,56,61,66,71,76,81,86,91,96,101,106,111,116,121,126,131,136,141,146,151,156,161,166,171,176,181,186,191,196,201,206,211,216,221,226,231,236,241,246,251,256,261,266,271,276,281,286,291,296,301,306,311,316,321,326,331,336,341,346,351,356,361,366,371,376,381,386,391,396,401,406,411,416,421,426,431,436,441,446,451,456,461,466,471,476,481,486,491,496],[82.1992940608077,63.8586250228631,61.771268455598,60.8689478768504,60.5654627913584,60.2513773756917,60.1026006310117,59.9187240312011,59.92301794576,59.7490189274344,59.6398384220464,59.661469774014,59.6302231858952,59.6693838924404,59.7005469685666,59.7237074602164,59.6998044039019,59.7146225062226,59.6946022425095,59.6896022239908,59.629146188462,59.6236701690299,59.6081323770914,59.635278706989,59.6438631179485,59.6112182674142,59.6345628535731,59.6168736458334,59.6087665629194,59.5910978777192,59.6133234361122,59.6158551625908,59.6244511006849,59.6506480766522,59.651306648185,59.66020034674,59.6601481463262,59.6781209146959,59.7043006581783,59.7150919495335,59.6998191085792,59.7280314353206,59.7335101065158,59.7485024687415,59.7410430141816,59.760529378815,59.7359950249698,59.7499312478788,59.7606815782498,59.7754420224575,59.7797600400519,59.7631824537494,59.7780459730854,59.7902423693544,59.8055398404214,59.8095636218663,59.8045776666599,59.805402286933,59.7928400590753,59.8026937588569,59.8102565347774,59.8205533026392,59.8226141047254,59.8250999940181,59.8389771174745,59.8473907315906,59.8408174730615,59.8532793941836,59.8524085412118,59.85749666863,59.8537510951968,59.845998247723,59.8472888254439,59.8583074175993,59.8702006673245,59.8587316338342,59.8532927925024,59.844136975084,59.8422526170179,59.8393385772468,59.8317778960329,59.8436920082887,59.8607766062526,59.8678415678954,59.8736316864437,59.879016457036,59.8864088043124,59.8874754955701,59.8817675490159,59.8875851020249,59.8893945732659,59.8819577311836,59.8829091926259,59.8819448648128,59.8791908563147,59.8807991830864,59.8833631163785,59.879662997982,59.8937515841837,59.8918086729795],[0.00568533925149552,0.0120672261596404,0.0146410620142248,0.017522657560502,0.016504375156137,0.01848654192158,0.0187898285825257,0.020783336751772,0.0181257454228008,0.0208168012515336,0.0229732778999848,0.0216021661777674,0.0218540269990979,0.0202756728970992,0.01919302948289,0.0184165915130187,0.0187552513419991,0.0177922818936436,0.0180528061445522,0.0183524974918162,0.0197659017550558,0.0196958130268272,0.020194747308215,0.0193082897381316,0.019132244678822,0.0201618404159665,0.019738955831633,0.0198609447559835,0.0199804583519323,0.0205911116954194,0.0199767871397521,0.0201602702273335,0.0196573148470154,0.0189044996835798,0.0188632087500285,0.0187079295639523,0.018774569681719,0.018298261881724,0.0175146184707392,0.0171516512257408,0.0175183211318504,0.0167920319370029,0.0166315617145521,0.0162635354177642,0.0164085597259597,0.0157532230052833,0.0163353655158523,0.0158456327911383,0.0154967174673017,0.0151107671940393,0.0152006540616005,0.0156710268199734,0.0153377322843197,0.0150102264421996,0.01453745583895,0.0145603313136233,0.0146751857114397,0.0146779881802942,0.0150079028034145,0.0146555060279123,0.0145664544839929,0.0143662224403702,0.0141673591120244,0.0140024699308258,0.0135172788443035,0.0132557426412244,0.0133813902687736,0.0130123555674134,0.0129834488395866,0.0129524085118824,0.0129970255691534,0.0129460004342385,0.013057246190013,0.0127735214755825,0.0123827869414141,0.0127045909660653,0.0126457398144339,0.0128992865025102,0.0128437121598037,0.0129248368521301,0.0130887905967595,0.0125268452753023,0.0119754838275428,0.011722712316036,0.011464190203042,0.0111852595264969,0.0108519229939118,0.0107194001264206,0.0109934552441607,0.0106301294407276,0.010488964405565,0.0108312729143441,0.0108605261743172,0.0107123183450762,0.0107674039037168,0.0106063448442751,0.010518310289575,0.0107909912042392,0.010213361350242,0.0102091663915082],[66.3818086302111,54.8002232011708,53.8559734828493,53.2161216213552,53.064178520358,52.8470297043898,52.7367472606215,52.6420637552633,52.6817614712937,52.4831130450871,52.3894611600188,52.3999830438449,52.3880301550466,52.4160360811488,52.4427721518711,52.4507013636709,52.4472247382813,52.4562699877668,52.4276840710615,52.4437074999915,52.3973018351609,52.3907260966846,52.3758362489767,52.4107334644681,52.4224512672939,52.4180888964433,52.4343009303761,52.4060958386469,52.3943326132477,52.3757022703224,52.4017545156074,52.3858939877296,52.387896040172,52.414408508518,52.4086692654895,52.4223616602603,52.4136131482694,52.4202182634934,52.4470219081087,52.4612989811018,52.4387283567178,52.4623600391017,52.460424101641,52.4739183860975,52.4690071024048,52.4873446861672,52.4571551369955,52.4699436375257,52.4812642374503,52.4934754671444,52.5035413664541,52.491940744413,52.5085355429654,52.5177070639669,52.534705558226,52.5370338954992,52.5324622650983,52.5354007647796,52.5202390378894,52.5342987402535,52.5445266148567,52.5524623852797,52.5535538507379,52.5593872167996,52.5727139941053,52.5827524939671,52.5890510822839,52.5977513047603,52.5943673294717,52.5993332343604,52.6048194125578,52.6085771415954,52.6124801671447,52.6247781617655,52.6334232821447,52.6320381959975,52.636053019353,52.6327484478479,52.641216068579,52.6498767426218,52.6426283789464,52.6564123439966,52.6761203413442,52.6855877144806,52.6991772278755,52.7103008319691,52.7196234989275,52.7244582060273,52.7262333092415,52.737640085577,52.7443211018322,52.742266386442,52.7534364637494,52.7600548592316,52.7623193906045,52.7699814445039,52.7776588205177,52.7803013987887,52.7967572839876,52.7977072149864],[1.75117419089709,2.30288143429353,1.61581517011098,1.51171366221498,1.29893899848462,1.3378010822567,1.20663264842911,1.15832236461462,0.920648010091097,0.905051116751924,0.941053664250609,0.864629144111944,0.768125123229953,0.739762464557459,0.703337342500383,0.724247532684795,0.692559980879002,0.661100612863108,0.64265638275741,0.657780010060073,0.655992411118341,0.586184463086953,0.589456626297268,0.579038777427979,0.568013151658016,0.557417507699635,0.556736293571767,0.536146860502802,0.534185021511483,0.560836816261443,0.546273311624204,0.566643625629999,0.566644232481238,0.560147428088361,0.562098309830997,0.532183859916049,0.536285202669736,0.550259016713353,0.581639215862867,0.575487017801759,0.577084468743374,0.575101593669988,0.560020306143432,0.555081103913439,0.549288195006428,0.544156376195812,0.548254201425871,0.560656611463932,0.558889167827411,0.549249887500252,0.548618170698446,0.55863992395442,0.55781816949394,0.564939384995374,0.576230637031932,0.586313139432657,0.587200339684204,0.589847350747532,0.582199589350674,0.576840683997916,0.57292903394583,0.570499712916863,0.570813669521719,0.580257521434833,0.582216634689033,0.596855703412585,0.606366010684094,0.61858171227022,0.61016991820174,0.610578463628069,0.605818942785924,0.596467012688029,0.597010135041854,0.601986802486707,0.607316486729895,0.599484084952085,0.600424545684361,0.598764967825877,0.600209950472324,0.595334527747981,0.586368843996742,0.582763661744848,0.588621574401466,0.58413225855605,0.591115602488177,0.584648036929931,0.583538095556631,0.579574527017704,0.578312987676855,0.58991060792789,0.587371681662932,0.58695384140811,0.587580825027547,0.581401314578342,0.591133318933313,0.584221980701924,0.583058238453687,0.588066771823895,0.583204045108954,0.57687999116068],[0.00628527269852493,0.0158486214776749,0.0172131718985859,0.0178734947958606,0.0157845256326581,0.0199661281995153,0.0179513457574378,0.0187272120501379,0.0125407648260507,0.013399840358932,0.015623036717296,0.0139950118800781,0.0129094719753408,0.011789975671819,0.00991456293574433,0.0102808396935271,0.0100241321733613,0.00825763061327178,0.00809891348193219,0.00950674410235474,0.00957475839198029,0.00850189251567713,0.00904365489403611,0.00820281258578471,0.0086207438981691,0.00924649266595667,0.00963883695839281,0.00855939121440864,0.00820259803474387,0.0091060762480022,0.00909581734443204,0.0100851200840514,0.00926159220753481,0.00903408856254621,0.00908983947876593,0.00931613667184472,0.00956211370594413,0.00961548895202413,0.00938804718474306,0.00909189390929764,0.00895869584475408,0.00902070223053655,0.00889759346338741,0.00903794952680251,0.00899067704028284,0.00857654450646631,0.0086514419863347,0.0085049386629682,0.00845165358487367,0.0085474596023277,0.00916068494536679,0.0096053133031881,0.00968289921218773,0.00974997180784624,0.00974655030442549,0.010079126700375,0.0100178705989006,0.0102451092033849,0.0103284628565359,0.0101322041048113,0.0104512842572782,0.0105427667638658,0.010271348640285,0.0100164177108902,0.00995214545922983,0.00997206742407733,0.0100021471259968,0.0100313928610602,0.0101391834445738,0.0103028387923707,0.0102270078637085,0.0097576439444998,0.010282899926257,0.0102774509121715,0.0101654957209679,0.0105167760406759,0.01006932718299,0.0103152323733989,0.0101052025445065,0.0102037668399657,0.0102215788413802,0.00966979784508746,0.0095041519806101,0.00952592298891709,0.0093308175138731,0.00906995575440023,0.00860451535103039,0.00845760062278726,0.0088763840847894,0.00821480461972343,0.00806564151800824,0.00852930933158279,0.00877319743216205,0.00838936713696141,0.0084153861883901,0.00826288626340921,0.00804924749677309,0.00847965216821871,0.00793879192913419,0.00790032912195948],[1.90431314594759,2.04267218307012,1.20624163721825,1.32127375207674,1.19091265515069,1.13425934449498,1.05002499627628,0.993984984669306,0.791604083544002,0.775304599411944,0.824440052664851,0.721114028550744,0.619189894664675,0.555087711287183,0.539358603398831,0.537491907096481,0.546741971587714,0.496029630691817,0.501466563806875,0.486214811715606,0.476174808272386,0.424897208494888,0.410950429459949,0.411961145818493,0.409073889272175,0.417439642604013,0.432083898430772,0.409884787385709,0.415894566037981,0.447126670811438,0.433480572576712,0.457408830150264,0.432787919419085,0.425226695333717,0.405138453071928,0.388926111694343,0.376431255262086,0.392804838480805,0.389409073779181,0.401077753175337,0.418185291386509,0.423323733670123,0.398636674672599,0.383668033782428,0.381603469198765,0.384362505173607,0.377153776135752,0.367313015485869,0.356106625238,0.356921478084408,0.380543593666214,0.377217318516705,0.369143446470498,0.369845936305343,0.383612902810517,0.392130733188958,0.388978486330303,0.388167182206116,0.385503249192928,0.388564661010209,0.398000833740469,0.390472622470892,0.382926508582365,0.391193557170519,0.386857873158133,0.390228160994569,0.387714491495861,0.402102263070267,0.39491830829199,0.404130728633315,0.396146664677611,0.395259363405531,0.39888599700501,0.401568496470257,0.403180571901088,0.395031770895954,0.383159899598254,0.382787735860886,0.391097800507251,0.389532692415422,0.389071745149366,0.388024803647306,0.396388092003629,0.404527995043194,0.415653954124921,0.414797780795852,0.40817861514701,0.402850848156087,0.393242292353481,0.396062617224827,0.394920959595055,0.395248917346448,0.396527714134126,0.392800930587949,0.402566639510668,0.395860777801671,0.389682600968003,0.396478806437202,0.385937232698915,0.389833031759505]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>k<\/th>\n      <th>RMSE<\/th>\n      <th>Rsquared<\/th>\n      <th>MAE<\/th>\n      <th>RMSESD<\/th>\n      <th>RsquaredSD<\/th>\n      <th>MAESD<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"t","columnDefs":[{"className":"dt-right","targets":[0,1,2,3,4,5,6]}],"order":[],"autoWidth":false,"orderClasses":false,"rowCallback":"function(row, data) {\nDTWidget.formatRound(this, row, data, 1, 3, 3, \",\", \".\");\nDTWidget.formatRound(this, row, data, 2, 3, 3, \",\", \".\");\nDTWidget.formatRound(this, row, data, 3, 3, 3, \",\", \".\");\nDTWidget.formatRound(this, row, data, 4, 3, 3, \",\", \".\");\nDTWidget.formatRound(this, row, data, 5, 3, 3, \",\", \".\");\nDTWidget.formatRound(this, row, data, 6, 3, 3, \",\", \".\");\n}"}},"evals":["options.rowCallback"],"jsHooks":[]}</script>
+
+
+```r
+cv_output$resample
+```
+
+<div id="htmlwidget-25f27505f427e6ff50b8" style="width:50%;height:33%;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-25f27505f427e6ff50b8">{"x":{"filter":"none","data":[[59.4776662899475,60.3158375824341,59.2599895032011,58.9166064507636,59.9853895622496],[0.00815011344948366,0.0151295639370322,0.0251360475984157,0.0315830502411952,0.0229567832509702],[52.4207717099574,52.7233108999121,52.5057396845862,51.6028269053227,52.6258621518334],["Fold4","Fold2","Fold3","Fold1","Fold5"]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>RMSE<\/th>\n      <th>Rsquared<\/th>\n      <th>MAE<\/th>\n      <th>Resample<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"t","columnDefs":[{"className":"dt-right","targets":[0,1,2]}],"order":[],"autoWidth":false,"orderClasses":false,"rowCallback":"function(row, data) {\nDTWidget.formatRound(this, row, data, 0, 3, 3, \",\", \".\");\nDTWidget.formatRound(this, row, data, 1, 3, 3, \",\", \".\");\nDTWidget.formatRound(this, row, data, 2, 3, 3, \",\", \".\");\n}"}},"evals":["options.rowCallback"],"jsHooks":[]}</script>
+---
+class: middle
+
+Now we .b[assess the performance] of our chosen/tuned model.
+
+1. Record the .hi-purple[CV-based MSE] (already calculated by `train()`).
+
+2. Since we know the population, we can calculate the .hi-orange[true test MSE].
+
+.hi-orange[(2)] is usually not available to use—you can see how simulation helps.
+---
+### Assess performance
+- Subset to unseen data (individuals not sampled)
+- Evaluate prediction performance on new individuals
+
+
+```r
+# Subset to unseen data
+test_df = pop_df %&gt;% filter(i %&gt;% is_in(i_sampled) %&gt;% not())
+# Make predictions on
+predictions = predict(
+  cv_output,
+  newdata = test_df
+)
+# Calculate RMSE in full population
+rmse_true = mean((test_df$y - predictions)^2) %&gt;% sqrt()
+rmse_true
+```
+
+```
+#&gt; [1] 60.98547
+```
+
+---
+Comparing .hi-purple[CV RMSE] to .hi-orange[true test RMSE]
+
+&lt;img src="002-slides_files/figure-html/sim-assess-plot-1.svg" style="display: block; margin: auto;" /&gt;
+---
+class: middle
+
+Now we basically wrap the last 7 slides into a function and we're set!
+---
+name: sim-kcv-function
+### Function: One iteration of the simulation
+
+
+```r
+# Our function for a single iteration of the simulation
+sim_fun = function(iter, n_i = 50, k_folds = 5) {
+  # Draw sample
+  i_sampled = sample.int(N, size = n_i)
+  # Draw a sample
+  sample_df = pop_df %&gt;% filter(i %in% i_sampled)
+  # k-fold CV
+  cv_output = cv_function(k_folds = k_folds)
+  # Find the estimated MSE
+  mse_est = mean(cv_output$resample$RMSE^2)
+  # Subset to unseen data
+  test_df = pop_df %&gt;% filter(i %&gt;% is_in(i_sampled) %&gt;% not())
+  # Make predictions on true test data
+  predictions = predict(cv_output, newdata = test_df)
+  # Calculate RMSE in full population
+  mse_true = mean((test_df$y - predictions)^2)
+  # Output results
+  data.frame(iter, k = cv_output$bestTune$k, mse_est, mse_true)
+}
+```
+Notice that we can define default values for our function's arguments.
+
+---
+### Function: `\(k\)`-fold CV of KNN model for a sample
+
+
+```r
+# Wrapper function for caret::train()
+cv_function = function(k_folds) {
+  # The relationship: y as a function of w and x
+  y ~ .,
+  # The method of estimating the model (linear regression)
+  method = "knn",
+  # The training data (which will be used for cross validation)
+  data = sample_df %&gt;% select(y, x),
+  # Controls for the model training: k-fold cross validation
+  trControl = trainControl(method = "cv", number = k_folds),
+  # Allow cross validation to choose best value of K (# nearest neighbors)
+  tuneGrid = expand.grid(k = seq(1, 200, by = 10))
+}
+```
+
+.it[Note] This function would need to be defined first in a script.
+---
+class: middle
+
+Now run our one-iteration function `sim_fun()` for many iterations!
+
+---
+### Run the simulation!
+
+
+```r
+# Set seed
+set.seed(123)
+# Run simulation 1,000 times in parallel (and time)
+tic()
+sim_df = mclapply(
+  X = 1:1e3,
+  FUN = sim_fun,
+  mc.cores = 11
+) %&gt;% bind_rows()
+toc()
+# Save dataset
+write_csv(
+  x = sim_df,
+  path = here("cv-sim-knn.csv")
+)
+```
+
+`tic()` and `toc()` come from `tictoc()` and help with timing tasks.
+&lt;br&gt;`mclapply()` is a parallelized `lapply()` from `parallel` (sorry, no Windows).
+---
+class: middle
+
+How about some results?
+---
+layout: true
+class: clear, middle
+---
+
+
+
+.b[With dependence:] distributions of the .hi-orange[true MSE] and the .hi-purple[CV-based MSE].
+&lt;img src="002-slides_files/figure-html/plot-sim-knn-1-1.svg" style="display: block; margin: auto;" /&gt;
+---
+
+
+With .b[independence across observations:] .hi-orange[true MSE] and the .hi-purple[CV-based MSE].
+&lt;img src="002-slides_files/figure-html/plot-sim-knn-1-ind-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+
+.b[Dependence:] Comparing .b[true MSE] and .b[CV-based MSE] (.pink[45° line])
+&lt;br&gt;Tendency to .b[underestimate test MSE] (rather than .grey[overestimate]): 70.2%
+&lt;img src="002-slides_files/figure-html/plot-sim-knn-1b-1.svg" style="display: block; margin: auto;" /&gt;
+---
+
+.b[Independence:] Comparing .b[true MSE] and .b[CV-based MSE] (.pink[45° line])
+&lt;br&gt;Less likely (53.9%) to underestimate true, test MSE
+&lt;img src="002-slides_files/figure-html/plot-sim-knn-1b-ind-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+
+.b[Dependence:] The .hi-slate[difference] between the true and CV-estimated MSE.
+&lt;img src="002-slides_files/figure-html/plot-sim-knn-2a-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+
+.b[Independence:] The .hi-slate[difference] between the true and CV-estimated MSE.
+&lt;img src="002-slides_files/figure-html/plot-sim-knn-2a-ind-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+
+.b[Dependence:] .hi-pink[Percent difference] between the true and CV-estimated MSE.
+&lt;img src="002-slides_files/figure-html/plot-sim-knn-2b-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+
+.b[Independence:] .hi-pink[Percent difference] between the true and CV-estimated MSE.
+&lt;img src="002-slides_files/figure-html/plot-sim-knn-2b-in-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+
+.b[Dependence: KNN flexibility] (K) and percentage error
+&lt;img src="002-slides_files/figure-html/plot-sim-knn-3-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+
+.b[Independence: KNN flexibility] (K) and percentage error
+&lt;img src="002-slides_files/figure-html/plot-sim-knn-3-ind-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+layout: false
+# Table of contents
+
+.col-left[
+.smaller[
+#### Admin
+- [Today and upcoming](#admin)
+- [Check in](#check-in)
+
+#### Cross validation
+- [Review](#cv-review)
+- [Independence](#cv-independence)
+
+#### Simulation
+- [Monte Carlo](#sim-mc)
+- [Introductory example](#sim-intro)
+]
+]
+
+.col-right[
+.smaller[
+
+#### `\(k\)`-fold CV and dependence
+- [Simulation setup](#sim-kcv-intro)
+- [Define/build population](#sim-kcv-population)
+- [Sample](#sim-kcv-sample)
+- [Tune/train the model](#sim-kcv-model)
+- [Iteration function](#sim-kcv-function)
+
+]
+]
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

@@ -1,0 +1,1210 @@
+---
+title: "Lab .mono[002]"
+subtitle: "Cross validation and simulation"
+author: "Edward Rubin"
+#date: "`r format(Sys.time(), '%d %B %Y')`"
+date: "24 January 2020"
+output:
+  xaringan::moon_reader:
+    css: ['default', 'metropolis', 'metropolis-fonts', 'my-css.css']
+    # self_contained: true
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+exclude: true
+
+```{R, setup, include = F}
+library(pacman)
+p_load(
+  tidyverse,
+  ggplot2, ggthemes,
+  latex2exp, viridis, extrafont, gridExtra, plotly, ggformula, scales,
+  kableExtra, snakecase, janitor,
+  data.table,
+  lubridate, knitr,
+  caret,
+  huxtable, DT,
+  here, magrittr, parallel, future.apply, tictoc
+)
+# Define colors
+red_pink   = "#e64173"
+turquoise  = "#20B2AA"
+orange   = "#FFA500"
+red    = "#fb6107"
+blue     = "#3b3b9a"
+green    = "#8bb174"
+grey_light = "grey70"
+grey_mid   = "grey50"
+grey_dark  = "grey20"
+purple   = "#6A5ACD"
+slate    = "#314f4f"
+# Knitr options
+opts_chunk$set(
+  comment = "#>",
+  fig.align = "center",
+  fig.height = 7,
+  fig.width = 10.5,
+  warning = F,
+  message = F
+)
+opts_chunk$set(dev = "svg")
+options(device = function(file, width, height) {
+  svg(tempfile(), width = width, height = height)
+})
+options(knitr.table.format = "html")
+```
+---
+layout: true
+# Admin
+
+---
+class: inverse, middle
+---
+name: admin
+
+.b[In lab today]
+- Check in
+- Cross validation and parameter tuning (with `caret`)
+- Simulation
+
+.b.it[Upcoming]
+- Keep up with readings (.it[ISL] 3–4, 6)
+- Assignment will be posted soon
+---
+name: check-in
+layout: false
+# Check in
+## Some questions
+
+(Be honest)
+
+1. How is .b[this class] going?
+
+  - Are there areas/topics you would like more coverage/review?
+  - How is the speed?
+  - How were the assignments?
+  - Is there more we or you could be doing?
+--
+
+1. How is your .b[quarter] going?
+
+1. How is your .b[program] going?
+--
+
+1. .b[Anything] else?
+---
+layout: true
+# Cross validation
+
+---
+class: inverse, middle
+---
+name: cv-review
+## Review
+
+.b[Cross validation].super[.pink[†]] (CV) aims to .pink[estimate out-of-sample performance]
+
+.footnote[
+.pink[†] Plus other resampling (and specifically hold-out) methods
+]
+
+1. .hi-pink[efficiently], using the full dataset to both .it[train] and .it[test] (validate)
+
+1. .hi-pink[without overfitting], separating observations used to .it[train] or .it[test]
+
+--
+
+.b[CV] (_e.g._, LOOCV and $k$-fold) aids with .purple[several tasks]
+
+- .hi-purple[model selection]: choosing key parameters for a model's flexibility
+<br>_e.g._, .it[K] in KNN, polynomials and interactions for regression (.it[AKA] tuning)
+
+- .hi-purple[model assessment]: determining how well the model performs
+<br>_e.g._, estimating the true test MSE, MAE, or error rate
+
+---
+layout: true
+# Cross validation
+## $k$-fold cross validation, review
+
+1. .b[Divide] training data into $k$ folds (mutally exclusive groups)
+1. .it[For each fold] $i$:
+  - .b[Train] your model on all observations, excluding members of $i$
+  - .b[Test] and .b[assess] model.sub[i] on the members of fold $i$, _e.g._, MSE.sub[i]
+1. .b[Estimate test performance] by averaging across folds, _e.g._, Avg(MSE.sub[i])
+
+---
+
+--
+
+```{R, data-cv, include = F, cache = T}
+# Generate data
+X = 40
+Y = 12
+set.seed(12345)
+cv_df = expand_grid(
+  x = 1:X,
+  y = 1:Y
+) %>% mutate(
+  id = 1:(X*Y),
+  grp = sample(X * Y) %% 5 + 1
+)
+# Find groups
+a = seq(1, X*Y, by = X*Y/5)
+b = c(a[-1] - 1, X*Y)
+```
+
+```{R, plot-cvk-0b, echo = F, fig.height = 3}
+ggplot(data = cv_df, aes(x, y, color = grp == 1, fill = grp == 1)) +
+geom_point(shape = 21, size = 4.5, stroke = 0.5) +
+scale_fill_manual("", values = c("white", slate)) +
+scale_color_manual("", values = c(purple, slate)) +
+theme_void() +
+theme(legend.position = "none")
+```
+Each fold takes a turn at .hi-slate[validation]. The other $k-1$ folds .hi-purple[train].
+---
+
+```{R, plot-cvk-1, echo = F, fig.height = 3}
+ggplot(
+  data = cv_df,
+  aes(x, y, color = between(id, a[1], b[1]), fill = between(id, a[1], b[1]))
+) +
+geom_point(shape = 21, size = 4.5, stroke = 0.5) +
+scale_fill_manual("", values = c("white", slate)) +
+scale_color_manual("", values = c(purple, slate)) +
+theme_void() +
+theme(legend.position = "none")
+```
+For $k=5$, fold number $1$ as the .hi-slate[validation set] produces MSE.sub[k=1].
+---
+
+```{R, plot-cvk-2, echo = F, fig.height = 3}
+ggplot(
+  data = cv_df,
+  aes(x, y, color = between(id, a[2], b[2]), fill = between(id, a[2], b[2]))
+) +
+geom_point(shape = 21, size = 4.5, stroke = 0.5) +
+scale_fill_manual("", values = c("white", slate)) +
+scale_color_manual("", values = c(purple, slate)) +
+theme_void() +
+theme(legend.position = "none")
+```
+For $k=5$, fold number $2$ as the .hi-slate[validation set] produces MSE.sub[k=2].
+---
+
+```{R, plot-cvk-3, echo = F, fig.height = 3}
+ggplot(
+  data = cv_df,
+  aes(x, y, color = between(id, a[3], b[3]), fill = between(id, a[3], b[3]))
+) +
+geom_point(shape = 21, size = 4.5, stroke = 0.5) +
+scale_fill_manual("", values = c("white", slate)) +
+scale_color_manual("", values = c(purple, slate)) +
+theme_void() +
+theme(legend.position = "none")
+```
+For $k=5$, fold number $3$ as the .hi-slate[validation set] produces MSE.sub[k=3].
+---
+
+```{R, plot-cvk-4, echo = F, fig.height = 3}
+ggplot(
+  data = cv_df,
+  aes(x, y, color = between(id, a[4], b[4]), fill = between(id, a[4], b[4]))
+) +
+geom_point(shape = 21, size = 4.5, stroke = 0.5) +
+scale_fill_manual("", values = c("white", slate)) +
+scale_color_manual("", values = c(purple, slate)) +
+theme_void() +
+theme(legend.position = "none")
+```
+For $k=5$, fold number $4$ as the .hi-slate[validation set] produces MSE.sub[k=4].
+---
+
+```{R, plot-cvk-5, echo = F, fig.height = 3}
+ggplot(
+  data = cv_df,
+  aes(x, y, color = between(id, a[5], b[5]), fill = between(id, a[5], b[5]))
+) +
+geom_point(shape = 21, size = 4.5, stroke = 0.5) +
+scale_fill_manual("", values = c("white", slate)) +
+scale_color_manual("", values = c(purple, slate)) +
+theme_void() +
+theme(legend.position = "none")
+```
+For $k=5$, fold number $5$ as the .hi-slate[validation set] produces MSE.sub[k=5].
+---
+layout: true
+# Cross validation
+
+---
+name: cv-independence
+## Independence
+
+.b[Resampling methods] assume something similar to independence: our resampling must match the original sampling procedure.
+
+--
+
+If observations are "linked" but we resample independently, CV may break.
+
+--
+
+If we have .hi-pink[repeated observations] on individuals $i$ through time $t$:
+- It's pretty likely $y_{i,t}$ and $y_{i,t+1}$ are related—and maybe $y_{i,t+\ell}$.
+- Initial sample may draw individuals $i$, but .it[standard] CV ignores time.
+
+--
+
+In other case, .hi-pink[some individuals are linked with other individuals], *e.g.*,
+- $y_{i,t}$ and $y_{j,t}$ my be correlated if $i$ and $j$ live togother
+- Also: $y_{i,t}$ and $y_{j,t+\ell}$ could be correlated
+
+---
+## Independence
+
+In other words: Spatial or temporal .b[dependence] between observations .b[breaks the separation between training and testing samples].
+
+--
+
+Breaking this separation train-test separation leads us back to
+
+- .b[Overfitting] the sample—since training and testing samples are linked
+
+- .b[Overestimating model performance]—the estimated test MSE will be more of a training MSE.
+
+--
+
+.b[Solutions] to this problem involve .hi-pink[matching the resampling process] to the .hi-pink[original sampling and underlying dependence].
+
+.ex[Examples:] Spatial $k$-fold CV (SKCV) and blocked time-series CV
+
+---
+## Dependence
+
+.qa[Q] So how big of a deal is this type of depedence?
+
+--
+
+.qa[A] Let's see! (Sounds like it's time for a simulation.)
+
+---
+layout: true
+# Simulations
+
+---
+class: inverse, middle
+
+---
+name: sim-mc
+## Monte Carlo
+
+.b[Monte Carlo simulation].super[.pink[†]] allows us model probabilistic questions.
+
+.footnote[
+.pink[†] Also called Monte Carlo methods, experiments, *etc.*
+]
+
+1. .b[Generate a population] defined by some data-generating process (DGP), a model of how your fake/simulated world works.
+--
+1. Repeatedly .b[draw samples] $s$ from your population. .it[For each] $s$:
+  - Apply the relevant methods, sampling techniques, estimators, *etc.*
+  - Record your outcome(s) of interest (_e.g._, MSE or error rate), $O_s$
+--
+1. Use the .b[distribution] of the $O_s$ to .it[learn] about your methods, sampling techniques, and/or estimators—the mean, bias, variability *etc.*
+
+--
+
+.note[Ex.sub[1]] We can change DGP in (1) to see how performance (3) changes.
+<br>.note[Ex.sub[2]] Holding DGP (1) constant, we can compare competing methods (2).
+
+---
+layout: false
+class: clear, middle
+
+Sound familiar? Monte Carlo is very related to resampling methods.
+
+---
+layout: true
+# Monte Carlo
+
+---
+name: sim-intro
+## Introductory example: Define the question
+
+It's always helpful to clearly define the question you want to answer, _e.g._:
+
+.b[Example question:] Is OLS unbiased when $\varepsilon_i\sim$ Uniform(0, 1)?
+
+--
+
+Now we know our goal: Determine unbiasedness (mean of distribution).
+
+---
+## Introductory example: DGP and population
+
+We'll use the DGP $y_i = 3 + 6 x_i + \varepsilon_i$,
+<br>where $\varepsilon_i\sim$ Uniform(0, 1), and $x_i\sim$ N(0, 1).
+
+
+--
+
+```{R, ex-pop, eval = F}
+# Set seed
+set.seed(123)
+# Define population size
+pop_size = 1e4
+# Generate population
+ols_pop = tibble(
+  # Generate disturbances: Using Uniform(0,1)
+  e = runif(pop_size, min = 0, max = 1),
+  # Generate x: Using N(0,1)
+  x = rnorm(pop_size),
+  # Calculate y
+  y = 3 + 6 * x + e
+)
+```
+
+---
+## Introductory example: A single iteration
+
+Now we want to write a function that
+1. .b[samples] from the population `ols_pop`
+2. .b[estimates OLS] regression on the sample
+3. .b[records] the OLS estimate
+
+--
+
+```{R, ex-fun, eval = F}
+ols_function = function(iter, sample_size) {
+  # Draw a sample of size 'sample_size'
+  ols_sample = sample_n(ols_pop, size = sample_size)
+  # Estimate OLS
+  ols_est = lm(y ~ x, data = ols_sample)
+  # Return coefficients and iteration number
+  data.frame(b0 = coef(ols_est)[1], b1 = coef(ols_est)[2], iter)
+}
+```
+
+---
+## Introductory example: Run the simulation
+
+For the simulation, we run our single-iteration function `ols_function()`
+<br>.b[a bunch] of times (like 10,000) and then collect the results..super[.pink[†]]
+
+.footnote[
+.pink[†] The `apply()` family and parallelization are both key here (`future.apply` combines them).
+]
+
+```{R, ex-sim-eval1, include = F, eval = F}
+# Set up parallelization (with 12 cores)
+# Warning: Can take a little time to run (esp w/out 12 cores)
+plan(multiprocess, workers = 12)
+# Set seed
+set.seed(12345)
+# Run simulation
+ols_sim = future_lapply(
+  X = 1:1e4,
+  FUN = ols_function,
+  sample_size = 50,
+  future.seed = T
+) %>% bind_rows()
+# Save simulation
+write_csv(
+  x = ols_sim,
+  path = here("simple-sim.csv")
+)
+```
+
+```{R, ex-sim-load, include = F}
+# Load simulation results
+ols_sim = here("simple-sim.csv") %>% read_csv()
+```
+
+```{R, ex-sim, eval = F}
+# Set up parallelization (with 12 cores)
+# Warning: Can take a little time to run (esp w/out 12 cores)
+plan(multiprocess, workers = 12)
+# Set seed
+set.seed(12345)
+# Run simulation
+ols_sim = future_lapply(
+  X = 1:1e4,
+  FUN = ols_function,
+  sample_size = 50,
+  future.seed = T
+) %>% bind_rows()
+```
+
+---
+## Introductory example: Results
+
+Now we're ready to summarize the results.
+
+We wanted to know .b[if OLS is still unbiased].
+
+Thus, plotting the .b[distributions of estimates] for $\beta_0$ and $\beta_1$ will be of interest—.b[especially the means] of these distributions.
+
+.note[Recall:] If an estimator is unbiased, then the mean of its distribution should like up with the parameter it is attempting to estimate.
+---
+layout: true
+class: clear, middle
+
+---
+
+.b[Considering OLS's unbiasedness:] The distribution of $\hat{\beta}_0$
+```{R, plot-ex-b0, echo = F}
+ggplot(ols_sim, aes(x = b0)) +
+geom_density(fill = "black", alpha = 0.7) +
+geom_hline(yintercept = 0) +
+geom_vline(xintercept = 3, color = "orange", size = 1) +
+geom_vline(xintercept = mean(ols_sim$b0), color = "black", size = 1) +
+scale_y_continuous("Density") +
+scale_x_continuous(expression(beta[0]*" estimates")) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book")
+```
+---
+
+.b[Considering OLS's unbiasedness:] The distribution of $\hat{\beta}_1$
+```{R, plot-ex-b1, echo = F}
+ggplot(ols_sim, aes(x = b1)) +
+geom_density(fill = "black", alpha = 0.7) +
+geom_hline(yintercept = 0) +
+geom_vline(xintercept = 6, color = "orange", size = 1) +
+geom_vline(xintercept = mean(ols_sim$b1), color = "black", size = 1) +
+scale_y_continuous("Density") +
+scale_x_continuous(expression(beta[1]*" estimates")) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book")
+```
+---
+layout: false
+# Monte Carlo
+## Introductory example: Conclusion
+
+When our disturbances are distributed as Uniform(0,1)
+
+1. OLS is biased for $\beta_0$ (the intercept)
+1. OLS is still unbiased for $\beta_1$ (the slope)
+
+... and we were able to learn all of this information by simulation.
+
+---
+class: clear, middle
+
+Now back to our question on $k$-fold cross validation and interdependence.
+
+---
+layout: true
+# Simulation: $k$-fold CV and dependence
+
+---
+name: sim-kcv-intro
+## Our question
+
+Let's write our previous question in a way we can try to answer it.
+
+--
+
+.b[Question:] How does correlation between observations affect the performance of $k$-fold cross validation?
+
+---
+layout: true
+# Simulation: $k$-fold CV and dependence
+## Our question
+
+Let's write our previous question in a way we can try to answer it.
+
+.b[Question:] How does .hi-purple[correlation between observations] affect the .hi-orange[performance] of $\color{#e64173}{k}$.hi-pink[-fold cross validation]?
+
+---
+
+We need to define some terms.
+
+---
+
+.hi-purple.it[correlation between observations]
+
+- Observations can correlate in many ways. Let's keep it simple: we will simulate repeated observations (through time, $t$) on individuals, $i$.
+- .hi-purple[DGP:] Continuous $y_{i,t}$ has a predictor $x_{i,t}$ and two random disturbances
+$$
+\begin{align}
+  y_{i,t} &= 3 x_{i,t} - 2 x_{i,t}^2 + 0.1 x_{i,t}^4 + \gamma_i + \varepsilon_{i,t} \\
+  x_{i,t} &= 0.9 x_{i,t-1} + \eta_{i,t} \\
+  \varepsilon_{i,t} &= 0.9 \varepsilon_{i,t-1} + \nu_{i,t} &
+\end{align}
+$$
+
+---
+
+.hi-orange.it[performance]
+- We will focus on .hi-orange[MSE] for observations the model never saw.
+- .it[Note:] .it[En route], we will meet .it[root] mean squared error (RMSE).
+$$
+\begin{align}
+  \text{RMSE}=\sqrt{\text{MSE}}
+\end{align}
+$$
+
+---
+
+$\color{#e64173}{k}$.hi-pink[-fold cross validation]
+- We'll stick with 5-fold cross validation.
+- Our answer shouldn't change too much based upon $k$.
+- Feel free to experiment later...
+
+---
+layout: true
+class: clear
+---
+name: sim-kcv-population
+### Set up population
+- Set seed
+- Define number of individuals `N` and time periods `T`
+
+```{R, sim-cv-setup}
+# Set seed
+set.seed(12345)
+# Size of the population
+N = 1000
+# Number of time periods per individual
+T = 50
+# Create the indices of our population
+pop_df = expand_grid(
+  i = 1:N,
+  t = 1:T
+)
+```
+
+---
+### Build population
+- Generate temporally correlated disturbances and predictor $(x_{i,t})$
+- Calculate outcome variable $y_{i,t}$
+
+```{R, sim-cv-pop}
+# Disturbance for (i,t): Correlated within time (not across individuals)
+pop_df %<>%
+  group_by(i) %>%
+  mutate(
+    x = arima.sim(model = list(ar = c(0.9)), n = T) %>% as.numeric(),
+    e_it = arima.sim(model = list(ar = c(0.9)), n = T) %>% as.numeric()
+  ) %>% ungroup()
+# Disturbance for (i): Constant within individual
+pop_df %<>%
+  group_by(i) %>%
+  mutate(e_i = runif(n = 1, min = -100, max = 100)) %>%
+  ungroup()
+# Calculate 'y'; drop disturbances
+pop_df %<>% mutate(
+  y = e_i + 3 * x - 2 * x^2 + 0.1 * x^4 + e_it
+) %>% select(i, t, y, x)
+```
+
+---
+class: clear
+
+Notice the .b[correlation within observation] across time.
+```{R, plot-sim-cv-i, echo = F}
+# Plot a few observations' time series
+ggplot(data = pop_df %>% filter(i < 5), aes(x = t, y = y, color = as.factor(i))) +
+geom_line(size = 0.8) +
+geom_point(size = 2.5) +
+scale_y_continuous(expression(y[it])) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+scale_color_viridis_d(option = "magma", end = 0.9) +
+theme(legend.position = "none")
+```
+
+---
+class: clear
+
+Viewing the correlation in $x_{i,t}$ and $y_{i,t}$.
+```{R, plot-sim-cv-it, echo = F}
+# Plot x,y for t=1:3
+ggplot(data = pop_df %>% filter(i < 10), aes(x = x, y = y, color = as.factor(i))) +
+geom_line(size = 0.8) +
+geom_point(size = 2.5) +
+scale_x_continuous(expression(x[it])) +
+scale_y_continuous(expression(y[it])) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+scale_color_viridis_d(option = "magma", end = 0.9) +
+theme(legend.position = "none")
+```
+
+---
+class: middle
+
+.b[Next steps:] Write out a single iteration (to become a function).
+
+1. Draw a sample.
+
+1. Estimate a model: We're going to use KNN regression.
+
+1. Tune our model: We will use 5-fold CV to choose 'K'.
+
+1. Assess the model's performance (CV and in the population).
+---
+name: sim-kcv-sample
+### Draw a sample
+
+```{R, sim-cv-sample}
+# Define sample size (will be in input of our function)
+n_i = 50
+# Draw sample
+i_sampled = sample.int(N, size = n_i)
+# Draw a sample
+sample_df = pop_df %>% filter(i %in% i_sampled)
+```
+
+`sample.int(n, size)` draws `size` integers between 1 and `n`.
+
+Note that we are .b[sampling individuals] (`i`).
+
+---
+name: sim-kcv-model
+### Tune and estimate a model
+
+```{R, sim-cv-train-eval1, eval = F, include = F}
+# Define number of folds
+k_folds = 5
+# k-fold CV
+cv_output = train(
+  # The relationship: y as a function of w and x
+  y ~ .,
+  # The method of estimating the model (linear regression)
+  method = "knn",
+  # The training data (which will be used for cross validation)
+  data = sample_df %>% select(y, x),
+  # Controls for the model training: k-fold cross validation
+  trControl = trainControl(method = "cv", number = k_folds),
+  # Allow cross validation to choose best value of K (# nearest neighbors)
+  tuneGrid = expand.grid(k = seq(1, 500, by = 5))
+)
+# Save the output
+write_rds(x = cv_output, path = here("cv-example.rds"))
+```
+
+```{R, load-cv-example, include = F}
+# Define number of folds
+k_folds = 5
+# Load
+cv_output = here("cv-example.rds") %>% read_rds()
+```
+
+```{R, sim-cv-train-noeval, eval = F}
+# Define number of folds
+k_folds = 5
+# k-fold CV
+cv_output = train(
+  # The relationship: y as a function of w and x
+  y ~ .,
+  # The method of estimating the model (linear regression)
+  method = "knn",
+  # The training data (which will be used for cross validation)
+  data = sample_df %>% select(y, x),
+  # Controls for the model training: k-fold cross validation
+  trControl = trainControl(method = "cv", number = k_folds),
+  # Allow cross validation to choose best value of K (# nearest neighbors)
+  tuneGrid = expand.grid(k = seq(1, 500, by = 5))
+)
+```
+
+`train()` (from the `caret` package) assists in many training/tuning tasks (note `tuneGrid` argument)—including pre-processing data.
+---
+You can actually plot the results from `train()`, _i.e._,
+
+```{R, plot-cv-fake, eval = F}
+ggplot(cv_output) + theme_minimal()
+```
+
+```{R, plot-cv-real, echo = F, fig.height = 6}
+ggplot(cv_output) + theme_minimal(base_size = 20, base_family = "Fira Sans Book")
+```
+
+---
+
+The output from `train()` also contains a lot of additional information, _e.g._,
+
+```{R, cv-output, eval = F}
+cv_output$results
+```
+
+```{R, cv-output-fake, echo = F}
+cv_output$results %>%
+  datatable(
+    rownames = F,
+    options = list(dom = 't'),
+    width = '95%', height = '25%'
+  ) %>% formatRound(columns = names(cv_output$results)[2:7], digits = 3)
+```
+
+```{R, cv-output2, eval = F}
+cv_output$resample
+```
+
+```{R, cv-output2-fake, echo = F}
+cv_output$resample %>%
+  datatable(
+    rownames = F,
+    options = list(dom = 't'),
+    width = '50%', height = '33%'
+  ) %>% formatRound(columns = names(cv_output$resample)[1:3], digits = 3)
+```
+---
+class: middle
+
+Now we .b[assess the performance] of our chosen/tuned model.
+
+1. Record the .hi-purple[CV-based MSE] (already calculated by `train()`).
+
+2. Since we know the population, we can calculate the .hi-orange[true test MSE].
+
+.hi-orange[(2)] is usually not available to use—you can see how simulation helps.
+---
+### Assess performance
+- Subset to unseen data (individuals not sampled)
+- Evaluate prediction performance on new individuals
+
+```{R, sim-cv-assess}
+# Subset to unseen data
+test_df = pop_df %>% filter(i %>% is_in(i_sampled) %>% not())
+# Make predictions on
+predictions = predict(
+  cv_output,
+  newdata = test_df
+)
+# Calculate RMSE in full population
+rmse_true = mean((test_df$y - predictions)^2) %>% sqrt()
+rmse_true
+```
+
+---
+Comparing .hi-purple[CV RMSE] to .hi-orange[true test RMSE]
+
+```{R, sim-assess-plot, echo = F}
+# Plot the true test MSE against the estimated MSE
+ggplot(cv_output) +
+geom_segment(
+  data = cv_output$results %>% filter(RMSE == min(RMSE)),
+  aes(x = k, xend = k, y = RMSE, yend = rmse_true),
+  color = purple,
+  linetype = "longdash",
+  size = 0.3
+) +
+geom_point(
+  data = cv_output$results %>% filter(RMSE == min(RMSE)),
+  aes(x = k, y = RMSE),
+  color = purple,
+  size = 3
+) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+geom_hline(yintercept = rmse_true, color = orange) +
+scale_y_continuous("RMSE") +
+scale_x_continuous("K (# of nearest neighbors)")
+```
+---
+class: middle
+
+Now we basically wrap the last 7 slides into a function and we're set!
+---
+name: sim-kcv-function
+### Function: One iteration of the simulation
+
+```{R, sim-cv-function, eval = F}
+# Our function for a single iteration of the simulation
+sim_fun = function(iter, n_i = 50, k_folds = 5) {
+  # Draw sample
+  i_sampled = sample.int(N, size = n_i)
+  # Draw a sample
+  sample_df = pop_df %>% filter(i %in% i_sampled)
+  # k-fold CV
+  cv_output = cv_function(k_folds = k_folds)
+  # Find the estimated MSE
+  mse_est = mean(cv_output$resample$RMSE^2)
+  # Subset to unseen data
+  test_df = pop_df %>% filter(i %>% is_in(i_sampled) %>% not())
+  # Make predictions on true test data
+  predictions = predict(cv_output, newdata = test_df)
+  # Calculate RMSE in full population
+  mse_true = mean((test_df$y - predictions)^2)
+  # Output results
+  data.frame(iter, k = cv_output$bestTune$k, mse_est, mse_true)
+}
+```
+Notice that we can define default values for our function's arguments.
+
+---
+### Function: $k$-fold CV of KNN model for a sample
+
+```{R, sim-cv-function-2, eval = F}
+# Wrapper function for caret::train()
+cv_function = function(k_folds) {
+  # The relationship: y as a function of w and x
+  y ~ .,
+  # The method of estimating the model (linear regression)
+  method = "knn",
+  # The training data (which will be used for cross validation)
+  data = sample_df %>% select(y, x),
+  # Controls for the model training: k-fold cross validation
+  trControl = trainControl(method = "cv", number = k_folds),
+  # Allow cross validation to choose best value of K (# nearest neighbors)
+  tuneGrid = expand.grid(k = seq(1, 200, by = 10))
+}
+```
+
+.it[Note] This function would need to be defined first in a script.
+---
+class: middle
+
+Now run our one-iteration function `sim_fun()` for many iterations!
+
+---
+### Run the simulation!
+
+```{R, sim-cv-run, eval = F}
+# Set seed
+set.seed(123)
+# Run simulation 1,000 times in parallel (and time)
+tic()
+sim_df = mclapply(
+  X = 1:1e3,
+  FUN = sim_fun,
+  mc.cores = 11
+) %>% bind_rows()
+toc()
+# Save dataset
+write_csv(
+  x = sim_df,
+  path = here("cv-sim-knn.csv")
+)
+```
+
+`tic()` and `toc()` come from `tictoc()` and help with timing tasks.
+<br>`mclapply()` is a parallelized `lapply()` from `parallel` (sorry, no Windows).
+---
+class: middle
+
+How about some results?
+---
+layout: true
+class: clear, middle
+---
+
+```{R, load-knn-sim, include = F, cache = T}
+# Read results from KNN simulation
+knn_sim = here("cv-sim-knn.csv") %>% read_csv()
+knn_ind = here("cv-sim-knn-uncorrelated.csv") %>% read_csv()
+# Gather to wide
+knn_sim_wide = knn_sim %>% gather("mse_type", "value", -iter, -k)
+knn_ind_wide = knn_ind %>% gather("mse_type", "value", -iter, -k)
+```
+
+.b[With dependence:] distributions of the .hi-orange[true MSE] and the .hi-purple[CV-based MSE].
+```{R, plot-sim-knn-1, echo = F}
+# Plot resulting distributions of MSE
+ggplot(
+  data = knn_sim_wide,
+  aes(x = value, fill = mse_type)
+) +
+geom_density(color = NA, alpha = 0.8) +
+geom_hline(yintercept = 0) +
+geom_vline(
+  data = knn_sim_wide %>% group_by(mse_type) %>% summarize(value = mean(value)),
+  aes(xintercept = value, color = mse_type)
+) +
+scale_y_continuous("Denisty") +
+scale_x_continuous("MSE") +
+scale_fill_manual(
+  "MSE",
+  labels = c("Estimated", "True"),
+  values = c(purple, orange)
+) +
+scale_color_manual(
+  "MSE",
+  labels = c("Estimated", "True"),
+  values = c(purple, orange)
+) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(
+  legend.position = "bottom",
+  axis.text.y = element_blank()
+)
+```
+---
+
+
+With .b[independence across observations:] .hi-orange[true MSE] and the .hi-purple[CV-based MSE].
+```{R, plot-sim-knn-1-ind, echo = F}
+# Plot resulting distributions of MSE
+ggplot(
+  data = knn_ind_wide,
+  aes(x = value, fill = mse_type)
+) +
+geom_density(color = NA, alpha = 0.8) +
+geom_hline(yintercept = 0) +
+geom_vline(
+  data = knn_ind_wide %>% group_by(mse_type) %>% summarize(value = mean(value)),
+  aes(xintercept = value, color = mse_type)
+) +
+scale_y_continuous("Denisty") +
+scale_x_continuous("MSE") +
+scale_fill_manual(
+  "MSE",
+  labels = c("Estimated", "True"),
+  values = c(purple, orange)
+) +
+scale_color_manual(
+  "MSE",
+  labels = c("Estimated", "True"),
+  values = c(purple, orange)
+) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(
+  legend.position = "bottom",
+  axis.text.y = element_blank()
+)
+```
+
+---
+
+.b[Dependence:] Comparing .b[true MSE] and .b[CV-based MSE] (.pink[45° line])
+<br>Tendency to .b[underestimate test MSE] (rather than .grey[overestimate]): `r transmute(knn_sim, p = mse_true > mse_est)$p %>% mean %>% scales::percent()`
+```{R, plot-sim-knn-1b, echo = F}
+# Plot resulting distributions of MSE
+ggplot(
+  data = knn_sim,
+  aes(x = (mse_true), y = (mse_est))
+) +
+geom_point(
+  aes(color = mse_true > mse_est),
+  shape = 19, size = 2.5, alpha = 0.5
+) +
+# geom_smooth(se = F, color = orange, size = 1, method = "lm") +
+geom_abline(intercept = 0, slope = 1, color = red_pink, size = 1) +
+scale_x_continuous(expression(MSE[True])) +
+scale_y_continuous(expression(MSE[CV])) +
+scale_color_manual(
+  values = c("grey70", "grey20")
+) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(legend.position = "none")
+```
+---
+
+.b[Independence:] Comparing .b[true MSE] and .b[CV-based MSE] (.pink[45° line])
+<br>Less likely (`r transmute(knn_ind, p = mse_true > mse_est)$p %>% mean %>% scales::percent()`) to underestimate true, test MSE
+```{R, plot-sim-knn-1b-ind, echo = F}
+# Plot resulting distributions of MSE
+ggplot(
+  data = knn_ind,
+  aes(x = (mse_true), y = (mse_est))
+) +
+geom_point(
+  aes(color = mse_true > mse_est),
+  shape = 19, size = 2.5, alpha = 0.5
+) +
+# geom_smooth(se = F, color = orange, size = 1, method = "lm") +
+geom_abline(intercept = 0, slope = 1, color = red_pink, size = 1) +
+scale_x_continuous(expression(MSE[True])) +
+scale_y_continuous(expression(MSE[CV])) +
+scale_color_manual(
+  values = c("grey70", "grey20")
+) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(legend.position = "none")
+```
+
+---
+
+.b[Dependence:] The .hi-slate[difference] between the true and CV-estimated MSE.
+```{R, plot-sim-knn-2a, echo = F}
+# Plot resulting distributions of difference in MSEs
+ggplot(
+  data = knn_sim,
+  aes(x = mse_true - mse_est)
+) +
+geom_density(fill = slate, color = NA, alpha = 0.8) +
+geom_hline(yintercept = 0) +
+geom_vline(xintercept = 0) +
+geom_vline(
+  xintercept = knn_sim %>% transmute(dif = mse_true - mse_est) %$%dif %>% mean(),
+  color = slate
+) +
+scale_y_continuous("Denisty") +
+scale_x_continuous(
+  expression(MSE[True]*" - MSE"[CV]),
+  breaks = seq(-1000, 1500, 500)
+) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(
+  legend.position = "bottom",
+  axis.text.y = element_blank()
+)
+```
+
+---
+
+.b[Independence:] The .hi-slate[difference] between the true and CV-estimated MSE.
+```{R, plot-sim-knn-2a-ind, echo = F}
+# Plot resulting distributions of difference in MSEs
+ggplot(
+  data = knn_ind,
+  aes(x = mse_true - mse_est)
+) +
+geom_density(fill = slate, color = NA, alpha = 0.8) +
+geom_hline(yintercept = 0) +
+geom_vline(xintercept = 0) +
+geom_vline(
+  xintercept = knn_ind %>% transmute(dif = mse_true - mse_est) %$%dif %>% mean(),
+  color = slate
+) +
+scale_y_continuous("Denisty") +
+scale_x_continuous(
+  expression(MSE[True]*" - MSE"[CV]),
+  # breaks = seq(-1000, 1500, 500)
+) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(
+  legend.position = "bottom",
+  axis.text.y = element_blank()
+)
+```
+
+---
+
+.b[Dependence:] .hi-pink[Percent difference] between the true and CV-estimated MSE.
+```{R, plot-sim-knn-2b, echo = F}
+# Plot resulting distributions of the percentage difference in MSEs
+ggplot(
+  data = knn_sim,
+  aes(x = (mse_true - mse_est)/mse_true)
+) +
+geom_density(fill = red_pink, color = NA, alpha = 0.8) +
+geom_hline(yintercept = 0) +
+geom_vline(xintercept = 0) +
+geom_vline(
+  xintercept = knn_sim %>% transmute(dif = (mse_true - mse_est)/mse_true) %$%dif %>% mean(),
+  color = red_pink
+) +
+scale_y_continuous("Denisty") +
+scale_x_continuous(
+  "Pct. error in estimated MSE",
+  labels = scales::percent
+) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(
+  legend.position = "bottom",
+  axis.text.y = element_blank()
+)
+```
+
+---
+
+.b[Independence:] .hi-pink[Percent difference] between the true and CV-estimated MSE.
+```{R, plot-sim-knn-2b-in, echo = F}
+# Plot resulting distributions of the percentage difference in MSEs
+ggplot(
+  data = knn_ind,
+  aes(x = (mse_true - mse_est)/mse_true)
+) +
+geom_density(fill = red_pink, color = NA, alpha = 0.8) +
+geom_hline(yintercept = 0) +
+geom_vline(xintercept = 0) +
+geom_vline(
+  xintercept = knn_ind %>% transmute(dif = (mse_true - mse_est)/mse_true) %$%dif %>% mean(),
+  color = red_pink
+) +
+scale_y_continuous("Denisty") +
+scale_x_continuous(
+  "Pct. error in estimated MSE",
+  labels = scales::percent
+) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(
+  legend.position = "bottom",
+  axis.text.y = element_blank()
+)
+```
+
+---
+
+.b[Dependence: KNN flexibility] (K) and percentage error
+```{R, plot-sim-knn-3, echo = F}
+# Plot resulting distributions of the percentage difference in MSEs
+ggplot(
+  data = knn_sim,
+  aes(x = k, y = (mse_true - mse_est)/mse_true)
+) +
+geom_point(color = red_pink, alpha = 0.8) +
+geom_smooth(se = F, method = "loess") +
+# geom_hline(yintercept = 0) +
+# geom_vline(xintercept = 0) +
+scale_x_continuous("K (# of nearest neighbors)") +
+scale_y_continuous(
+  "Pct. error in estimated MSE",
+  labels = scales::percent
+) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(
+  legend.position = "bottom",
+  # axis.text.y = element_blank()
+)
+```
+
+---
+
+.b[Independence: KNN flexibility] (K) and percentage error
+```{R, plot-sim-knn-3-ind, echo = F}
+# Plot resulting distributions of the percentage difference in MSEs
+ggplot(
+  data = knn_ind,
+  aes(x = k, y = (mse_true - mse_est)/mse_true)
+) +
+geom_point(color = red_pink, alpha = 0.8) +
+geom_smooth(se = F, method = "loess") +
+# geom_hline(yintercept = 0) +
+# geom_vline(xintercept = 0) +
+scale_x_continuous("K (# of nearest neighbors)") +
+scale_y_continuous(
+  "Pct. error in estimated MSE",
+  labels = scales::percent
+) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(
+  legend.position = "bottom",
+  # axis.text.y = element_blank()
+)
+```
+
+---
+layout: false
+# Table of contents
+
+.col-left[
+.smaller[
+#### Admin
+- [Today and upcoming](#admin)
+- [Check in](#check-in)
+
+#### Cross validation
+- [Review](#cv-review)
+- [Independence](#cv-independence)
+
+#### Simulation
+- [Monte Carlo](#sim-mc)
+- [Introductory example](#sim-intro)
+]
+]
+
+.col-right[
+.smaller[
+
+#### $k$-fold CV and dependence
+- [Simulation setup](#sim-kcv-intro)
+- [Define/build population](#sim-kcv-population)
+- [Sample](#sim-kcv-sample)
+- [Tune/train the model](#sim-kcv-model)
+- [Iteration function](#sim-kcv-function)
+
+]
+]

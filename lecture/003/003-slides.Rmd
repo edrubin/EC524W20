@@ -889,6 +889,16 @@ $$
 \end{align}
 $$
 ---
+name: holdout-caveats
+layout: false
+# Hold-out methods
+## Caveat
+
+So far, we've treated each observation as separate/independent from each other observation.
+
+The methods that we've defined so far actually need this independence.
+
+---
 layout: true
 # The bootstrap
 
