@@ -802,9 +802,13 @@ cv_output$results %>%
   datatable(
     rownames = F,
     options = list(dom = 't'),
-    width = '95%', height = '25%'
+    width = '95%', height = '50%'
   ) %>% formatRound(columns = names(cv_output$results)[2:7], digits = 3)
 ```
+
+---
+
+The output from `train()` also contains a lot of additional information, _e.g._,
 
 ```{R, cv-output2, eval = F}
 cv_output$resample
