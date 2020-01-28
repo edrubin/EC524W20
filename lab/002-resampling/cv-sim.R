@@ -78,7 +78,7 @@
   k_folds = 5
   # k-fold CV
   cv_output = train(
-    # The relationship: y as a function of w and x
+    # The relationship: y as a function of x
     y ~ .,
     # The method of estimating the model (linear regression)
     method = "knn",

@@ -1,0 +1,188 @@
+---
+title: "Lecture .mono[004]"
+subtitle: "Regression strikes back"
+author: "Edward Rubin"
+#date: "`r format(Sys.time(), '%d %B %Y')`"
+date: "28 January 2020"
+output:
+  xaringan::moon_reader:
+    css: ['default', 'metropolis', 'metropolis-fonts', 'my-css.css']
+    # self_contained: true
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+exclude: true
+
+```{R, setup, include = F}
+library(pacman)
+p_load(
+  broom, tidyverse,
+  ggplot2, ggthemes, ggforce, ggridges, cowplot,
+  latex2exp, viridis, extrafont, gridExtra, plotly, ggformula,
+  kableExtra, snakecase, janitor,
+  data.table, dplyr,
+  lubridate, knitr, future, furrr,
+  MASS, estimatr, FNN, caret, parsnip,
+  huxtable, here, magrittr, parallel
+)
+# Define colors
+red_pink   = "#e64173"
+turquoise  = "#20B2AA"
+orange     = "#FFA500"
+red        = "#fb6107"
+blue       = "#3b3b9a"
+green      = "#8bb174"
+grey_light = "grey70"
+grey_mid   = "grey50"
+grey_dark  = "grey20"
+purple     = "#6A5ACD"
+slate      = "#314f4f"
+# Knitr options
+opts_chunk$set(
+  comment = "#>",
+  fig.align = "center",
+  fig.height = 7,
+  fig.width = 10.5,
+  warning = F,
+  message = F
+)
+opts_chunk$set(dev = "svg")
+options(device = function(file, width, height) {
+  svg(tempfile(), width = width, height = height)
+})
+options(knitr.table.format = "html")
+```
+---
+layout: true
+# Admin
+
+---
+class: inverse, middle
+---
+name: admin-today
+## Today
+
+.b[In-class]
+
+- A roadmap (where are we going?)
+- Linear regression and model selection
+
+---
+name: admin-soon
+# Admin
+
+## Upcoming
+
+.b[Readings]
+
+- .note[Today]
+  - .it[ISL]
+- .note[Next]
+  - .it[ISL] Ch. 3–4
+
+.b[Problem set]
+---
+name: admin-roadmap
+layout: false
+# Roadmap
+## Where are we?
+
+We've essentially covered the central topics in statistical learning.super[.pink[†]]
+
+- Prediction and inference
+- Supervised .it[vs.] unsupervised methods
+- Regression and classification problems
+- The dangers of overfitting
+- The bias-variance tradeoff
+- Model assessment
+- Holdouts, validation sets, and cross validation.super[.pink[††]]
+- Model training and tuning
+- Simulation
+
+.footnote[
+.pink[†] Plus a few of the "basic" methods: OLS regression and KNN.
+<br>.pink[††] And the bootstrap!
+]
+---
+# Roadmap
+## Where are we going?
+
+Next, we will cover many common machine-learning algorithms, _e.g._,
+
+- Decision trees and random forests
+- SVM
+- Neural nets
+- Clustering
+- Ensemble techniques
+
+--
+
+But first, we return to good old .hi-orange[linear regression]—in a new light...
+
+- Linear regression
+- Variable/model selection and LASSO/Ridge regression
+- .it[Plus:] Logistic regression and discriminant analysis
+---
+# Roadmap
+## Why return to regression?
+
+.hi[Motivation 1]
+<br>We have new tools. It might help to first apply them in a .b[familiar] setting.
+
+--
+
+.hi[Motivation 2]
+<br>We have new tools. Maybe linear regression will be (even) .b[better now?]
+
+--
+
+.hi[Motivation 3]
+> many fancy statistical learning approaches can be seen as .b[generalizations or extensions of linear regression].
+
+.pad-left[.grey-light.it[Source: ISL, p. 59; emphasis added]]
+
+
+---
+layout: true
+# Linear regression
+
+---
+class: inverse, middle
+---
+name: ls-intro
+## Regression regression
+
+
+
+---
+name: sources
+layout: false
+# Sources
+
+These notes draw upon
+
+- [An Introduction to Statistical Learning](http://faculty.marshall.usc.edu/gareth-james/ISL/) (*ISL*)<br>James, Witten, Hastie, and Tibshirani
+---
+# Table of contents
+
+.col-left[
+.smallest[
+#### Admin
+- [Today](#admin-today)
+- [Upcoming](#admin-soon)
+- [Roadmap](#admin-roadmap)
+
+#### Linear regression
+
+]
+]
+
+.col-right[
+.smallest[
+
+#### Other
+- [Sources/references](#sources)
+]
+]

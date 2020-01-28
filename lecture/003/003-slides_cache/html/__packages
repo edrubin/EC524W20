@@ -31,3 +31,5 @@ parsnip
 huxtable
 here
 magrittr
+future
+furrr

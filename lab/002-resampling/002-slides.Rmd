@@ -365,6 +365,74 @@ ols_pop = tibble(
   y = 3 + 6 * x + e
 )
 ```
+---
+name: ex-fun
+## Aside: Writing custom functions
+
+In R you can creat your own functions with the `function()` function.
+
+.col-left[
+You define the arugments.
+```{R, ex-function}
+# Our function: Take the product
+multiply = function(a, b, c) {
+  a * b * c
+}
+# Try the function
+multiply(a = 1, b = 2, c = 3)
+```
+]
+
+--
+
+.col-right[
+You can define default values too.
+```{R, ex-function2}
+# Our function: Take the product
+multiply = function(a, b, c = 3) {
+  a * b * c
+}
+# Try the function
+multiply(a = 1, b = 2)
+```
+]
+
+--
+
+.left95[.note[Note] Functions return the last .it[unassigned] object.]
+
+---
+## Aside: Writing custom functions
+
+Typically you will have a slightly more complex function, _e.g._,
+
+.col-left[
+```{R, ex-function-fancy}
+super_fancy = function(a, b, c = 3) {
+  # Test if 'c' == 3
+  if (c == 3) {
+    # If yes: divide 'a' by 'b'
+    step1 = a / b
+  } else {
+    # If no: multiply 'a' by 'b'
+    step1 = a * b
+  }
+  # Now add 7 to the result
+  step2 = step1 * 7
+  # And now multiply by zero
+  step2 * 0
+}
+```
+]
+
+--
+
+.col-right[
+```{R, ex-function-fancy-run}
+# Try our function
+super_fancy(a = 12, b = 7, c = 4)
+```
+]
 
 ---
 ## Introductory example: A single iteration
@@ -684,19 +752,19 @@ cv_output = train(
 write_rds(x = cv_output, path = here("cv-example.rds"))
 ```
 
-```{R, load-cv-example, include = F}
+```{R, load-cv-example, include = F, eval = T}
 # Define number of folds
 k_folds = 5
 # Load
 cv_output = here("cv-example.rds") %>% read_rds()
 ```
 
-```{R, sim-cv-train-noeval, eval = F}
+```{R, sim-cv-train-fake, eval = F}
 # Define number of folds
 k_folds = 5
 # k-fold CV
 cv_output = train(
-  # The relationship: y as a function of w and x
+  # The relationshiop: y as a function of x
   y ~ .,
   # The method of estimating the model (linear regression)
   method = "knn",
@@ -1193,6 +1261,7 @@ layout: false
 #### Simulation
 - [Monte Carlo](#sim-mc)
 - [Introductory example](#sim-intro)
+- [Writing functions](#ex-fun)
 ]
 ]
 

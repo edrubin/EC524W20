@@ -26,7 +26,7 @@ p_load(
   lubridate, knitr,
   FNN, caret, parsnip,
   huxtable,
-  here, magrittr, parallel
+  here, magrittr, future, furrr, parallel
 )
 # Define colors
 red_pink   = "#e64173"
@@ -905,24 +905,329 @@ layout: true
 ---
 class: inverse, middle
 ---
-name: resampling-boot
+name: boot-intro
 ## Intro
 
 The .b[bootstrap] is a resampling method often used to quantify the uncertainty (variability) underlying an estimator or learning method.
 
-Calculating the standard error of an estimate often involves assumptions and theory (recall the standard-error estimator for OLS).
+.hi-purple[Hold-out methods]
+- randomly divide the sample into training and validation subsets
+- train and validate ("test") model on each subset/division
 
-However, there are times this derivation is difficult or impossible, *e.g.*,
+.hi-pink[Bootstrapping]
+- randomly samples .b[with replacement] from the original sample
+- estimates model on each of the .it[bootstrap samples]
+
+---
+## Intro
+
+Estimating a estimate's standard error involves assumptions and theory..super[.pink[†]]
+
+.footnote[
+.pink[†] Recall the standard-error estimator for OLS.
+]
+
+
+There are times this derivation is difficult or even impossible, *e.g.*,
 $$
 \begin{align}
   \mathop{\text{Var}}\left(\dfrac{\hat{\beta}_1}{1-\hat{\beta}_2}\right)
 \end{align}
 $$
 
+The bootstrap can help in these situations.
 
-This is where the bootstrap helps.
+Rather than deriving an estimator's variance, we use bootstrapped samles to build a distribution and then learn about the estimator's variance.
 ---
-## Defined
+layout: false
+class: clear, middle
+## Intuition
+.note[Idea:] Bootstrapping builds a distribution for the estimate using the variability embedded in the training sample.
+---
+exclude: true
+
+```{R, ex-boot-0, echo = F}
+# Generate the dataset
+set.seed(123)
+n = 9
+z = tibble(x = 1:n, y = 1 + x + rnorm(n, sd = 5))
+b = lm(y ~ x, data = z)$coefficient[2]
+boot_colors <- magma(n, begin = 0.1, end = 0.93)
+s = 1:n
+base_df <- expand.grid(x = 1:sqrt(n), y = 1:sqrt(n)) %>% as_tibble()
+# Bootstrap 1
+s1 <- sample(1:n, n, replace = T)
+z1 <- z[s1,]
+b1 <- lm(y ~ x, data = z1)$coefficient[2]
+# Bootstrap 2
+s2 <- sample(1:n, n, replace = T)
+z2 <- z[s2,]
+b2 <- lm(y ~ x, data = z2)$coefficient[2]
+# Bootstrap 3
+s3 <- sample(1:n, n, replace = T)
+z3 <- z[s3,]
+b3 <- lm(y ~ x, data = z3)$coefficient[2]
+# Bootstrap 4
+s4 <- sample(1:n, n, replace = T)
+z4 <- z[s4,]
+b4 <- lm(y ~ x, data = z4)$coefficient[2]
+```
+
+---
+layout: true
+# The bootstrap
+
+---
+name: boot-graph
+## Graphically
+
+.thin-left[
+$$Z$$
+```{R, g1-boot0, echo = F, out.width = "100%"}
+# Graph individuals
+ggplot(
+  data = base_df %>% mutate(fill = 1:n, lab = s),
+  aes(x, y, fill = as.factor(fill))
+) +
+geom_tile(color = "white", size = 1.5) +
+geom_text(aes(label = lab), color = "white", size = 20) +
+coord_equal() +
+scale_fill_manual(values = boot_colors[s]) +
+scale_color_manual(values = boot_colors[s]) +
+theme_void() +
+theme(legend.position = "none")
+```
+
+$$\hat\beta = `r b %>% round(3)`$$
+
+```{R, g2-boot0, echo = F, out.width = '100%'}
+# Graph individuals
+ggplot(
+  data = z %>% mutate(s = 1:n),
+  aes(x, y, color = as.factor(s))
+) +
+geom_smooth(method = lm, se = F, color = "grey85", size = 5) +
+geom_point(size = 20, alpha = 0.5) +
+coord_equal() +
+xlim(-0.5,n+0.5) +
+scale_color_manual(values = boot_colors[s]) +
+theme_void() +
+theme(legend.position = "none")
+```
+]
+
+--
+
+.thin-left[
+$$Z^{\star 1}$$
+```{R, g1-boot1, echo = F, out.width = "100%"}
+# Graph individuals
+ggplot(
+  data = base_df %>% mutate(fill = 1:n, lab = s1),
+  aes(x, y, fill = as.factor(fill))
+) +
+geom_tile(color = "white", size = 1.5) +
+geom_text(aes(label = lab), color = "white", size = 20) +
+coord_equal() +
+scale_fill_manual(values = boot_colors[s1]) +
+scale_color_manual(values = boot_colors[s1]) +
+theme_void() +
+theme(legend.position = "none")
+```
+
+$$\hat\beta = `r b1 %>% round(3)`$$
+
+```{R, g2-boot1, echo = F, out.width = '100%'}
+# Graph individuals
+ggplot(
+  data = z1 %>% mutate(s = 1:n),
+  aes(x, y, color = as.factor(s))
+) +
+geom_smooth(method = lm, se = F, color = "grey85", size = 5) +
+geom_point(size = 20, alpha = 0.5) +
+coord_equal() +
+xlim(-0.5,n+0.5) +
+scale_color_manual(values = boot_colors[s1]) +
+theme_void() +
+theme(legend.position = "none")
+```
+]
+
+--
+
+.thin-left[
+$$Z^{\star 2}$$
+```{R, g1-boot2, echo = F, out.width = "100%"}
+# Graph individuals
+ggplot(
+  data = base_df %>% mutate(fill = 1:n, lab = s2),
+  aes(x, y, fill = as.factor(fill))
+) +
+geom_tile(color = "white", size = 1.5) +
+geom_text(aes(label = lab), color = "white", size = 20) +
+coord_equal() +
+scale_fill_manual(values = boot_colors[s2]) +
+scale_color_manual(values = boot_colors[s2]) +
+theme_void() +
+theme(legend.position = "none")
+```
+
+$$\hat\beta = `r b2 %>% round(3)`$$
+
+```{R, g2-boot2, echo = F, out.width = '100%'}
+# Graph individuals
+ggplot(
+  data = z2 %>% mutate(s = 1:n),
+  aes(x, y, color = as.factor(s))
+) +
+geom_smooth(method = lm, se = F, color = "grey85", size = 5) +
+geom_point(size = 20, alpha = 0.5) +
+coord_equal() +
+xlim(-0.5,n+0.5) +
+scale_color_manual(values = boot_colors[s2]) +
+theme_void() +
+theme(legend.position = "none")
+```
+]
+
+--
+
+.left5[
+<br><br><br>⋯
+]
+
+.thin-left[
+$$Z^{\star B}$$
+```{R, g1-boot3, echo = F, out.width = "100%"}
+# Graph individuals
+ggplot(
+  data = base_df %>% mutate(fill = 1:n, lab = s3),
+  aes(x, y, fill = as.factor(fill))
+) +
+geom_tile(color = "white", size = 1.5) +
+geom_text(aes(label = lab), color = "white", size = 20) +
+coord_equal() +
+scale_fill_manual(values = boot_colors[s3]) +
+scale_color_manual(values = boot_colors[s3]) +
+theme_void() +
+theme(legend.position = "none")
+```
+
+$$\hat\beta = `r b3 %>% round(3)`$$
+
+```{R, g2-boot3, echo = F, out.width = '100%'}
+# Graph individuals
+ggplot(
+  data = z3 %>% mutate(s = 1:n),
+  aes(x, y, color = as.factor(s))
+) +
+geom_smooth(method = lm, se = F, color = "grey85", size = 5) +
+geom_point(size = 20, alpha = 0.5) +
+coord_equal() +
+xlim(-0.5,n+0.5) +
+scale_color_manual(values = boot_colors[s3]) +
+theme_void() +
+theme(legend.position = "none")
+```
+]
+
+---
+
+Running this bootstrap 10,000 times
+
+```{R, boot-full, cache = T, eval = T}
+plan(multiprocess, workers = 10)
+# Set a seed
+set.seed(123)
+# Run the simulation 1e4 times
+boot_df <- future_map_dfr(
+  # Repeat sample size 100 for 1e4 times
+  rep(n, 1e4),
+  # Our function
+  function(n) {
+    # Estimates via bootstrap
+    est <- lm(y ~ x, data = z[sample(1:n, n, replace = T), ])
+    # Return a tibble
+    data.frame(int = est$coefficients[1], coef = est$coefficients[2])
+  },
+  # Let furrr know we want to set a seed
+  .options = future_options(seed = T)
+)
+```
+---
+name: boot-ex
+layout: false
+class: clear, middle
+
+```{R, boot-full-graph, echo = F, dev = 'png', dpi = 250, cache = T}
+ggplot(
+  data = z,
+  aes(x, y, fill = as.factor(1:n))
+) +
+geom_abline(
+  data = boot_df,
+  aes(intercept = int, slope = coef),
+  color = "grey50",
+  alpha = 0.01
+) +
+geom_abline(
+  intercept = lm(y ~ x, z)$coefficient[1],
+  slope = lm(y ~ x, z)$coefficient[2],
+  color = "black",
+  size = 1.25
+) +
+geom_point(
+  size = 10,
+  stroke = 0.75,
+  color = "white",
+  shape = 21
+) +
+# coord_equal() +
+# xlim(-0.5,n+0.5) +
+scale_fill_manual(values = boot_colors[s]) +
+theme_void() +
+theme(legend.position = "none")
+```
+
+---
+layout: true
+# The bootstrap
+
+---
+## Comparison: Standard-error estimates
+
+The .attn[bootstrapped standard error] of $\hat\alpha$ is the standard deviation of the $\hat\alpha^{\star b}$
+
+$$
+\begin{align}
+  \mathop{\text{SE}_{B}}\left( \hat\alpha \right) = \sqrt{\dfrac{1}{B} \sum_{b=1}^{B} \left( \hat\alpha^{\star b} - \dfrac{1}{B} \sum_{\ell=1}^{B} \hat\alpha^{\star \ell} \right)^2}
+\end{align}
+$$
+
+.pink[This 10,000-sample bootstrap estimates] $\color{#e64173}{\mathop{\text{S.E.}}\left( \hat\beta_1 \right)\approx}$ .pink[`r sd(boot_df$coef) %>% round(3)`.]
+
+--
+
+.purple[If we go the old-fashioned OLS route, we estimate `r tidy(lm(y~x,z))[2,3] %>% as.numeric() %>% round(3)`.]
+---
+layout: false
+class: clear, middle
+
+```{R, boot-dist-graph, echo = F}
+ggplot(data = boot_df, aes(x = coef)) +
+geom_density(fill = red_pink, color = NA, alpha = 0.9) +
+geom_hline(yintercept = 0) +
+geom_vline(xintercept = b, color = orange, size = 1.3) +
+ylab("Density") +
+xlab(expression(Bootstrap~estimate~of~beta[1])) +
+theme_minimal(base_size = 18, base_family = "Fira Sans Book")
+```
+
+
+---
+layout: false
+# Resampling
+## Review
 
 .hi-purple[Previous resampling methods]
 - Split data into .hi-purple[subsets]: $n_v$ validation and $n_t$ training $(n_v + n_t = n)$.
@@ -933,11 +1238,6 @@ This is where the bootstrap helps.
 - Randomly samples from training data .hi-pink[with replacement] to generate $B$ "samples", each of size $n$.
 - Repeat estimation on each subset.
 - Estimate the variance estimate using variability across $B$ samples.
-
----
-## Intuition
-.note[Idea:] Bootstrapping builds a distribution for the estimate using the variability embedded in the training sample.
-
 ---
 name: sources
 layout: false
@@ -950,6 +1250,7 @@ These notes draw upon
 - [Python Data Science Handbook](https://jakevdp.github.io/PythonDataScienceHandbook/)<br>Jake VanderPlas
 
 ---
+layout: false
 # Table of contents
 
 .col-left[
@@ -981,7 +1282,10 @@ These notes draw upon
   - [Validation sets](#resampling-validation)
   - [LOOCV](#resampling-loocv)
   - [k-fold cross validation](#resampling-kcv)
-- [The bootstrap](#resampling-boot)
+- [The bootstrap](#boot-intro)
+  - [Intro](#boot-intro)
+  - [Graphically](#boot-graph)
+  - [Example](#boot-ex)
 
 #### Other
 - [Sources/references](#sources)

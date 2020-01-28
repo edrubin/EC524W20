@@ -523,24 +523,165 @@ layout: true
 ---
 class: inverse, middle
 ---
-name: resampling-boot
+name: boot-intro
 ## Intro
 
 The .b[bootstrap] is a resampling method often used to quantify the uncertainty (variability) underlying an estimator or learning method.
 
-Calculating the standard error of an estimate often involves assumptions and theory (recall the standard-error estimator for OLS).
+.hi-purple[Hold-out methods]
+- randomly divide the sample into training and validation subsets
+- train and validate ("test") model on each subset/division
 
-However, there are times this derivation is difficult or impossible, *e.g.*,
+.hi-pink[Bootstrapping]
+- randomly samples .b[with replacement] from the original sample
+- estimates model on each of the .it[bootstrap samples]
+
+---
+## Intro
+
+Estimating a estimate's standard error involves assumptions and theory..super[.pink[†]]
+
+.footnote[
+.pink[†] Recall the standard-error estimator for OLS.
+]
+
+
+There are times this derivation is difficult or even impossible, *e.g.*,
 $$
 `\begin{align}
   \mathop{\text{Var}}\left(\dfrac{\hat{\beta}_1}{1-\hat{\beta}_2}\right)
 \end{align}`
 $$
 
+The bootstrap can help in these situations.
 
-This is where the bootstrap helps.
+Rather than deriving an estimator's variance, we use bootstrapped samles to build a distribution and then learn about the estimator's variance.
 ---
-## Defined
+layout: false
+class: clear, middle
+## Intuition
+.note[Idea:] Bootstrapping builds a distribution for the estimate using the variability embedded in the training sample.
+---
+exclude: true
+
+
+
+---
+layout: true
+# The bootstrap
+
+---
+name: boot-graph
+## Graphically
+
+.thin-left[
+`$$Z$$`
+&lt;img src="003-slides_files/figure-html/g1-boot0-1.svg" width="100%" style="display: block; margin: auto;" /&gt;
+
+`$$\hat\beta = 0.653$$`
+
+&lt;img src="003-slides_files/figure-html/g2-boot0-1.svg" width="100%" style="display: block; margin: auto;" /&gt;
+]
+
+--
+
+.thin-left[
+`$$Z^{\star 1}$$`
+&lt;img src="003-slides_files/figure-html/g1-boot1-1.svg" width="100%" style="display: block; margin: auto;" /&gt;
+
+`$$\hat\beta = -0.96$$`
+
+&lt;img src="003-slides_files/figure-html/g2-boot1-1.svg" width="100%" style="display: block; margin: auto;" /&gt;
+]
+
+--
+
+.thin-left[
+`$$Z^{\star 2}$$`
+&lt;img src="003-slides_files/figure-html/g1-boot2-1.svg" width="100%" style="display: block; margin: auto;" /&gt;
+
+`$$\hat\beta = 0.968$$`
+
+&lt;img src="003-slides_files/figure-html/g2-boot2-1.svg" width="100%" style="display: block; margin: auto;" /&gt;
+]
+
+--
+
+.left5[
+&lt;br&gt;&lt;br&gt;&lt;br&gt;⋯
+]
+
+.thin-left[
+`$$Z^{\star B}$$`
+&lt;img src="003-slides_files/figure-html/g1-boot3-1.svg" width="100%" style="display: block; margin: auto;" /&gt;
+
+`$$\hat\beta = 0.978$$`
+
+&lt;img src="003-slides_files/figure-html/g2-boot3-1.svg" width="100%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+Running this bootstrap 10,000 times
+
+
+```r
+plan(multiprocess, workers = 10)
+# Set a seed
+set.seed(123)
+# Run the simulation 1e4 times
+boot_df &lt;- future_map_dfr(
+  # Repeat sample size 100 for 1e4 times
+  rep(n, 1e4),
+  # Our function
+  function(n) {
+    # Estimates via bootstrap
+    est &lt;- lm(y ~ x, data = z[sample(1:n, n, replace = T), ])
+    # Return a tibble
+    data.frame(int = est$coefficients[1], coef = est$coefficients[2])
+  },
+  # Let furrr know we want to set a seed
+  .options = future_options(seed = T)
+)
+```
+---
+name: boot-ex
+layout: false
+class: clear, middle
+
+&lt;img src="003-slides_files/figure-html/boot-full-graph-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+layout: true
+# The bootstrap
+
+---
+## Comparison: Standard-error estimates
+
+The .attn[bootstrapped standard error] of `\(\hat\alpha\)` is the standard deviation of the `\(\hat\alpha^{\star b}\)`
+
+$$
+`\begin{align}
+  \mathop{\text{SE}_{B}}\left( \hat\alpha \right) = \sqrt{\dfrac{1}{B} \sum_{b=1}^{B} \left( \hat\alpha^{\star b} - \dfrac{1}{B} \sum_{\ell=1}^{B} \hat\alpha^{\star \ell} \right)^2}
+\end{align}`
+$$
+
+.pink[This 10,000-sample bootstrap estimates] `\(\color{#e64173}{\mathop{\text{S.E.}}\left( \hat\beta_1 \right)\approx}\)` .pink[0.786.]
+
+--
+
+.purple[If we go the old-fashioned OLS route, we estimate 0.673.]
+---
+layout: false
+class: clear, middle
+
+&lt;img src="003-slides_files/figure-html/boot-dist-graph-1.svg" style="display: block; margin: auto;" /&gt;
+
+
+---
+layout: false
+# Resampling
+## Review
 
 .hi-purple[Previous resampling methods]
 - Split data into .hi-purple[subsets]: `\(n_v\)` validation and `\(n_t\)` training `\((n_v + n_t = n)\)`.
@@ -551,11 +692,6 @@ This is where the bootstrap helps.
 - Randomly samples from training data .hi-pink[with replacement] to generate `\(B\)` "samples", each of size `\(n\)`.
 - Repeat estimation on each subset.
 - Estimate the variance estimate using variability across `\(B\)` samples.
-
----
-## Intuition
-.note[Idea:] Bootstrapping builds a distribution for the estimate using the variability embedded in the training sample.
-
 ---
 name: sources
 layout: false
@@ -568,6 +704,7 @@ These notes draw upon
 - [Python Data Science Handbook](https://jakevdp.github.io/PythonDataScienceHandbook/)&lt;br&gt;Jake VanderPlas
 
 ---
+layout: false
 # Table of contents
 
 .col-left[
@@ -599,7 +736,10 @@ These notes draw upon
   - [Validation sets](#resampling-validation)
   - [LOOCV](#resampling-loocv)
   - [k-fold cross validation](#resampling-kcv)
-- [The bootstrap](#resampling-boot)
+- [The bootstrap](#boot-intro)
+  - [Intro](#boot-intro)
+  - [Graphically](#boot-graph)
+  - [Example](#boot-ex)
 
 #### Other
 - [Sources/references](#sources)

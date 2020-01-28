@@ -81,6 +81,10 @@ You will need to sign into you Kaggle account and then hit "Copy and Edit" to ad
 <br>
 *Due* 21 January 2020 before midnight.
 
+**002** [Cross validation and linear regression (Kaggle notebook)](https://www.kaggle.com/edwardarubin/ec524-cross-validation)
+<br>
+*Due* 30 January 2020 before midnight.
+
 ## Lab notes
 
 [**000 - Workflow and cleaning**](https://raw.githack.com/edrubin/EC524W20/master/lab/000-cleaning/000-slides.html)
@@ -96,18 +100,17 @@ You will need to sign into you Kaggle account and then hit "Copy and Edit" to ad
 1. Finish [previous lab on `dplyr`](https://raw.githack.com/edrubin/EC524W20/master/lab/000-cleaning/000-slides.html#48)
 2. [Working in (Kaggle) notebooks](https://www.kaggle.com/voodoojanus/ec524-jan-17-20)
 
-**002 - Cross validation and simulation**
+[**002 - Cross validation and simulation**](https://raw.githack.com/edrubin/EC524W20/master/lab/002-resampling/002-slides.html)
 
 1. Cross-validation review
-2. CV and interdependence
-3. Introduction to learning via simulation
-4. Simulation: CV and dependence
+1. CV and interdependence
+1. Writing functions
+1. Introduction to learning via simulation
+1. Simulation: CV and dependence
 
 **Formats** [.html](https://raw.githack.com/edrubin/EC524W20/master/lab/002-resampling/002-slides.html) | [.pdf](https://raw.githack.com/edrubin/EC524W20/master/lab/002-resampling/002-slides.pdf) | [.Rmd](https://raw.githack.com/edrubin/EC524W20/master/lab/002-resampling/002-slides.Rmd)
 
 **Additional** [R script for simulation](https://raw.githack.com/edrubin/EC524W20/master/lab/002-resampling/cv-sim.R)
-
-## Problem sets
 
 ## Additional resources
 

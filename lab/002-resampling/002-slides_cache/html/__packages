@@ -28,9 +28,9 @@ knitr
 lattice
 caret
 huxtable
+DT
 here
 magrittr
 future
 future.apply
 tictoc
-DT
