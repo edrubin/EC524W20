@@ -83,7 +83,7 @@ You will need to sign into you Kaggle account and then hit "Copy and Edit" to ad
 
 **002** [Cross validation and linear regression (Kaggle notebook)](https://www.kaggle.com/edwardarubin/ec524-cross-validation)
 <br>
-*Due* 30 January 2020 before midnight.
+*Due* 04 February 2020 before midnight.
 
 ## Lab notes
 
