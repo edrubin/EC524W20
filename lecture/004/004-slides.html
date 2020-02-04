@@ -8,6 +8,15 @@
     <link href="004-slides_files/remark-css-0.0.1/default.css" rel="stylesheet" />
     <link href="004-slides_files/remark-css-0.0.1/metropolis.css" rel="stylesheet" />
     <link href="004-slides_files/remark-css-0.0.1/metropolis-fonts.css" rel="stylesheet" />
+    <script src="004-slides_files/htmlwidgets-1.5.1/htmlwidgets.js"></script>
+    <script src="004-slides_files/jquery-1.12.4/jquery.min.js"></script>
+    <link href="004-slides_files/datatables-css-0.0.0/datatables-crosstalk.css" rel="stylesheet" />
+    <script src="004-slides_files/datatables-binding-0.8/datatables.js"></script>
+    <link href="004-slides_files/dt-core-1.10.16/css/jquery.dataTables.min.css" rel="stylesheet" />
+    <link href="004-slides_files/dt-core-1.10.16/css/jquery.dataTables.extra.css" rel="stylesheet" />
+    <script src="004-slides_files/dt-core-1.10.16/js/jquery.dataTables.min.js"></script>
+    <link href="004-slides_files/crosstalk-1.0.0/css/crosstalk.css" rel="stylesheet" />
+    <script src="004-slides_files/crosstalk-1.0.0/js/crosstalk.min.js"></script>
     <link rel="stylesheet" href="my-css.css" type="text/css" />
   </head>
   <body>
@@ -48,11 +57,14 @@ name: admin-soon
 .b[Readings]
 
 - .note[Today]
-  - .it[ISL]
+  - .it[ISL] Ch. 3 and 6.1
 - .note[Next]
-  - .it[ISL] Ch. 3–4
+  - .it[ISL] Ch. 6 and 4
 
-.b[Problem set]
+.b[Problem sets]
+
+- Due tonight! (How did it go?)
+- .it[Next:] After we finish this set of notes
 ---
 name: admin-roadmap
 layout: false
@@ -121,8 +133,603 @@ layout: true
 ---
 class: inverse, middle
 ---
-name: ls-intro
+name: regression-intro
 ## Regression regression
+
+.note[Recall] Linear regression "fits" coefficients `\(\color{#e64173}{\beta}_0,\, \ldots,\, \color{#e64173}{\beta}_p\)` for a model
+$$
+`\begin{align}
+  \color{#FFA500}{y}_i = \color{#e64173}{\beta}_0 + \color{#e64173}{\beta}_1 x_{1,i} + \color{#e64173}{\beta}_2 x_{2,i} + \cdots + \color{#e64173}{\beta}_p x_{p,i} + \varepsilon_i
+\end{align}`
+$$
+and is often applied in two distinct settings with fairly distinct goals:
+
+1. .hi[Causal inference] estimates and interprets .pink[the coefficients].
+
+1. .hi-orange[Prediction] focuses on accurately estimating .orange[outcomes].
+
+Regardless of the goal, the way we "fit" (estimate) the model is the same.
+
+---
+## Fitting the regression line
+
+As is the case with many statistical learning methods, regression focuses on minimizing some measure of loss/error.
+
+$$
+`\begin{align}
+  e_i = \color{#FFA500}{y_i} - \color{#6A5ACD}{\hat{y}_i}
+\end{align}`
+$$
+
+--
+
+Linear regression uses the L.sub[2] loss function—also called .it[residual sum of squares] (RSS) or .it[sum of squared errors] (SSE)
+
+$$
+`\begin{align}
+  \text{RSS} = e_1 + e_2 + \cdots + e_n^2 = \sum_{i=1}^n e_i^2
+\end{align}`
+$$
+
+Specifically: OLS chooses the `\(\color{#e64173}{\hat{\beta}_j}\)` that .hi[minimize RSS].
+
+---
+name: performance
+## Performance
+
+There's a large variety of ways to assess the fit.super[.pink[†]] of linear-regression models.
+.footnote[
+.pink[†] or predictive performance
+]
+
+.hi[Residual standard error] (.hi[RSE])
+$$
+`\begin{align}
+  \text{RSE}=\sqrt{\dfrac{1}{n-p-1}\text{RSS}}=\sqrt{\dfrac{1}{n-p-1}\sum_{i=1}^{n} \left( y_i - \hat{y}_i \right)^2}
+\end{align}`
+$$
+
+.hi[R-squared] (.hi[R.super[2]])
+$$
+`\begin{align}
+  R^2 = \dfrac{\text{TSS} - \text{RSS}}{\text{TSS}} = 1 - \dfrac{\text{RSS}}{\text{TSS}} \quad \text{where} \quad \text{TSS} = \sum_{i=1}^{n} \left( y_i - \overline{y} \right)^2
+\end{align}`
+$$
+
+---
+## Performance and overfit
+
+As we've seen throughout the course, we need to be careful .b[not to overfit].
+
+--
+
+.hi[R.super[2]] provides no protection against overfitting—and actually encourages it.
+$$
+`\begin{align}
+  R^2 = 1 - \dfrac{\text{RSS}}{\text{TSS}}
+\end{align}`
+$$
+.attn[Add a new variable:] RSS `\(\downarrow\)` and TSS is unchanged. Thus, R.super[2] increases.
+
+--
+
+.hi[RSE] .it[slightly] penalizes additional variables:
+$$
+`\begin{align}
+  \text{RSE}=\sqrt{\dfrac{1}{n-p-1}\text{RSS}}
+\end{align}`
+$$
+.attn[Add a new variable:] RSS `\(\downarrow\)` but `\(p\)` increases. Thus, RSE's change is uncertain.
+
+---
+exclude: true
+
+
+```r
+library(pacman)
+p_load(parallel, stringr, data.table, magrittr, here)
+# Set parameters
+set.seed(123)
+N = 2e3
+n = 500
+p = n - 1
+# Generate data
+X = matrix(data = rnorm(n = N*p), ncol = p)
+β = matrix(data = rnorm(p, sd = 0.005), ncol = 1)
+y = X %*% β + matrix(rnorm(N, sd = 0.01), ncol = 1)
+# Create a data table
+pop_dt = X %&gt;% data.matrix() %&gt;% as.data.table()
+setnames(pop_dt, paste0("x", str_pad(1:p, 4, "left", 0)))
+pop_dt[, y := y %&gt;% unlist()]
+# Subset
+sub_dt = pop_dt[1:n,]
+out_dt = pop_dt[(n+1):N,]
+Nn = N - n
+# For j in 1 to p: fit a model, record R2 and RSE
+fit_dt = mclapply(X = seq(1, p, by = 5), mc.cores = 12, FUN = function(j) {
+  # Fit a model with the the first j variables
+  lm_j = lm(y ~ ., data = sub_dt[, c(1:j,p+1), with = F])
+  # Unseen data performance
+  y_hat = predict(lm_j, newdata = out_dt[, c(1:j,p+1), with = F])
+  out_rss = sum((out_dt[,y] - y_hat)^2)
+  out_tss = sum((out_dt[,y] - mean(out_dt[,y]))^2)
+  # Return data table
+  data.table(
+    p = j,
+    in_rse = summary(lm_j)$sigma,
+    in_r2 = summary(lm_j)$r.squared,
+    in_r2_adj = summary(lm_j)$adj.r.squared,
+    out_rse = sqrt(1 / (Nn - j - 1) * out_rss),
+    out_r2 = 1 - out_rss/out_tss,
+    out_r2_adj = 1 - ((out_rss) / (Nn - j - 1)) / ((out_tss) / (Nn-1))
+  )
+}) %&gt;% rbindlist()
+# Save results
+saveRDS(
+  object = fit_dt,
+  file = here("other-files", "overfit-data.rds")
+)
+```
+
+
+```r
+# Load the data
+fit_dt = here("other-files", "overfit-data.rds") %&gt;% read_rds()
+```
+
+---
+layout: true
+class: clear
+
+---
+name: overfit
+class: middle
+
+## Example
+Let's see how .b[R.super[2]] and .b[RSE] perform with 500 very weak predictors.
+
+To address overfitting, we can compare .b[in-] .it[vs.] .hi[out-of-sample] performance.
+
+---
+
+.b[In-sample R.super[2]] mechanically increases as we add predictors.
+&lt;br&gt;
+.white[.b[Out-of-sample R.super[2]] does not.]
+
+&lt;img src="004-slides_files/figure-html/overfit-plot-r2-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+
+.b[In-sample R.super[2]] mechanically increases as we add predictors.
+&lt;br&gt;
+.hi[Out-of-sample R.super[2]] does not.
+
+&lt;img src="004-slides_files/figure-html/overfit-plot-r2-both-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+class: middle
+
+What about RSE? Does its penalty .it[help]?
+
+---
+
+Despite its penalty for adding variables, .b[in-sample RSE] still can overfit,
+&lt;br&gt;
+.white[as evidenced by .b[out-of-sample RSE].]
+
+&lt;img src="004-slides_files/figure-html/plot-overfit-rse-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+
+Despite its penalty for adding variables, .b[in-sample RSE] still can overfit,
+&lt;br&gt;
+as evidenced by .hi[out-of-sample RSE].
+
+&lt;img src="004-slides_files/figure-html/plot-overfit-rse-both-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+layout: false
+# Linear regression
+## Penalization
+
+RSE is not the only way to penalization the addition of variables..super[.pink[†]]
+
+.footnote[
+.pink[†] We'll talk about other penalization methods (LASSO and Ridge) shortly.
+]
+
+
+.b[Adjusted R.super[2]] is another .it[classic] solution.
+
+$$
+`\begin{align}
+  \text{Adjusted }R^2 = 1 - \dfrac{\text{RSS}\color{#6A5ACD}{/(n - p - 1)}}{\text{TSS}\color{#6A5ACD}{/(n-1)}}
+\end{align}`
+$$
+
+Adj. R.super[2] attempts to "fix" R.super[2] by .hi-purple[adding a penalty for the number of variables].
+
+--
+
+- `\(\text{RSS}\)` always decreases when a new variable is added.
+
+--
+
+- `\(\color{#6A5ACD}{\text{RSS}/(n-p-1)}\)` may increase or decrease with a new variable.
+
+---
+layout: true
+class: clear
+
+---
+
+However, .b[in-sample adjusted R.super[2]] still can overfit.
+&lt;br&gt;
+.white[Illustrated by .b[out-of-sample R.super[2]].]
+
+&lt;img src="004-slides_files/figure-html/plot-overfit-adjr2-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+
+However, .b[in-sample adjusted R.super[2]] still can overfit.
+&lt;br&gt;
+Illustrated by .hi[out-of-sample adjusted R.super[2]].
+
+&lt;img src="004-slides_files/figure-html/plot-overfit-adjr2-both-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+layout: true
+# Model selection
+
+---
+name: better
+## A better way?
+
+R.super[2], adjusted R.super[2], and RSE each offer some flavor of model fit, but they appear .b[limited in their abilities to prevent overfitting].
+
+--
+
+We want a method to optimally select a (linear) model—balancing variance and bias and avoiding overfit.
+
+--
+
+We'll discuss two (related) methods today:
+
+1. .hi[Subset selection] chooses a (sub)set of our `\(p\)` potential predictors
+
+2. .hi[Shrinkage] fits a model using all `\(p\)` variables but "shrinks" its coefficients
+
+---
+name: subset-selection
+## Subset selection
+
+In .attn[subset selection], we
+
+1. whittle down the `\(p\)` potential predictors (using some magic/algorithm)
+1. estimate the chosen linear model using OLS
+
+--
+
+How do we do the *whittling* (selection)?
+--
+ We've go .b[options].
+
+- .attn[Best subset selection] fits a model for every possible subset.
+- .attn[Forward stepwise selection] starts with only an intercept and tries to build up to the best model (using some fit criterion).
+- .attn[Backward stepwise selection] starts with all `\(p\)` variables and tries to drop variables until it hits the best model (using some fit criterion).
+- .attn[Hybrid approaches] are what their name implies (_i.e._, hybrids).
+
+---
+name: best-subset
+## Best subset selection
+
+.attn[Best subset selection] is based upon a simple idea: Estimate a model for every possible subset of variables; then compare their performances.
+
+--
+
+.qa[Q] So what's the problem? (Why do we need other selection methods?)
+--
+&lt;br&gt;
+.qa[A] "a model for .hi[every possible subset]" can mean .hi[a lot] `\(\left( 2^p \right)\)` of models.
+
+--
+
+.note[E.g.,]
+- 10 predictors `\(\rightarrow\)` 1,024 models to fit
+- 25 predictors `\(\rightarrow\)` &gt;33.5 million models to fit
+- 100 predictors `\(\rightarrow\)` ~1.5 trillion models to fit
+
+--
+
+Even with plentiful, cheap computational power, we can run into barriers.
+
+---
+## Best subset selection
+
+Computational constraints aside, we can implement .attn[best subset selection] as
+
+.mono-small[
+1. Define `\(\mathcal{M}_0\)` as the model with no predictors.
+
+1. For `\(k\)` in 1 to `\(p\)`:
+
+  - Fit every possible model with `\(k\)` predictors.
+
+  - Define `\(\mathcal{M}_k\)` as the "best" model with `\(k\)` predictors.
+
+1. Select the "best" model from `\(\mathcal{M}_0,\,\ldots,\,\mathcal{M}_p\)`.
+]
+
+As we've seen, RSS declines (and R.super[2] increases) with `\(p\)`, so we should use a cross-validated measure of model performance in step .mono[3]..super[.pink[†]]
+
+.footnote[
+.pink[†] Back to our distinction between test .it[vs.] training performance.
+]
+
+---
+## Example dataset: `Credit`
+
+We're going to use the `Credit` dataset from .it[ISL]'s R package `ISLR`.
+
+--
+
+<div id="htmlwidget-09c774ebdcb7b65b3b7a" style="width:100%;height:60%;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-09c774ebdcb7b65b3b7a">{"x":{"filter":"none","data":[[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,217,218,219,220,221,222,223,224,225,226,227,228,229,230,231,232,233,234,235,236,237,238,239,240,241,242,243,244,245,246,247,248,249,250,251,252,253,254,255,256,257,258,259,260,261,262,263,264,265,266,267,268,269,270,271,272,273,274,275,276,277,278,279,280,281,282,283,284,285,286,287,288,289,290,291,292,293,294,295,296,297,298,299,300,301,302,303,304,305,306,307,308,309,310,311,312,313,314,315,316,317,318,319,320,321,322,323,324,325,326,327,328,329,330,331,332,333,334,335,336,337,338,339,340,341,342,343,344,345,346,347,348,349,350,351,352,353,354,355,356,357,358,359,360,361,362,363,364,365,366,367,368,369,370,371,372,373,374,375,376,377,378,379,380,381,382,383,384,385,386,387,388,389,390,391,392,393,394,395,396,397,398,399,400],[14.891,106.025,104.593,148.924,55.882,80.18,20.996,71.408,15.125,71.061,63.095,15.045,80.616,43.682,19.144,20.089,53.598,36.496,49.57,42.079,17.7,37.348,20.103,64.027,10.742,14.09,42.471,32.793,186.634,26.813,34.142,28.941,134.181,31.367,20.15,23.35,62.413,30.007,11.795,13.647,34.95,113.659,44.158,36.929,31.861,77.38,19.531,44.646,44.522,43.479,36.362,39.705,44.205,16.304,15.333,32.916,57.1,76.273,10.354,51.872,35.51,21.238,30.682,14.132,32.164,12,113.829,11.187,27.847,49.502,24.889,58.781,22.939,23.989,16.103,33.017,30.622,20.936,110.968,15.354,27.369,53.48,23.672,19.225,43.54,152.298,55.367,11.741,15.56,59.53,20.191,48.498,30.733,16.479,38.009,14.084,14.312,26.067,36.295,83.851,21.153,17.976,68.713,146.183,15.846,12.031,16.819,39.11,107.986,13.561,34.537,28.575,46.007,69.251,16.482,40.442,35.177,91.362,27.039,23.012,27.241,148.08,62.602,11.808,29.564,27.578,26.427,57.202,123.299,18.145,23.793,10.726,23.283,21.455,34.664,44.473,54.663,36.355,21.374,107.841,39.831,91.876,103.893,19.636,17.392,19.529,17.055,23.857,15.184,13.444,63.931,35.864,41.419,92.112,55.056,19.537,31.811,56.256,42.357,53.319,12.238,31.353,63.809,13.676,76.782,25.383,35.691,29.403,27.47,27.33,34.772,36.934,76.348,14.887,121.834,30.132,24.05,22.379,28.316,58.026,10.635,46.102,58.929,80.861,158.889,30.42,36.472,23.365,83.869,58.351,55.187,124.29,28.508,130.209,30.406,23.883,93.039,50.699,27.349,10.403,23.949,73.914,21.038,68.206,57.337,10.793,23.45,10.842,51.345,151.947,24.543,29.567,39.145,39.422,34.909,41.025,15.476,12.456,10.627,38.954,44.847,98.515,33.437,27.512,121.709,15.079,59.879,66.989,69.165,69.943,33.214,25.124,15.741,11.603,69.656,10.503,42.529,60.579,26.532,27.952,29.705,15.602,20.918,58.165,22.561,34.509,19.588,36.364,15.717,22.574,10.363,28.474,72.945,85.425,36.508,58.063,25.936,15.629,41.4,33.657,67.937,180.379,10.588,29.725,27.999,40.885,88.83,29.638,25.988,39.055,15.866,44.978,30.413,16.751,30.55,163.329,23.106,41.532,128.04,54.319,53.401,36.142,63.534,49.927,14.711,18.967,18.036,60.449,16.711,10.852,26.37,24.088,51.532,140.672,42.915,27.272,65.896,55.054,20.791,24.919,21.786,31.335,59.855,44.061,82.706,24.46,45.12,75.406,14.956,75.257,33.694,23.375,27.825,92.386,115.52,14.479,52.179,68.462,18.951,27.59,16.279,25.078,27.229,182.728,31.029,17.765,125.48,49.166,41.192,94.193,20.405,12.581,62.328,21.011,24.23,24.314,32.856,12.414,41.365,149.316,27.794,13.234,14.595,10.735,48.218,30.012,21.551,160.231,13.433,48.577,30.002,61.62,104.483,41.868,12.068,180.682,34.48,39.609,30.111,12.335,53.566,53.217,26.162,64.173,128.669,113.772,61.069,23.793,89,71.682,35.61,39.116,19.782,55.412,29.4,20.974,87.625,28.144,19.349,53.308,115.123,101.788,24.824,14.292,20.088,26.4,19.253,16.529,37.878,83.948,135.118,73.327,25.974,17.316,49.794,12.096,13.364,57.872,37.728,18.701],[3606,6645,7075,9504,4897,8047,3388,7114,3300,6819,8117,1311,5308,6922,3291,2525,3714,4378,6384,6626,2860,6378,2631,5179,1757,4323,3625,4534,13414,5611,5666,2733,7838,1829,2646,2558,6457,6481,3899,3461,3327,7659,4763,6257,6375,7569,5043,4431,2252,4569,5183,3969,5441,5466,1499,1786,4742,4779,3480,5294,5198,3089,1671,2998,2937,4160,9704,5099,5619,6819,3954,7402,4923,4523,5390,3180,3293,3254,6662,2101,3449,4263,4433,1433,2906,12066,6340,2271,4307,7518,5767,6040,2832,5435,3075,855,5382,3388,2963,8494,3736,2433,7582,9540,4768,3182,1337,3189,6033,3261,3271,2959,6637,6386,3326,4828,2117,9113,2161,1410,1402,8157,7056,1300,2529,2531,5533,3411,8376,3461,3821,1568,5443,5829,5835,3500,4116,3613,2073,10384,6045,6754,7416,4896,2748,4673,5110,1501,2420,886,5728,4831,2120,4612,3155,1362,4284,5521,5550,3000,4865,1705,7530,2330,5977,4527,2880,2327,2820,6179,2021,4270,4697,4745,10673,2168,2607,3965,4391,7499,3584,5180,6420,4090,11589,4442,3806,2179,7667,4411,5352,9560,3933,10088,2120,5384,7398,3977,2000,4159,5343,7333,1448,6784,5310,3878,2450,4391,4327,9156,3206,5309,4351,5245,5289,4229,2762,5395,1647,5222,5765,8760,6207,4613,7818,5673,6906,5614,4668,7555,5137,4776,4788,2278,8244,2923,4986,5149,2910,3557,3351,906,1233,6617,1787,2001,3211,2220,905,1551,2430,3202,8603,5182,6386,4221,1774,2493,2561,6196,5184,9310,4049,3536,5107,5013,4952,5833,1349,5565,3085,4866,3690,4706,5869,8732,3476,5000,6982,3063,5319,1852,8100,6396,2047,1626,1552,3098,5274,3907,3235,3665,5096,11200,2532,1389,5140,4381,2672,5051,4632,3526,4964,4970,7506,1924,3762,3874,4640,7010,4891,5429,5227,7685,9272,3907,7306,4712,1485,2586,1160,3096,3484,13913,2863,5072,10230,6662,3673,7576,4543,3976,5228,3402,4756,3409,5884,855,5303,10278,3807,3922,2955,3746,5199,1511,5380,10748,1134,5145,1561,5140,7140,4716,3873,11966,6090,2539,4336,4471,5891,4943,5101,6127,9824,6442,7871,3615,5759,8028,6135,2150,3782,5354,4840,5673,7167,1567,4941,2860,7760,8029,5495,3274,1870,5640,3683,1357,6827,7100,10578,6555,2308,1335,5758,4100,3838,4171,2525,5524],[283,483,514,681,357,569,259,512,266,491,589,138,394,511,269,200,286,339,448,479,235,458,213,398,156,326,289,333,949,411,413,210,563,162,199,220,455,462,300,264,253,538,351,445,469,564,376,320,205,354,376,301,394,413,138,154,372,367,281,390,364,254,160,251,223,320,694,380,418,505,318,538,355,338,418,224,251,253,468,171,288,317,344,122,232,828,448,182,352,543,431,456,249,388,245,120,367,266,241,607,256,190,531,682,365,259,115,263,449,279,250,231,491,474,268,369,186,626,173,137,128,599,481,117,192,195,433,259,610,279,281,162,407,427,452,257,314,278,175,728,459,483,549,387,228,341,371,150,192,121,435,353,184,344,235,143,338,406,406,235,381,160,515,203,429,367,214,178,219,459,167,299,344,339,750,206,221,292,316,560,294,382,459,335,805,316,309,167,554,326,385,701,287,730,181,398,517,304,169,310,383,529,145,499,392,321,180,358,320,642,243,397,323,383,410,337,215,392,149,370,437,633,451,344,584,411,527,430,341,547,387,378,360,187,579,232,369,388,236,263,262,103,128,460,147,189,265,188,93,134,191,267,621,402,469,304,135,186,215,450,383,665,296,270,380,379,360,433,142,410,217,347,299,353,439,636,257,353,518,248,377,183,581,485,167,156,142,272,387,296,268,287,380,817,205,149,370,321,204,372,355,289,365,352,536,165,287,298,332,494,369,396,386,534,656,296,522,340,129,229,126,236,282,982,223,364,721,508,297,527,329,291,377,261,351,270,438,119,377,707,301,299,260,280,401,137,420,754,112,389,155,374,507,342,292,832,442,188,339,344,434,362,382,433,685,489,564,263,440,599,466,173,293,383,368,413,515,142,366,214,538,574,409,282,180,398,287,126,482,503,747,472,196,138,410,307,296,321,192,415],[2,3,4,3,2,4,2,2,5,3,4,3,1,1,2,3,3,3,1,2,4,1,3,5,3,5,6,2,2,4,4,5,2,4,2,3,2,2,4,4,3,2,2,1,3,3,2,2,6,4,3,2,1,4,2,2,7,4,2,4,2,3,2,4,2,4,4,4,2,4,4,2,1,4,4,2,1,1,3,2,3,1,3,3,4,4,1,4,4,3,4,3,4,2,3,5,1,4,2,5,1,3,2,6,4,2,2,3,4,5,3,2,4,4,4,5,3,1,3,3,2,2,1,3,1,1,5,3,2,3,4,5,4,4,3,3,2,4,2,3,3,2,3,3,3,2,3,3,2,5,3,3,4,3,2,4,5,2,2,3,5,3,1,5,4,4,2,1,1,4,3,1,4,3,3,3,4,2,2,5,5,3,2,3,1,1,2,2,2,2,4,3,4,7,2,2,1,2,4,3,2,6,2,5,2,8,2,5,3,2,2,3,2,2,2,3,3,3,2,4,3,5,4,5,4,4,6,3,2,3,3,4,1,3,3,3,2,5,6,1,5,2,3,1,4,5,4,3,1,3,2,5,3,6,4,3,2,1,2,6,4,3,1,2,1,3,4,3,4,4,1,1,2,6,5,3,2,2,2,3,3,3,2,3,2,2,2,4,3,2,5,4,2,7,4,5,1,3,1,3,1,3,1,1,2,2,3,3,2,3,1,3,6,2,2,3,2,2,3,5,3,2,6,4,2,1,3,3,3,2,2,2,3,2,2,2,4,3,1,1,4,2,5,2,7,2,5,2,3,3,4,1,2,2,1,2,3,1,1,3,4,2,3,1,3,4,3,2,3,3,4,4,2,2,3,5,2,3,1,1,3,2,1,9,3,3,4,3,2,2,3,2,2,2,4,3,5,5,1,5],[34,82,71,36,68,77,37,87,66,41,30,64,57,49,75,57,73,69,28,44,63,72,61,48,57,25,44,44,41,55,47,43,48,30,25,49,71,69,25,47,54,66,66,24,25,50,64,49,72,49,49,27,32,66,47,60,79,65,70,81,35,59,77,75,79,28,38,69,78,55,75,81,47,31,45,28,68,30,45,65,40,83,63,38,69,41,33,59,57,52,42,47,51,26,45,46,59,74,68,47,41,70,56,66,53,58,74,72,64,37,57,60,42,30,41,81,62,47,40,81,67,83,84,77,30,34,50,72,89,56,56,46,49,80,77,81,70,35,74,87,32,33,84,64,32,51,55,56,69,44,28,66,24,32,31,34,75,72,83,53,67,81,56,80,44,46,35,37,32,36,57,63,60,58,54,52,32,34,29,67,69,81,66,29,62,30,52,75,83,85,50,52,56,39,79,73,67,84,51,43,40,67,58,40,45,29,78,37,46,91,62,25,66,44,62,79,60,65,71,76,53,78,44,72,50,28,78,47,34,76,59,29,39,71,41,25,37,38,58,35,71,36,47,56,66,80,59,50,38,43,47,66,64,60,79,50,71,60,36,55,63,67,66,52,55,46,86,29,82,48,39,30,25,48,81,50,50,50,78,59,35,33,50,75,67,41,48,69,42,30,78,56,31,46,42,67,49,74,70,76,50,38,46,79,64,50,80,41,33,34,52,57,63,75,69,43,57,71,82,54,78,27,51,98,66,66,82,68,54,44,72,48,83,68,64,23,68,32,45,80,35,77,37,44,39,33,51,69,70,71,70,71,41,47,44,58,36,40,81,79,82,46,62,80,67,69,56,70,37,57,40,75,46,37,76,44,46,51,33,84,83,84,33,64,76,58,57,62,80,44,81,43,24,65,40,32,65,67,44,64],[11,15,11,11,16,10,12,9,13,19,14,16,7,9,13,15,17,15,9,9,16,17,10,8,15,16,12,16,14,16,5,16,13,10,14,12,11,9,10,14,14,15,13,14,16,12,16,15,15,13,15,20,12,10,9,8,18,14,17,17,20,10,7,17,15,14,13,16,15,14,12,12,18,15,10,16,16,15,11,14,9,15,11,14,11,12,15,12,8,9,16,16,13,16,15,17,17,17,14,18,11,16,16,15,12,18,15,12,14,19,17,11,14,12,15,8,16,17,17,16,15,13,11,14,12,15,15,11,17,15,12,19,13,12,15,16,8,9,11,7,12,10,17,10,14,14,15,16,11,10,14,13,11,17,16,9,13,16,12,13,11,14,12,16,12,11,15,14,11,12,9,9,18,12,16,17,18,14,10,11,16,12,9,15,17,14,13,15,11,16,17,17,14,19,14,16,12,17,16,7,18,15,13,16,7,13,13,10,15,11,12,15,13,19,16,19,18,14,10,13,13,11,9,17,6,15,15,14,11,9,9,12,14,11,14,18,11,15,19,13,14,11,18,12,15,18,14,19,16,13,18,12,8,12,6,8,14,14,14,9,12,8,13,15,10,13,16,15,12,18,13,10,15,14,9,14,15,12,11,8,12,13,17,17,6,11,15,8,16,9,11,13,15,9,13,10,17,17,18,11,17,7,13,11,13,14,8,14,6,18,16,15,11,18,14,16,14,16,13,16,13,15,11,17,17,12,16,14,16,16,17,16,15,17,15,7,13,12,14,16,8,17,9,17,10,17,18,17,14,13,13,9,14,18,18,8,14,14,18,12,10,16,19,10,16,15,14,14,6,16,12,15,16,16,18,16,10,10,19,10,14,11,9,9,16,15,10,9,13,18,15,15,10,13,8,13,17,12,13,7],[" Male","Female"," Male","Female"," Male"," Male","Female"," Male","Female","Female"," Male"," Male","Female"," Male","Female","Female","Female","Female","Female"," Male","Female","Female"," Male"," Male","Female","Female","Female"," Male","Female","Female","Female"," Male","Female"," Male","Female","Female","Female","Female","Female"," Male","Female"," Male","Female","Female","Female","Female","Female"," Male"," Male"," Male"," Male"," Male"," Male"," Male","Female","Female","Female","Female"," Male","Female","Female","Female","Female"," Male","Female","Female","Female","Female","Female"," Male"," Male","Female","Female"," Male","Female"," Male"," Male","Female","Female"," Male","Female"," Male"," Male","Female"," Male","Female"," Male","Female"," Male","Female"," Male"," Male"," Male"," Male","Female","Female"," Male","Female","Female"," Male"," Male","Female"," Male"," Male","Female","Female"," Male"," Male"," Male"," Male","Female","Female"," Male","Female"," Male","Female","Female"," Male","Female"," Male","Female"," Male","Female","Female","Female","Female","Female","Female"," Male"," Male","Female"," Male"," Male","Female","Female","Female","Female"," Male","Female"," Male","Female"," Male"," Male","Female"," Male"," Male","Female"," Male","Female"," Male","Female","Female","Female"," Male"," Male","Female","Female","Female","Female"," Male","Female"," Male"," Male","Female"," Male"," Male"," Male","Female","Female","Female"," Male","Female"," Male"," Male"," Male"," Male"," Male","Female","Female","Female"," Male"," Male","Female","Female","Female","Female"," Male"," Male"," Male","Female","Female","Female"," Male","Female"," Male","Female"," Male","Female","Female"," Male"," Male","Female","Female","Female","Female"," Male"," Male","Female"," Male","Female","Female"," Male"," Male"," Male","Female","Female"," Male"," Male","Female","Female","Female","Female"," Male"," Male"," Male","Female","Female","Female","Female"," Male"," Male"," Male"," Male"," Male"," Male","Female"," Male"," Male","Female","Female","Female"," Male","Female","Female","Female","Female","Female"," Male"," Male","Female","Female"," Male","Female"," Male","Female"," Male","Female"," Male"," Male","Female"," Male","Female","Female","Female"," Male","Female","Female","Female"," Male","Female"," Male","Female","Female"," Male","Female"," Male","Female"," Male","Female","Female","Female","Female","Female","Female"," Male","Female","Female"," Male","Female"," Male"," Male","Female"," Male"," Male"," Male","Female","Female"," Male","Female","Female"," Male","Female","Female"," Male","Female","Female"," Male","Female"," Male","Female"," Male","Female"," Male","Female"," Male"," Male"," Male"," Male","Female"," Male"," Male","Female"," Male"," Male"," Male","Female"," Male","Female","Female","Female"," Male"," Male"," Male"," Male","Female","Female"," Male"," Male"," Male"," Male","Female","Female"," Male","Female"," Male"," Male"," Male"," Male"," Male","Female","Female"," Male"," Male"," Male","Female","Female"," Male"," Male"," Male"," Male","Female","Female","Female"," Male"," Male"," Male"," Male"," Male","Female"," Male"," Male"," Male","Female","Female","Female","Female","Female"," Male"," Male"," Male","Female"," Male"," Male"," Male"," Male","Female"," Male"," Male","Female"," Male","Female","Female"," Male"," Male"," Male"," Male"," Male","Female"," Male","Female"],["No","Yes","No","No","No","No","No","No","No","Yes","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","Yes","No","No","No","No","No","No","No","No","Yes","No","No","No","No","No","Yes","No","No","No","No","Yes","Yes","No","Yes","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","Yes","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","Yes","No","Yes","No","No","Yes","Yes","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","Yes","No","Yes","No","Yes","No","No","No","No","No","No","No","No","No","Yes","No","No","No","No","No","No","No","No","No","No","No","Yes","No","No","No","No","Yes","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","Yes","No","No","No","No","No","No","No","No","No","No","No","Yes","No","No","No","Yes","No","No","No","No","No","No","No","No","No","No","Yes","No","Yes","No","Yes","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","Yes","No","No","No","No","No","Yes","Yes","No","No","No","No","No","No","No","No","No","No","No","Yes","No","No","No","No","No","No","No","No","No","No","Yes","Yes","No","No","No","No","No","Yes","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","Yes","No","No","No","No","No","No","No","No","No","Yes","No","No","No","Yes","No","No","No","No","No","Yes","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","Yes","No","No","No","No","No","No","Yes","Yes","No","No","No","No","No","No","No","No","Yes","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No","No"],["Yes","Yes","No","No","Yes","No","No","No","No","Yes","Yes","No","Yes","Yes","No","Yes","Yes","Yes","Yes","No","No","No","Yes","Yes","No","Yes","No","No","Yes","No","Yes","Yes","No","Yes","Yes","No","Yes","Yes","No","Yes","No","Yes","Yes","Yes","Yes","Yes","Yes","Yes","Yes","Yes","Yes","Yes","Yes","Yes","Yes","Yes","Yes","Yes","Yes","No","No","No","No","No","Yes","Yes","Yes","No","Yes","Yes","Yes","Yes","Yes","No","Yes","Yes","No","No","Yes","No","Yes","No","No","No","No","Yes","Yes","No","Yes","No","Yes","Yes","No","No","No","Yes","No","Yes","No","No","No","No","No","No","No","Yes","Yes","No","Yes","Yes","Yes","No","Yes","Yes","No","No","No","Yes","No","No","Yes","Yes","No","No","Yes","Yes","Yes","No","No","Yes","Yes","Yes","Yes","Yes","Yes","No","No","Yes","Yes","No","Yes","Yes","No","No","Yes","No","Yes","Yes","Yes","Yes","Yes","Yes","No","No","Yes","Yes","Yes","Yes","Yes","No","No","Yes","Yes","No","Yes","Yes","No","Yes","Yes","Yes","No","Yes","No","Yes","No","No","Yes","Yes","No","No","Yes","Yes","Yes","Yes","Yes","No","No","No","No","Yes","Yes","No","Yes","Yes","Yes","Yes","Yes","No","Yes","Yes","Yes","Yes","Yes","No","No","No","No","Yes","No","Yes","Yes","No","Yes","No","Yes","Yes","No","Yes","Yes","No","No","No","No","Yes","Yes","Yes","No","Yes","No","Yes","No","Yes","Yes","Yes","Yes","Yes","Yes","Yes","Yes","Yes","Yes","Yes","Yes","Yes","No","Yes","No","No","Yes","Yes","Yes","Yes","No","Yes","Yes","No","No","Yes","Yes","No","Yes","Yes","Yes","No","Yes","Yes","Yes","Yes","No","Yes","No","No","No","No","No","Yes","No","Yes","Yes","No","No","No","Yes","Yes","Yes","Yes","No","Yes","Yes","No","Yes","Yes","Yes","Yes","Yes","Yes","Yes","Yes","No","Yes","Yes","No","Yes","Yes","Yes","Yes","Yes","Yes","No","Yes","No","Yes","Yes","Yes","No","Yes","No","Yes","No","Yes","Yes","Yes","No","Yes","Yes","Yes","Yes","No","Yes","Yes","No","Yes","No","Yes","Yes","Yes","No","Yes","No","No","Yes","Yes","Yes","Yes","Yes","Yes","Yes","No","Yes","Yes","Yes","Yes","Yes","No","Yes","Yes","No","Yes","Yes","Yes","No","Yes","No","Yes","Yes","Yes","Yes","No","No","Yes","No","No","No","Yes","Yes","Yes","No","Yes","Yes","Yes","No","Yes","No","Yes","No","No","No","No","No","No","Yes","No","No","No","No","Yes","No","Yes","Yes","No"],["Caucasian","Asian","Asian","Asian","Caucasian","Caucasian","African American","Asian","Caucasian","African American","Caucasian","Caucasian","Asian","Caucasian","African American","African American","African American","Asian","Asian","Asian","Asian","Caucasian","African American","African American","Caucasian","African American","Caucasian","African American","African American","Caucasian","Caucasian","Asian","Caucasian","Caucasian","Asian","Caucasian","Caucasian","Caucasian","Caucasian","Caucasian","African American","African American","Asian","Asian","Caucasian","Caucasian","Asian","Caucasian","Asian","African American","African American","African American","Caucasian","Asian","Asian","Asian","Asian","Caucasian","Caucasian","Caucasian","Asian","Caucasian","Caucasian","Caucasian","African American","Caucasian","Asian","African American","Caucasian","Caucasian","Caucasian","Asian","Asian","Caucasian","Caucasian","African American","Caucasian","Asian","Caucasian","Asian","Caucasian","Caucasian","Caucasian","Caucasian","Caucasian","Asian","Caucasian","Asian","African American","African American","African American","Caucasian","Caucasian","African American","African American","African American","Asian","African American","African American","Caucasian","Caucasian","Caucasian","Caucasian","Caucasian","Caucasian","Caucasian","Asian","Asian","Caucasian","Asian","Asian","African American","Caucasian","Asian","Caucasian","African American","Caucasian","Asian","Caucasian","Caucasian","Asian","Caucasian","Caucasian","African American","Caucasian","Caucasian","Asian","Caucasian","African American","African American","African American","Asian","African American","African American","African American","African American","African American","Asian","Caucasian","African American","African American","Caucasian","Asian","African American","Caucasian","Asian","Caucasian","Caucasian","Caucasian","Asian","African American","Caucasian","Caucasian","Caucasian","African American","Asian","Caucasian","Caucasian","Asian","Asian","Caucasian","Caucasian","Caucasian","African American","Asian","Caucasian","African American","Caucasian","Asian","Caucasian","Asian","Caucasian","Asian","African American","African American","Caucasian","Caucasian","Asian","Caucasian","Caucasian","Asian","African American","African American","Asian","Caucasian","African American","African American","Asian","African American","Caucasian","Caucasian","Asian","Asian","Caucasian","African American","African American","African American","African American","African American","Asian","African American","Caucasian","Caucasian","African American","Caucasian","Caucasian","Caucasian","Caucasian","African American","African American","Caucasian","Caucasian","Caucasian","African American","Caucasian","Caucasian","Asian","Caucasian","Asian","Caucasian","Asian","African American","Caucasian","Asian","Caucasian","Asian","Caucasian","Caucasian","African American","Asian","African American","Caucasian","Asian","Caucasian","African American","African American","Asian","Asian","Caucasian","Asian","Asian","African American","Asian","Caucasian","Caucasian","African American","Asian","Caucasian","Caucasian","Caucasian","Asian","Caucasian","Caucasian","African American","Caucasian","African American","Asian","Asian","Caucasian","Caucasian","Asian","Asian","Caucasian","African American","Caucasian","African American","Caucasian","Asian","Caucasian","Caucasian","Caucasian","Caucasian","Asian","Asian","African American","Caucasian","Caucasian","Caucasian","Caucasian","Caucasian","African American","African American","Caucasian","Caucasian","Caucasian","Asian","Caucasian","Caucasian","Asian","Caucasian","Asian","Caucasian","Caucasian","African American","Asian","Caucasian","Caucasian","Asian","African American","African American","Caucasian","Caucasian","Caucasian","African American","Asian","Asian","Caucasian","Asian","Asian","Caucasian","African American","Caucasian","Caucasian","Asian","African American","Caucasian","Asian","Caucasian","Caucasian","African American","African American","Caucasian","Caucasian","Caucasian","Asian","Caucasian","Caucasian","Asian","Caucasian","Caucasian","Asian","Caucasian","Caucasian","African American","Caucasian","Caucasian","Caucasian","African American","Caucasian","African American","African American","Caucasian","African American","Caucasian","Asian","Caucasian","Asian","Caucasian","Caucasian","Asian","Caucasian","Caucasian","African American","Caucasian","Asian","African American","Caucasian","Asian","Caucasian","African American","Caucasian","Asian","African American","Caucasian","Asian","Caucasian","Caucasian","African American","Caucasian","Caucasian","Caucasian","Caucasian","Caucasian","Caucasian","Caucasian","Caucasian","African American","Caucasian","Caucasian","Caucasian","African American","Caucasian","Caucasian","Caucasian","African American","Asian","African American","Asian","Caucasian","Caucasian","Asian","Caucasian","Asian","African American","Caucasian","Caucasian","African American","Caucasian","Caucasian","Asian"],[333,903,580,964,331,1151,203,872,279,1350,1407,0,204,1081,148,0,0,368,891,1048,89,968,0,411,0,671,654,467,1809,915,863,0,526,0,0,419,762,1093,531,344,50,1155,385,976,1120,997,1241,797,0,902,654,211,607,957,0,0,379,133,333,531,631,108,0,133,0,602,1388,889,822,1084,357,1103,663,601,945,29,532,145,391,0,162,99,503,0,0,1779,815,0,579,1176,1023,812,0,937,0,0,1380,155,375,1311,298,431,1587,1050,745,210,0,0,227,297,47,0,1046,768,271,510,0,1341,0,0,0,454,904,0,0,0,1404,0,1259,255,868,0,912,1018,835,8,75,187,0,1597,1425,605,669,710,68,642,805,0,0,0,581,534,156,0,0,0,429,1020,653,0,836,0,1086,0,548,570,0,0,0,1099,0,283,108,724,1573,0,0,384,453,1237,423,516,789,0,1448,450,188,0,930,126,538,1687,336,1426,0,802,749,69,0,571,829,1048,0,1411,456,638,0,1216,230,732,95,799,308,637,681,246,52,955,195,653,1246,1230,1549,573,701,1075,1032,482,156,1058,661,657,689,0,1329,191,489,443,52,163,148,0,16,856,0,0,199,0,0,98,0,132,1355,218,1048,118,0,0,0,1092,345,1050,465,133,651,549,15,942,0,772,136,436,728,1255,967,529,209,531,250,269,541,0,1298,890,0,0,0,0,863,485,159,309,481,1677,0,0,293,188,0,711,580,172,295,414,905,0,70,0,681,885,1036,844,823,843,1140,463,1142,136,0,0,5,81,265,1999,415,732,1361,984,121,846,1054,474,380,182,594,194,926,0,606,1107,320,426,204,410,633,0,907,1192,0,503,0,302,583,425,413,1405,962,0,347,611,712,382,710,578,1243,790,1264,216,345,1208,992,0,840,1003,588,1000,767,0,717,0,661,849,1352,382,0,905,371,0,1129,806,1393,721,0,0,734,560,480,138,0,966]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>ID<\/th>\n      <th>Income<\/th>\n      <th>Limit<\/th>\n      <th>Rating<\/th>\n      <th>Cards<\/th>\n      <th>Age<\/th>\n      <th>Education<\/th>\n      <th>Gender<\/th>\n      <th>Student<\/th>\n      <th>Married<\/th>\n      <th>Ethnicity<\/th>\n      <th>Balance<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"t","columnDefs":[{"className":"dt-right","targets":[0,1,2,3,4,5,6,11]}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+
+The `Credit` dataset has 400 observations on 12 variables.
+
+---
+## Example dataset: `Credit`
+
+
+
+We need to pre-process the dataset before we can select a model...
+
+<div id="htmlwidget-ddf0a45b2ccb0200ce48" style="width:100%;height:60%;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-ddf0a45b2ccb0200ce48">{"x":{"filter":"none","data":[[14.891,106.025,104.593,148.924,55.882,80.18,20.996,71.408,15.125,71.061,63.095,15.045,80.616,43.682,19.144,20.089,53.598,36.496,49.57,42.079,17.7,37.348,20.103,64.027,10.742,14.09,42.471,32.793,186.634,26.813,34.142,28.941,134.181,31.367,20.15,23.35,62.413,30.007,11.795,13.647,34.95,113.659,44.158,36.929,31.861,77.38,19.531,44.646,44.522,43.479,36.362,39.705,44.205,16.304,15.333,32.916,57.1,76.273,10.354,51.872,35.51,21.238,30.682,14.132,32.164,12,113.829,11.187,27.847,49.502,24.889,58.781,22.939,23.989,16.103,33.017,30.622,20.936,110.968,15.354,27.369,53.48,23.672,19.225,43.54,152.298,55.367,11.741,15.56,59.53,20.191,48.498,30.733,16.479,38.009,14.084,14.312,26.067,36.295,83.851,21.153,17.976,68.713,146.183,15.846,12.031,16.819,39.11,107.986,13.561,34.537,28.575,46.007,69.251,16.482,40.442,35.177,91.362,27.039,23.012,27.241,148.08,62.602,11.808,29.564,27.578,26.427,57.202,123.299,18.145,23.793,10.726,23.283,21.455,34.664,44.473,54.663,36.355,21.374,107.841,39.831,91.876,103.893,19.636,17.392,19.529,17.055,23.857,15.184,13.444,63.931,35.864,41.419,92.112,55.056,19.537,31.811,56.256,42.357,53.319,12.238,31.353,63.809,13.676,76.782,25.383,35.691,29.403,27.47,27.33,34.772,36.934,76.348,14.887,121.834,30.132,24.05,22.379,28.316,58.026,10.635,46.102,58.929,80.861,158.889,30.42,36.472,23.365,83.869,58.351,55.187,124.29,28.508,130.209,30.406,23.883,93.039,50.699,27.349,10.403,23.949,73.914,21.038,68.206,57.337,10.793,23.45,10.842,51.345,151.947,24.543,29.567,39.145,39.422,34.909,41.025,15.476,12.456,10.627,38.954,44.847,98.515,33.437,27.512,121.709,15.079,59.879,66.989,69.165,69.943,33.214,25.124,15.741,11.603,69.656,10.503,42.529,60.579,26.532,27.952,29.705,15.602,20.918,58.165,22.561,34.509,19.588,36.364,15.717,22.574,10.363,28.474,72.945,85.425,36.508,58.063,25.936,15.629,41.4,33.657,67.937,180.379,10.588,29.725,27.999,40.885,88.83,29.638,25.988,39.055,15.866,44.978,30.413,16.751,30.55,163.329,23.106,41.532,128.04,54.319,53.401,36.142,63.534,49.927,14.711,18.967,18.036,60.449,16.711,10.852,26.37,24.088,51.532,140.672,42.915,27.272,65.896,55.054,20.791,24.919,21.786,31.335,59.855,44.061,82.706,24.46,45.12,75.406,14.956,75.257,33.694,23.375,27.825,92.386,115.52,14.479,52.179,68.462,18.951,27.59,16.279,25.078,27.229,182.728,31.029,17.765,125.48,49.166,41.192,94.193,20.405,12.581,62.328,21.011,24.23,24.314,32.856,12.414,41.365,149.316,27.794,13.234,14.595,10.735,48.218,30.012,21.551,160.231,13.433,48.577,30.002,61.62,104.483,41.868,12.068,180.682,34.48,39.609,30.111,12.335,53.566,53.217,26.162,64.173,128.669,113.772,61.069,23.793,89,71.682,35.61,39.116,19.782,55.412,29.4,20.974,87.625,28.144,19.349,53.308,115.123,101.788,24.824,14.292,20.088,26.4,19.253,16.529,37.878,83.948,135.118,73.327,25.974,17.316,49.794,12.096,13.364,57.872,37.728,18.701],[3606,6645,7075,9504,4897,8047,3388,7114,3300,6819,8117,1311,5308,6922,3291,2525,3714,4378,6384,6626,2860,6378,2631,5179,1757,4323,3625,4534,13414,5611,5666,2733,7838,1829,2646,2558,6457,6481,3899,3461,3327,7659,4763,6257,6375,7569,5043,4431,2252,4569,5183,3969,5441,5466,1499,1786,4742,4779,3480,5294,5198,3089,1671,2998,2937,4160,9704,5099,5619,6819,3954,7402,4923,4523,5390,3180,3293,3254,6662,2101,3449,4263,4433,1433,2906,12066,6340,2271,4307,7518,5767,6040,2832,5435,3075,855,5382,3388,2963,8494,3736,2433,7582,9540,4768,3182,1337,3189,6033,3261,3271,2959,6637,6386,3326,4828,2117,9113,2161,1410,1402,8157,7056,1300,2529,2531,5533,3411,8376,3461,3821,1568,5443,5829,5835,3500,4116,3613,2073,10384,6045,6754,7416,4896,2748,4673,5110,1501,2420,886,5728,4831,2120,4612,3155,1362,4284,5521,5550,3000,4865,1705,7530,2330,5977,4527,2880,2327,2820,6179,2021,4270,4697,4745,10673,2168,2607,3965,4391,7499,3584,5180,6420,4090,11589,4442,3806,2179,7667,4411,5352,9560,3933,10088,2120,5384,7398,3977,2000,4159,5343,7333,1448,6784,5310,3878,2450,4391,4327,9156,3206,5309,4351,5245,5289,4229,2762,5395,1647,5222,5765,8760,6207,4613,7818,5673,6906,5614,4668,7555,5137,4776,4788,2278,8244,2923,4986,5149,2910,3557,3351,906,1233,6617,1787,2001,3211,2220,905,1551,2430,3202,8603,5182,6386,4221,1774,2493,2561,6196,5184,9310,4049,3536,5107,5013,4952,5833,1349,5565,3085,4866,3690,4706,5869,8732,3476,5000,6982,3063,5319,1852,8100,6396,2047,1626,1552,3098,5274,3907,3235,3665,5096,11200,2532,1389,5140,4381,2672,5051,4632,3526,4964,4970,7506,1924,3762,3874,4640,7010,4891,5429,5227,7685,9272,3907,7306,4712,1485,2586,1160,3096,3484,13913,2863,5072,10230,6662,3673,7576,4543,3976,5228,3402,4756,3409,5884,855,5303,10278,3807,3922,2955,3746,5199,1511,5380,10748,1134,5145,1561,5140,7140,4716,3873,11966,6090,2539,4336,4471,5891,4943,5101,6127,9824,6442,7871,3615,5759,8028,6135,2150,3782,5354,4840,5673,7167,1567,4941,2860,7760,8029,5495,3274,1870,5640,3683,1357,6827,7100,10578,6555,2308,1335,5758,4100,3838,4171,2525,5524],[283,483,514,681,357,569,259,512,266,491,589,138,394,511,269,200,286,339,448,479,235,458,213,398,156,326,289,333,949,411,413,210,563,162,199,220,455,462,300,264,253,538,351,445,469,564,376,320,205,354,376,301,394,413,138,154,372,367,281,390,364,254,160,251,223,320,694,380,418,505,318,538,355,338,418,224,251,253,468,171,288,317,344,122,232,828,448,182,352,543,431,456,249,388,245,120,367,266,241,607,256,190,531,682,365,259,115,263,449,279,250,231,491,474,268,369,186,626,173,137,128,599,481,117,192,195,433,259,610,279,281,162,407,427,452,257,314,278,175,728,459,483,549,387,228,341,371,150,192,121,435,353,184,344,235,143,338,406,406,235,381,160,515,203,429,367,214,178,219,459,167,299,344,339,750,206,221,292,316,560,294,382,459,335,805,316,309,167,554,326,385,701,287,730,181,398,517,304,169,310,383,529,145,499,392,321,180,358,320,642,243,397,323,383,410,337,215,392,149,370,437,633,451,344,584,411,527,430,341,547,387,378,360,187,579,232,369,388,236,263,262,103,128,460,147,189,265,188,93,134,191,267,621,402,469,304,135,186,215,450,383,665,296,270,380,379,360,433,142,410,217,347,299,353,439,636,257,353,518,248,377,183,581,485,167,156,142,272,387,296,268,287,380,817,205,149,370,321,204,372,355,289,365,352,536,165,287,298,332,494,369,396,386,534,656,296,522,340,129,229,126,236,282,982,223,364,721,508,297,527,329,291,377,261,351,270,438,119,377,707,301,299,260,280,401,137,420,754,112,389,155,374,507,342,292,832,442,188,339,344,434,362,382,433,685,489,564,263,440,599,466,173,293,383,368,413,515,142,366,214,538,574,409,282,180,398,287,126,482,503,747,472,196,138,410,307,296,321,192,415],[2,3,4,3,2,4,2,2,5,3,4,3,1,1,2,3,3,3,1,2,4,1,3,5,3,5,6,2,2,4,4,5,2,4,2,3,2,2,4,4,3,2,2,1,3,3,2,2,6,4,3,2,1,4,2,2,7,4,2,4,2,3,2,4,2,4,4,4,2,4,4,2,1,4,4,2,1,1,3,2,3,1,3,3,4,4,1,4,4,3,4,3,4,2,3,5,1,4,2,5,1,3,2,6,4,2,2,3,4,5,3,2,4,4,4,5,3,1,3,3,2,2,1,3,1,1,5,3,2,3,4,5,4,4,3,3,2,4,2,3,3,2,3,3,3,2,3,3,2,5,3,3,4,3,2,4,5,2,2,3,5,3,1,5,4,4,2,1,1,4,3,1,4,3,3,3,4,2,2,5,5,3,2,3,1,1,2,2,2,2,4,3,4,7,2,2,1,2,4,3,2,6,2,5,2,8,2,5,3,2,2,3,2,2,2,3,3,3,2,4,3,5,4,5,4,4,6,3,2,3,3,4,1,3,3,3,2,5,6,1,5,2,3,1,4,5,4,3,1,3,2,5,3,6,4,3,2,1,2,6,4,3,1,2,1,3,4,3,4,4,1,1,2,6,5,3,2,2,2,3,3,3,2,3,2,2,2,4,3,2,5,4,2,7,4,5,1,3,1,3,1,3,1,1,2,2,3,3,2,3,1,3,6,2,2,3,2,2,3,5,3,2,6,4,2,1,3,3,3,2,2,2,3,2,2,2,4,3,1,1,4,2,5,2,7,2,5,2,3,3,4,1,2,2,1,2,3,1,1,3,4,2,3,1,3,4,3,2,3,3,4,4,2,2,3,5,2,3,1,1,3,2,1,9,3,3,4,3,2,2,3,2,2,2,4,3,5,5,1,5],[34,82,71,36,68,77,37,87,66,41,30,64,57,49,75,57,73,69,28,44,63,72,61,48,57,25,44,44,41,55,47,43,48,30,25,49,71,69,25,47,54,66,66,24,25,50,64,49,72,49,49,27,32,66,47,60,79,65,70,81,35,59,77,75,79,28,38,69,78,55,75,81,47,31,45,28,68,30,45,65,40,83,63,38,69,41,33,59,57,52,42,47,51,26,45,46,59,74,68,47,41,70,56,66,53,58,74,72,64,37,57,60,42,30,41,81,62,47,40,81,67,83,84,77,30,34,50,72,89,56,56,46,49,80,77,81,70,35,74,87,32,33,84,64,32,51,55,56,69,44,28,66,24,32,31,34,75,72,83,53,67,81,56,80,44,46,35,37,32,36,57,63,60,58,54,52,32,34,29,67,69,81,66,29,62,30,52,75,83,85,50,52,56,39,79,73,67,84,51,43,40,67,58,40,45,29,78,37,46,91,62,25,66,44,62,79,60,65,71,76,53,78,44,72,50,28,78,47,34,76,59,29,39,71,41,25,37,38,58,35,71,36,47,56,66,80,59,50,38,43,47,66,64,60,79,50,71,60,36,55,63,67,66,52,55,46,86,29,82,48,39,30,25,48,81,50,50,50,78,59,35,33,50,75,67,41,48,69,42,30,78,56,31,46,42,67,49,74,70,76,50,38,46,79,64,50,80,41,33,34,52,57,63,75,69,43,57,71,82,54,78,27,51,98,66,66,82,68,54,44,72,48,83,68,64,23,68,32,45,80,35,77,37,44,39,33,51,69,70,71,70,71,41,47,44,58,36,40,81,79,82,46,62,80,67,69,56,70,37,57,40,75,46,37,76,44,46,51,33,84,83,84,33,64,76,58,57,62,80,44,81,43,24,65,40,32,65,67,44,64],[11,15,11,11,16,10,12,9,13,19,14,16,7,9,13,15,17,15,9,9,16,17,10,8,15,16,12,16,14,16,5,16,13,10,14,12,11,9,10,14,14,15,13,14,16,12,16,15,15,13,15,20,12,10,9,8,18,14,17,17,20,10,7,17,15,14,13,16,15,14,12,12,18,15,10,16,16,15,11,14,9,15,11,14,11,12,15,12,8,9,16,16,13,16,15,17,17,17,14,18,11,16,16,15,12,18,15,12,14,19,17,11,14,12,15,8,16,17,17,16,15,13,11,14,12,15,15,11,17,15,12,19,13,12,15,16,8,9,11,7,12,10,17,10,14,14,15,16,11,10,14,13,11,17,16,9,13,16,12,13,11,14,12,16,12,11,15,14,11,12,9,9,18,12,16,17,18,14,10,11,16,12,9,15,17,14,13,15,11,16,17,17,14,19,14,16,12,17,16,7,18,15,13,16,7,13,13,10,15,11,12,15,13,19,16,19,18,14,10,13,13,11,9,17,6,15,15,14,11,9,9,12,14,11,14,18,11,15,19,13,14,11,18,12,15,18,14,19,16,13,18,12,8,12,6,8,14,14,14,9,12,8,13,15,10,13,16,15,12,18,13,10,15,14,9,14,15,12,11,8,12,13,17,17,6,11,15,8,16,9,11,13,15,9,13,10,17,17,18,11,17,7,13,11,13,14,8,14,6,18,16,15,11,18,14,16,14,16,13,16,13,15,11,17,17,12,16,14,16,16,17,16,15,17,15,7,13,12,14,16,8,17,9,17,10,17,18,17,14,13,13,9,14,18,18,8,14,14,18,12,10,16,19,10,16,15,14,14,6,16,12,15,16,16,18,16,10,10,19,10,14,11,9,9,16,15,10,9,13,18,15,15,10,13,8,13,17,12,13,7],[0,1,0,1,0,0,1,0,1,1,0,0,1,0,1,1,1,1,1,0,1,1,0,0,1,1,1,0,1,1,1,0,1,0,1,1,1,1,1,0,1,0,1,1,1,1,1,0,0,0,0,0,0,0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,1,0,0,1,1,0,1,0,0,1,1,0,1,0,0,1,0,1,0,1,0,1,0,0,0,0,1,1,0,1,1,0,0,1,0,0,1,1,0,0,0,0,1,1,0,1,0,1,1,0,1,0,1,0,1,1,1,1,1,1,0,0,1,0,0,1,1,1,1,0,1,0,1,0,0,1,0,0,1,0,1,0,1,1,1,0,0,1,1,1,1,0,1,0,0,1,0,0,0,1,1,1,0,1,0,0,0,0,0,1,1,1,0,0,1,1,1,1,0,0,0,1,1,1,0,1,0,1,0,1,1,0,0,1,1,1,1,0,0,1,0,1,1,0,0,0,1,1,0,0,1,1,1,1,0,0,0,1,1,1,1,0,0,0,0,0,0,1,0,0,1,1,1,0,1,1,1,1,1,0,0,1,1,0,1,0,1,0,1,0,0,1,0,1,1,1,0,1,1,1,0,1,0,1,1,0,1,0,1,0,1,1,1,1,1,1,0,1,1,0,1,0,0,1,0,0,0,1,1,0,1,1,0,1,1,0,1,1,0,1,0,1,0,1,0,1,0,0,0,0,1,0,0,1,0,0,0,1,0,1,1,1,0,0,0,0,1,1,0,0,0,0,1,1,0,1,0,0,0,0,0,1,1,0,0,0,1,1,0,0,0,0,1,1,1,0,0,0,0,0,1,0,0,0,1,1,1,1,1,0,0,0,1,0,0,0,0,1,0,0,1,0,1,1,0,0,0,0,0,1,0,1],[0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,0,0,1,0,0,0,0,1,1,0,1,1,0,1,1,1,1,0,0,0,1,1,0,1,0,0,1,0,1,1,0,1,1,0,1,1,0,1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,0,1,1,1,1,1,0,1,1,0,0,1,0,1,0,0,0,0,1,1,0,1,0,1,1,0,0,0,1,0,1,0,0,0,0,0,0,0,1,1,0,1,1,1,0,1,1,0,0,0,1,0,0,1,1,0,0,1,1,1,0,0,1,1,1,1,1,1,0,0,1,1,0,1,1,0,0,1,0,1,1,1,1,1,1,0,0,1,1,1,1,1,0,0,1,1,0,1,1,0,1,1,1,0,1,0,1,0,0,1,1,0,0,1,1,1,1,1,0,0,0,0,1,1,0,1,1,1,1,1,0,1,1,1,1,1,0,0,0,0,1,0,1,1,0,1,0,1,1,0,1,1,0,0,0,0,1,1,1,0,1,0,1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,0,0,1,1,1,1,0,1,1,0,0,1,1,0,1,1,1,0,1,1,1,1,0,1,0,0,0,0,0,1,0,1,1,0,0,0,1,1,1,1,0,1,1,0,1,1,1,1,1,1,1,1,0,1,1,0,1,1,1,1,1,1,0,1,0,1,1,1,0,1,0,1,0,1,1,1,0,1,1,1,1,0,1,1,0,1,0,1,1,1,0,1,0,0,1,1,1,1,1,1,1,0,1,1,1,1,1,0,1,1,0,1,1,1,0,1,0,1,1,1,1,0,0,1,0,0,0,1,1,1,0,1,1,1,0,1,0,1,0,0,0,0,0,0,1,0,0,0,0,1,0,1,1,0],[0,1,1,1,0,0,0,1,0,0,0,0,1,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,1,1,0,0,1,0,1,0,0,0,0,1,1,1,1,0,0,0,1,0,0,0,0,0,1,0,0,0,0,1,1,0,0,0,0,1,0,1,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,1,0,1,1,0,0,1,0,0,0,1,0,0,1,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,1,0,0,1,0,0,0,1,0,0,0,0,0,1,0,0,1,1,0,0,0,0,1,0,0,0,1,0,1,0,1,0,0,0,0,1,0,0,1,0,0,1,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,1,0,0,1,0,1,0,0,0,1,0,0,1,0,0,0,1,1,0,1,1,0,1,0,0,0,1,0,0,0,1,0,0,0,0,0,1,1,0,0,1,1,0,0,0,0,0,1,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,1,0,0,0,1,0,0,1,0,0,0,0,0,0,1,1,0,1,1,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,1,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,1,0,0,0,0,1,0,0,1,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,1,0,1,0,0,0,0,0,0,1],[0,0,0,0,0,0,1,0,0,1,0,0,0,0,1,1,1,0,0,0,0,0,1,1,0,1,0,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,1,1,1,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,1,1,1,0,1,1,1,1,1,0,0,1,1,0,0,1,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1,1,0,0,1,1,0,1,0,0,0,0,0,1,1,1,1,1,0,1,0,0,1,0,0,0,0,1,1,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,1,0,0,0,1,1,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,1,0,0,0,1,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,1,1,0,1,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,1,0,0,1,0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,1,0,0,0,0,0,0,1,0,0,1,0,0,0],[333,903,580,964,331,1151,203,872,279,1350,1407,0,204,1081,148,0,0,368,891,1048,89,968,0,411,0,671,654,467,1809,915,863,0,526,0,0,419,762,1093,531,344,50,1155,385,976,1120,997,1241,797,0,902,654,211,607,957,0,0,379,133,333,531,631,108,0,133,0,602,1388,889,822,1084,357,1103,663,601,945,29,532,145,391,0,162,99,503,0,0,1779,815,0,579,1176,1023,812,0,937,0,0,1380,155,375,1311,298,431,1587,1050,745,210,0,0,227,297,47,0,1046,768,271,510,0,1341,0,0,0,454,904,0,0,0,1404,0,1259,255,868,0,912,1018,835,8,75,187,0,1597,1425,605,669,710,68,642,805,0,0,0,581,534,156,0,0,0,429,1020,653,0,836,0,1086,0,548,570,0,0,0,1099,0,283,108,724,1573,0,0,384,453,1237,423,516,789,0,1448,450,188,0,930,126,538,1687,336,1426,0,802,749,69,0,571,829,1048,0,1411,456,638,0,1216,230,732,95,799,308,637,681,246,52,955,195,653,1246,1230,1549,573,701,1075,1032,482,156,1058,661,657,689,0,1329,191,489,443,52,163,148,0,16,856,0,0,199,0,0,98,0,132,1355,218,1048,118,0,0,0,1092,345,1050,465,133,651,549,15,942,0,772,136,436,728,1255,967,529,209,531,250,269,541,0,1298,890,0,0,0,0,863,485,159,309,481,1677,0,0,293,188,0,711,580,172,295,414,905,0,70,0,681,885,1036,844,823,843,1140,463,1142,136,0,0,5,81,265,1999,415,732,1361,984,121,846,1054,474,380,182,594,194,926,0,606,1107,320,426,204,410,633,0,907,1192,0,503,0,302,583,425,413,1405,962,0,347,611,712,382,710,578,1243,790,1264,216,345,1208,992,0,840,1003,588,1000,767,0,717,0,661,849,1352,382,0,905,371,0,1129,806,1393,721,0,0,734,560,480,138,0,966]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>income<\/th>\n      <th>limit<\/th>\n      <th>rating<\/th>\n      <th>cards<\/th>\n      <th>age<\/th>\n      <th>education<\/th>\n      <th>i_female<\/th>\n      <th>i_student<\/th>\n      <th>i_married<\/th>\n      <th>i_asian<\/th>\n      <th>i_african_american<\/th>\n      <th>balance<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"t","columnDefs":[{"className":"dt-right","targets":[0,1,2,3,4,5,6,7,8,9,10,11]}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+
+Now the dataset on has 400 observations on 12 variables (2,048 subsets).
+
+---
+exclude: true
+
+
+
+---
+layout: false
+class: clear, middle
+
+&lt;img src="004-slides_files/figure-html/bss-graph-rmse-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+layout: false
+class: clear, middle
+
+&lt;img src="004-slides_files/figure-html/bss-graph-r2-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+layout: true
+# Model selection
+
+---
+## Best subset selection
+
+From here, you would
+
+1. Estimate cross-validated error for each `\(\mathcal{M}_k\)`.
+
+1. Choose the `\(\mathcal{M}_k\)` that minimizes the CV error.
+
+1. Train the chosen model on the full dataset.
+
+---
+## Best subset selection
+
+.b[Warnings]
+- Computationally intensive
+- Selected models may not be "right" (squared terms with linear terms)
+- You need to protect against overfitting when choosing across `\(\mathcal{M}_k\)`
+- Also should worry about overfitting when `\(p\)` is "big"
+- Dependent upon the variables you provide
+
+.b[Benefits]
+- Comprehensive search across provided variables
+- Resulting model—when estimated with OLS—has OLS properties
+- Can be applied to other (non-OLS) estimators
+
+---
+name: stepwise
+## Stepwise selection
+
+.attn[Stepwise selection] provides a less computational intensive alternative to best subset selection.
+
+The basic idea behind .attn[stepwise selection]
+
+.mono-small[
+1. Start with an arbitrary model.
+1. Try to find a "better" model by adding/removing variables.
+1. Repeat.
+1. Stop when you have the best model. (Or choose the best model.)
+]
+
+--
+
+The two most-common varieties of stepwise selection:
+- .attn[Forward] starts with only intercept `\(\left( \mathcal{M}_0 \right)\)` and adds variables
+- .attn[Backward] starts with all variables `\(\left( \mathcal{M}_p \right)\)` and removes variables
+
+---
+name: forward
+## Forward stepwise selection
+
+The process...
+
+.mono-small[
+1. Start with a model with only an intercept (no predictors), `\(\mathcal{M}_0\)`.
+
+1. For `\(k=0,\,\ldots,\,p\)`:
+
+  - Estimate a model for each of the remaining `\(p-k\)` predictors, separately adding the predictors to model `\(\mathcal{M}_k\)`.
+
+  - Define `\(\mathcal{M}_{k+1}\)` as the "best" model of the `\(p-k\)` models.
+
+1. Select the "best" model from `\(\mathcal{M}_0,\,\ldots,\, \mathcal{M}_p\)`.
+]
+
+--
+
+What do we mean by "best"?
+&lt;br&gt; .mono-small[2:] .it[best] is often RSS or R.super[2].
+&lt;br&gt; .mono-small[3:] .it[best] should be a cross-validated fit criterion.
+
+---
+layout: false
+class: clear
+
+.hi-purple[Forward stepwise selection] with `caret` in R
+
+
+```r
+train_forward = train(
+  y = credit_dt[["balance"]],
+  x = credit_dt %&gt;% dplyr::select(-balance),
+  trControl = trainControl(method = "cv", number = 5),
+  method = "leapForward",
+  tuneGrid = expand.grid(nvmax = 1:11)
+)
+```
+
+--
+
+.col-left[
+
+<div id="htmlwidget-7634f45eec1321a0aa2c" style="width:100%;height:300px;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-7634f45eec1321a0aa2c">{"x":{"filter":"none","data":[[1,2,3,4,5,6,7,8,9,10,11],[232.566789298282,163.12618221103,103.312723064156,101.043909198642,99.3150747779379,99.6781469603596,99.9608981311329,99.9949913202917,99.8517916752879,99.7878404585553,99.7031206442625],[0.744732084705599,0.874249486844475,0.949591196099954,0.951992705182562,0.953658077410236,0.953265007332267,0.952970159837264,0.952942170063317,0.953047558783577,0.953117209735505,0.953192576688899],[175.194830895029,121.894797795715,83.7770425113929,81.8074378789005,79.5789346042227,79.9817322846821,80.4107228635138,80.396176950835,80.2304474121755,80.2281375862891,80.1968184658678]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>N vars<\/th>\n      <th>RMSE<\/th>\n      <th>R2<\/th>\n      <th>MAE<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"t","columnDefs":[{"className":"dt-right","targets":[0,1,2,3]}],"order":[],"autoWidth":false,"orderClasses":false,"rowCallback":"function(row, data) {\nDTWidget.formatRound(this, row, data, 1, 2, 3, \",\", \".\");\nDTWidget.formatRound(this, row, data, 2, 3, 3, \",\", \".\");\nDTWidget.formatRound(this, row, data, 3, 1, 3, \",\", \".\");\n}"}},"evals":["options.rowCallback"],"jsHooks":[]}</script>
+]
+
+.col-right[
+
+&lt;img src="004-slides_files/figure-html/forward-train-plot-1.svg" width="100%" style="display: block; margin: auto;" /&gt;
+
+]
+
+---
+name: backward
+# Model selection
+## Backward stepwise selection
+
+The process for .attn[backward stepwise selection] is quite similar...
+
+--
+
+.mono-small[
+1. Start with a model that includes all `\(p\)` predictors: `\(\mathcal{M}_p\)`.
+
+1. For `\(k=p,\, p-1,\, \ldots,\,1\)`:
+
+  - Estimate `\(k\)` models, where each model removes exactly one of the `\(k\)` predictors from `\(\mathcal{M}_k\)`.
+
+  - Define `\(\mathcal{M}_{k-1}\)` as the "best" of the `\(k\)` models.
+
+1. Select the "best" model from `\(\mathcal{M}_0,\,\ldots,\, \mathcal{M}_p\)`.
+]
+
+--
+
+What do we mean by "best"?
+&lt;br&gt; .mono-small[2:] .it[best] is often RSS or R.super[2].
+&lt;br&gt; .mono-small[3:] .it[best] should be a cross-validated fit criterion.
+
+---
+layout: false
+class: clear
+
+.hi-pink[Backward stepwise selection] with `caret` in R
+
+
+```r
+train_backward = train(
+  y = credit_dt[["balance"]],
+  x = credit_dt %&gt;% dplyr::select(-balance),
+  trControl = trainControl(method = "cv", number = 5),
+  method = "leapBackward",
+  tuneGrid = expand.grid(nvmax = 1:11)
+)
+```
+
+--
+
+.col-left[
+
+<div id="htmlwidget-668457efa55efe67d37e" style="width:100%;height:300px;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-668457efa55efe67d37e">{"x":{"filter":"none","data":[[1,2,3,4,5,6,7,8,9,10,11],[233.05702196906,165.406747657378,104.297054817217,99.8838804331984,99.3952100623485,99.4053171239525,99.63590782016,100.022266939665,100.001752138787,99.8362121996764,99.674709721159],[0.743263087668103,0.871482923850858,0.948796478380081,0.95360050442529,0.954037839995723,0.954096391678088,0.953826013816215,0.953446261791157,0.953434004139993,0.95359070344666,0.95371790743891],[177.629939569996,124.943596820755,83.7703714099158,79.4648457963622,79.383953829,79.4222189476632,79.4724105347757,79.6976319525872,79.8532107223859,79.7484500309988,79.6519167317223]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>N vars<\/th>\n      <th>RMSE<\/th>\n      <th>R2<\/th>\n      <th>MAE<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"t","columnDefs":[{"className":"dt-right","targets":[0,1,2,3]}],"order":[],"autoWidth":false,"orderClasses":false,"rowCallback":"function(row, data) {\nDTWidget.formatRound(this, row, data, 1, 2, 3, \",\", \".\");\nDTWidget.formatRound(this, row, data, 2, 3, 3, \",\", \".\");\nDTWidget.formatRound(this, row, data, 3, 1, 3, \",\", \".\");\n}"}},"evals":["options.rowCallback"],"jsHooks":[]}</script>
+]
+
+.col-right[
+
+&lt;img src="004-slides_files/figure-html/backward-train-plot-1.svg" width="100%" style="display: block; margin: auto;" /&gt;
+
+]
+
+---
+class: clear, middle
+
+.note[Note:] .hi-purple[forward] and .hi-pink[backward] step. selection can choose different models.
+
+&lt;img src="004-slides_files/figure-html/stepwise-plot-zoom-1.svg" style="display: block; margin: auto;" /&gt;
+
+
+---
+name: stepwise-notes
+# Model selection
+## Stepwise selection
+
+Notes on stepwise selection
+
+- .b[Less computationally intensive] (relative to best subset selection)
+  - With `\(p=20\)`, BSS fits 1,048,576 models.
+  - With `\(p=20\)`, foward/backward selection fits 211 models.
+
+- There is .b[no guarantee] that stepwise selection finds the best model.
+
+- .b.it[Best] is defined by your fit criterion (as always).
+
+- Again, .b[cross validation is key] to avoiding overfitting.
+
+---
+name: criteria
+# Model selection
+## Criteria
+
+Which model you choose is a function of .b[how you define "best"].
+
+--
+
+And we have many options...
+--
+ We've seen RSS, (R)MSE, RSE, MA, R.super[2], Adj. R.super[2].
+
+--
+
+Of course, there's more. Each .hi-purple[penalizes] the `\(d\)` predictors differently.
+$$
+`\begin{align}
+  C_p &amp;= \frac{1}{n} \left( \text{RSS} + \color{#6A5ACD}{2 d \hat{\sigma}^2 }\right)
+  \\[1ex]
+  \text{AIC} &amp;= \frac{1}{n\hat{\sigma}^2} \left( \text{RSS} + \color{#6A5ACD}{2 d \hat{\sigma}^2 }\right)
+  \\[1ex]
+  \text{BIC} &amp;= \frac{1}{n\hat{\sigma}^2} \left( \text{RSS} + \color{#6A5ACD}{\log(n) d \hat{\sigma}^2 }\right)
+\end{align}`
+$$
+---
+# Model selection
+## Criteria
+
+&gt; `\(C_p\)`, `\(AIC\)`, and `\(BIC\)` all have rigorous theoretical justifications... the adjusted `\(R^2\)` is not as well motivated in statistical theory
+
+.grey-light.it[ISL, p. 213]
+
+In general, we will stick with cross-validated criteria, but you still need to choose a selection criterion.
 
 
 
@@ -145,7 +752,19 @@ These notes draw upon
 - [Roadmap](#admin-roadmap)
 
 #### Linear regression
+- [Regression regression](#regression-intro)
+- [Performance](#performance)
+- [Overfit](#overfit)
 
+#### Model selection
+- [A better way?](#better)
+- [Subset selection](#subset-selection)
+  - [Best subset selection](#best-subset)
+  - [Stepwise selection](#stepwise)
+    - [Forward](#forward)
+    - [Backward](#backward)
+    - [Notes](#stepwise-notes)
+- [Criteria](#criteria)
 ]
 ]
 

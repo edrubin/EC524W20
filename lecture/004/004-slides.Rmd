@@ -19,10 +19,10 @@ exclude: true
 library(pacman)
 p_load(
   broom, tidyverse,
-  ggplot2, ggthemes, ggforce, ggridges, cowplot,
+  ggplot2, ggthemes, ggforce, ggridges, cowplot, scales,
   latex2exp, viridis, extrafont, gridExtra, plotly, ggformula,
-  kableExtra, snakecase, janitor,
-  data.table, dplyr,
+  kableExtra, DT,
+  data.table, dplyr, snakecase, janitor,
   lubridate, knitr, future, furrr,
   MASS, estimatr, FNN, caret, parsnip,
   huxtable, here, magrittr, parallel
@@ -78,11 +78,14 @@ name: admin-soon
 .b[Readings]
 
 - .note[Today]
-  - .it[ISL]
+  - .it[ISL] Ch. 3 and 6.1
 - .note[Next]
-  - .it[ISL] Ch. 3–4
+  - .it[ISL] Ch. 6 and 4
 
-.b[Problem set]
+.b[Problem sets]
+
+- Due tonight! (How did it go?)
+- .it[Next:] After we finish this set of notes
 ---
 name: admin-roadmap
 layout: false
@@ -151,8 +154,780 @@ layout: true
 ---
 class: inverse, middle
 ---
-name: ls-intro
+name: regression-intro
 ## Regression regression
+
+.note[Recall] Linear regression "fits" coefficients $\color{#e64173}{\beta}_0,\, \ldots,\, \color{#e64173}{\beta}_p$ for a model
+$$
+\begin{align}
+  \color{#FFA500}{y}_i = \color{#e64173}{\beta}_0 + \color{#e64173}{\beta}_1 x_{1,i} + \color{#e64173}{\beta}_2 x_{2,i} + \cdots + \color{#e64173}{\beta}_p x_{p,i} + \varepsilon_i
+\end{align}
+$$
+and is often applied in two distinct settings with fairly distinct goals:
+
+1. .hi[Causal inference] estimates and interprets .pink[the coefficients].
+
+1. .hi-orange[Prediction] focuses on accurately estimating .orange[outcomes].
+
+Regardless of the goal, the way we "fit" (estimate) the model is the same.
+
+---
+## Fitting the regression line
+
+As is the case with many statistical learning methods, regression focuses on minimizing some measure of loss/error.
+
+$$
+\begin{align}
+  e_i = \color{#FFA500}{y_i} - \color{#6A5ACD}{\hat{y}_i}
+\end{align}
+$$
+
+--
+
+Linear regression uses the L.sub[2] loss function—also called .it[residual sum of squares] (RSS) or .it[sum of squared errors] (SSE)
+
+$$
+\begin{align}
+  \text{RSS} = e_1 + e_2 + \cdots + e_n^2 = \sum_{i=1}^n e_i^2
+\end{align}
+$$
+
+Specifically: OLS chooses the $\color{#e64173}{\hat{\beta}_j}$ that .hi[minimize RSS].
+
+---
+name: performance
+## Performance
+
+There's a large variety of ways to assess the fit.super[.pink[†]] of linear-regression models.
+.footnote[
+.pink[†] or predictive performance
+]
+
+.hi[Residual standard error] (.hi[RSE])
+$$
+\begin{align}
+  \text{RSE}=\sqrt{\dfrac{1}{n-p-1}\text{RSS}}=\sqrt{\dfrac{1}{n-p-1}\sum_{i=1}^{n} \left( y_i - \hat{y}_i \right)^2}
+\end{align}
+$$
+
+.hi[R-squared] (.hi[R.super[2]])
+$$
+\begin{align}
+  R^2 = \dfrac{\text{TSS} - \text{RSS}}{\text{TSS}} = 1 - \dfrac{\text{RSS}}{\text{TSS}} \quad \text{where} \quad \text{TSS} = \sum_{i=1}^{n} \left( y_i - \overline{y} \right)^2
+\end{align}
+$$
+
+---
+## Performance and overfit
+
+As we've seen throughout the course, we need to be careful .b[not to overfit].
+
+--
+
+.hi[R.super[2]] provides no protection against overfitting—and actually encourages it.
+$$
+\begin{align}
+  R^2 = 1 - \dfrac{\text{RSS}}{\text{TSS}}
+\end{align}
+$$
+.attn[Add a new variable:] RSS $\downarrow$ and TSS is unchanged. Thus, R.super[2] increases.
+
+--
+
+.hi[RSE] .it[slightly] penalizes additional variables:
+$$
+\begin{align}
+  \text{RSE}=\sqrt{\dfrac{1}{n-p-1}\text{RSS}}
+\end{align}
+$$
+.attn[Add a new variable:] RSS $\downarrow$ but $p$ increases. Thus, RSE's change is uncertain.
+
+---
+exclude: true
+
+```{R, overfit-data-gen, eval = F}
+library(pacman)
+p_load(parallel, stringr, data.table, magrittr, here)
+# Set parameters
+set.seed(123)
+N = 2e3
+n = 500
+p = n - 1
+# Generate data
+X = matrix(data = rnorm(n = N*p), ncol = p)
+β = matrix(data = rnorm(p, sd = 0.005), ncol = 1)
+y = X %*% β + matrix(rnorm(N, sd = 0.01), ncol = 1)
+# Create a data table
+pop_dt = X %>% data.matrix() %>% as.data.table()
+setnames(pop_dt, paste0("x", str_pad(1:p, 4, "left", 0)))
+pop_dt[, y := y %>% unlist()]
+# Subset
+sub_dt = pop_dt[1:n,]
+out_dt = pop_dt[(n+1):N,]
+Nn = N - n
+# For j in 1 to p: fit a model, record R2 and RSE
+fit_dt = mclapply(X = seq(1, p, by = 5), mc.cores = 12, FUN = function(j) {
+  # Fit a model with the the first j variables
+  lm_j = lm(y ~ ., data = sub_dt[, c(1:j,p+1), with = F])
+  # Unseen data performance
+  y_hat = predict(lm_j, newdata = out_dt[, c(1:j,p+1), with = F])
+  out_rss = sum((out_dt[,y] - y_hat)^2)
+  out_tss = sum((out_dt[,y] - mean(out_dt[,y]))^2)
+  # Return data table
+  data.table(
+    p = j,
+    in_rse = summary(lm_j)$sigma,
+    in_r2 = summary(lm_j)$r.squared,
+    in_r2_adj = summary(lm_j)$adj.r.squared,
+    out_rse = sqrt(1 / (Nn - j - 1) * out_rss),
+    out_r2 = 1 - out_rss/out_tss,
+    out_r2_adj = 1 - ((out_rss) / (Nn - j - 1)) / ((out_tss) / (Nn-1))
+  )
+}) %>% rbindlist()
+# Save results
+saveRDS(
+  object = fit_dt,
+  file = here("other-files", "overfit-data.rds")
+)
+```
+
+```{R, overfit-data-load}
+# Load the data
+fit_dt = here("other-files", "overfit-data.rds") %>% read_rds()
+```
+
+---
+layout: true
+class: clear
+
+---
+name: overfit
+class: middle
+
+## Example
+Let's see how .b[R.super[2]] and .b[RSE] perform with 500 very weak predictors.
+
+To address overfitting, we can compare .b[in-] .it[vs.] .hi[out-of-sample] performance.
+
+---
+
+.b[In-sample R.super[2]] mechanically increases as we add predictors.
+<br>
+.white[.b[Out-of-sample R.super[2]] does not.]
+
+```{R, overfit-plot-r2, echo = F, fig.height = 6}
+ggplot(data = fit_dt, aes(x = p, y = in_r2)) +
+geom_hline(yintercept = 0) +
+geom_line() +
+geom_point() +
+geom_line(aes(y = out_r2), color = NA) +
+geom_point(aes(y = out_r2), color = NA) +
+scale_y_continuous(expression(R^2)) +
+scale_x_continuous("Number of predictors", labels = comma) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book")
+```
+
+---
+
+.b[In-sample R.super[2]] mechanically increases as we add predictors.
+<br>
+.hi[Out-of-sample R.super[2]] does not.
+
+```{R, overfit-plot-r2-both, echo = F, fig.height = 6}
+ggplot(data = fit_dt, aes(x = p, y = in_r2)) +
+geom_hline(yintercept = 0) +
+geom_line() +
+geom_point() +
+geom_line(aes(y = out_r2), color = red_pink) +
+geom_point(aes(y = out_r2), color = red_pink) +
+scale_y_continuous(expression(R^2)) +
+scale_x_continuous("Number of predictors", labels = comma) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book")
+```
+
+---
+class: middle
+
+What about RSE? Does its penalty .it[help]?
+
+---
+
+Despite its penalty for adding variables, .b[in-sample RSE] still can overfit,
+<br>
+.white[as evidenced by .b[out-of-sample RSE].]
+
+```{R, plot-overfit-rse, echo = F, fig.height = 6}
+ggplot(data = fit_dt, aes(x = p, y = in_rse)) +
+geom_hline(yintercept = 0) +
+geom_line() +
+geom_point() +
+geom_line(aes(y = out_rse), color = NA) +
+geom_point(aes(y = out_rse), color = NA) +
+scale_y_continuous("RSE") +
+scale_x_continuous("Number of predictors", labels = comma) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book")
+```
+
+---
+
+Despite its penalty for adding variables, .b[in-sample RSE] still can overfit,
+<br>
+as evidenced by .hi[out-of-sample RSE].
+
+```{R, plot-overfit-rse-both, echo = F, fig.height = 6}
+ggplot(data = fit_dt, aes(x = p, y = in_rse)) +
+geom_hline(yintercept = 0) +
+geom_line() +
+geom_point() +
+geom_line(aes(y = out_rse), color = red_pink) +
+geom_point(aes(y = out_rse), color = red_pink) +
+scale_y_continuous("RSE") +
+scale_x_continuous("Number of predictors", labels = comma) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book")
+```
+
+---
+layout: false
+# Linear regression
+## Penalization
+
+RSE is not the only way to penalization the addition of variables..super[.pink[†]]
+
+.footnote[
+.pink[†] We'll talk about other penalization methods (LASSO and Ridge) shortly.
+]
+
+
+.b[Adjusted R.super[2]] is another .it[classic] solution.
+
+$$
+\begin{align}
+  \text{Adjusted }R^2 = 1 - \dfrac{\text{RSS}\color{#6A5ACD}{/(n - p - 1)}}{\text{TSS}\color{#6A5ACD}{/(n-1)}}
+\end{align}
+$$
+
+Adj. R.super[2] attempts to "fix" R.super[2] by .hi-purple[adding a penalty for the number of variables].
+
+--
+
+- $\text{RSS}$ always decreases when a new variable is added.
+
+--
+
+- $\color{#6A5ACD}{\text{RSS}/(n-p-1)}$ may increase or decrease with a new variable.
+
+---
+layout: true
+class: clear
+
+---
+
+However, .b[in-sample adjusted R.super[2]] still can overfit.
+<br>
+.white[Illustrated by .b[out-of-sample R.super[2]].]
+
+```{R, plot-overfit-adjr2, echo = F, fig.height = 6}
+ggplot(data = fit_dt, aes(x = p, y = in_r2_adj)) +
+geom_hline(yintercept = 0) +
+geom_line() +
+geom_point() +
+geom_line(aes(y = out_r2_adj), color = NA) +
+geom_point(aes(y = out_r2_adj), color = NA) +
+scale_y_continuous(Adjusted~R^2) +
+scale_x_continuous("Number of predictors", labels = comma) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book")
+```
+
+---
+
+However, .b[in-sample adjusted R.super[2]] still can overfit.
+<br>
+Illustrated by .hi[out-of-sample adjusted R.super[2]].
+
+```{R, plot-overfit-adjr2-both, echo = F, fig.height = 6}
+ggplot(data = fit_dt, aes(x = p, y = in_r2_adj)) +
+geom_hline(yintercept = 0) +
+geom_line() +
+geom_point() +
+geom_line(aes(y = out_r2_adj), color = red_pink) +
+geom_point(aes(y = out_r2_adj), color = red_pink) +
+scale_y_continuous(Adjusted~R^2) +
+scale_x_continuous("Number of predictors", labels = comma) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book")
+```
+
+---
+layout: true
+# Model selection
+
+---
+name: better
+## A better way?
+
+R.super[2], adjusted R.super[2], and RSE each offer some flavor of model fit, but they appear .b[limited in their abilities to prevent overfitting].
+
+--
+
+We want a method to optimally select a (linear) model—balancing variance and bias and avoiding overfit.
+
+--
+
+We'll discuss two (related) methods today:
+
+1. .hi[Subset selection] chooses a (sub)set of our $p$ potential predictors
+
+2. .hi[Shrinkage] fits a model using all $p$ variables but "shrinks" its coefficients
+
+---
+name: subset-selection
+## Subset selection
+
+In .attn[subset selection], we
+
+1. whittle down the $p$ potential predictors (using some magic/algorithm)
+1. estimate the chosen linear model using OLS
+
+--
+
+How do we do the *whittling* (selection)?
+--
+ We've go .b[options].
+
+- .attn[Best subset selection] fits a model for every possible subset.
+- .attn[Forward stepwise selection] starts with only an intercept and tries to build up to the best model (using some fit criterion).
+- .attn[Backward stepwise selection] starts with all $p$ variables and tries to drop variables until it hits the best model (using some fit criterion).
+- .attn[Hybrid approaches] are what their name implies (_i.e._, hybrids).
+
+---
+name: best-subset
+## Best subset selection
+
+.attn[Best subset selection] is based upon a simple idea: Estimate a model for every possible subset of variables; then compare their performances.
+
+--
+
+.qa[Q] So what's the problem? (Why do we need other selection methods?)
+--
+<br>
+.qa[A] "a model for .hi[every possible subset]" can mean .hi[a lot] $\left( 2^p \right)$ of models.
+
+--
+
+.note[E.g.,]
+- 10 predictors $\rightarrow$ 1,024 models to fit
+- 25 predictors $\rightarrow$ >33.5 million models to fit
+- 100 predictors $\rightarrow$ ~1.5 trillion models to fit
+
+--
+
+Even with plentiful, cheap computational power, we can run into barriers.
+
+---
+## Best subset selection
+
+Computational constraints aside, we can implement .attn[best subset selection] as
+
+.mono-small[
+1. Define $\mathcal{M}_0$ as the model with no predictors.
+
+1. For $k$ in 1 to $p$:
+
+  - Fit every possible model with $k$ predictors.
+
+  - Define $\mathcal{M}_k$ as the "best" model with $k$ predictors.
+
+1. Select the "best" model from $\mathcal{M}_0,\,\ldots,\,\mathcal{M}_p$.
+]
+
+As we've seen, RSS declines (and R.super[2] increases) with $p$, so we should use a cross-validated measure of model performance in step .mono[3]..super[.pink[†]]
+
+.footnote[
+.pink[†] Back to our distinction between test .it[vs.] training performance.
+]
+
+---
+## Example dataset: `Credit`
+
+We're going to use the `Credit` dataset from .it[ISL]'s R package `ISLR`.
+
+--
+
+```{R, credit-data, echo = F}
+# Print it
+datatable(
+  ISLR::Credit,
+  height = '60%',
+  rownames = F,
+  options = list(dom = 't')
+)
+```
+
+The `Credit` dataset has `r nrow(ISLR::Credit) %>% comma()` observations on `r ncol(ISLR::Credit)` variables.
+
+---
+## Example dataset: `Credit`
+
+```{R, credit-data-work, include = F, cache = T}
+# The Credit dataset
+credit_dt = ISLR::Credit %>% clean_names() %T>% setDT()
+# Clean variables
+credit_dt[, `:=`(
+  i_female = 1 * (gender == "Female"),
+  i_student = 1 * (student == "Yes"),
+  i_married = 1 * (married == "Yes"),
+  i_asian = 1 * (ethnicity == "Asian"),
+  i_african_american = 1 * (ethnicity == "African American")
+)]
+# Drop unwanted variables
+credit_dt[, `:=`(id = NULL, gender = NULL, student = NULL, married = NULL, ethnicity = NULL)]
+# Rearrange
+credit_dt = cbind(credit_dt[,-"balance"], credit_dt[,"balance"])
+```
+
+We need to pre-process the dataset before we can select a model...
+
+```{R, credit-data-cleaned, echo = F}
+# Print it
+datatable(
+  credit_dt,
+  height = '60%',
+  rownames = F,
+  options = list(dom = 't')
+)
+```
+
+Now the dataset on has `r credit_dt %>% nrow() %>% comma()` observations on `r ncol(credit_dt)` variables (2,048 subsets).
+
+---
+exclude: true
+
+```{R, bss-data, include = F, cache = T}
+# Find all possible subsets of the variables
+var_dt = expand_grid(
+  income = c(0,1),
+  limit = c(0,1),
+  rating = c(0,1),
+  cards = c(0,1),
+  age = c(0,1),
+  education = c(0,1),
+  i_female = c(0,1),
+  i_student = c(0,1),
+  i_married = c(0,1),
+  i_asian = c(0,1),
+  i_african_american = c(0,1)
+) %T>% setDT()
+# Fit each model
+bss_dt = lapply(X = 2:nrow(var_dt), FUN = function(i) {
+  # Find the variables
+  vars_i = which(var_dt[i,] %>% equals(T))
+  # Estimate the model
+  model_i = lm(
+    balance ~ .,
+    data = credit_dt[, c(vars_i, ncol(credit_dt)), with = F]
+  )
+  # Output summaries
+  data.table(
+    n_variables = length(vars_i),
+    r2 = summary(model_i)$r.squared,
+    rmse = mean(model_i$residuals^2) %>% sqrt()
+  )
+}) %>% rbindlist()
+```
+
+---
+layout: false
+class: clear, middle
+
+```{R, bss-graph-rmse, echo = F}
+ggplot(data = bss_dt, aes(x = n_variables, y = rmse)) +
+geom_point(alpha = 0.5, size = 2.5) +
+geom_line(
+  data = bss_dt[, .(rmse = min(rmse)), by = n_variables],
+  color = red_pink, size = 1, alpha = 0.8
+) +
+scale_y_continuous("RMSE") +
+scale_x_continuous("Number of predictors") +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book")
+```
+
+---
+layout: false
+class: clear, middle
+
+```{R, bss-graph-r2, echo = F}
+ggplot(data = bss_dt, aes(x = n_variables, y = r2)) +
+geom_point(alpha = 0.5, size = 2.5) +
+geom_line(
+  data = bss_dt[, .(r2 = max(r2)), by = n_variables],
+  color = red_pink, size = 1, alpha = 0.8
+) +
+scale_y_continuous(expression(R^2)) +
+scale_x_continuous("Number of predictors") +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book")
+```
+
+---
+layout: true
+# Model selection
+
+---
+## Best subset selection
+
+From here, you would
+
+1. Estimate cross-validated error for each $\mathcal{M}_k$.
+
+1. Choose the $\mathcal{M}_k$ that minimizes the CV error.
+
+1. Train the chosen model on the full dataset.
+
+---
+## Best subset selection
+
+.b[Warnings]
+- Computationally intensive
+- Selected models may not be "right" (squared terms with linear terms)
+- You need to protect against overfitting when choosing across $\mathcal{M}_k$
+- Also should worry about overfitting when $p$ is "big"
+- Dependent upon the variables you provide
+
+.b[Benefits]
+- Comprehensive search across provided variables
+- Resulting model—when estimated with OLS—has OLS properties
+- Can be applied to other (non-OLS) estimators
+
+---
+name: stepwise
+## Stepwise selection
+
+.attn[Stepwise selection] provides a less computational intensive alternative to best subset selection.
+
+The basic idea behind .attn[stepwise selection]
+
+.mono-small[
+1. Start with an arbitrary model.
+1. Try to find a "better" model by adding/removing variables.
+1. Repeat.
+1. Stop when you have the best model. (Or choose the best model.)
+]
+
+--
+
+The two most-common varieties of stepwise selection:
+- .attn[Forward] starts with only intercept $\left( \mathcal{M}_0 \right)$ and adds variables
+- .attn[Backward] starts with all variables $\left( \mathcal{M}_p \right)$ and removes variables
+
+---
+name: forward
+## Forward stepwise selection
+
+The process...
+
+.mono-small[
+1. Start with a model with only an intercept (no predictors), $\mathcal{M}_0$.
+
+1. For $k=0,\,\ldots,\,p$:
+
+  - Estimate a model for each of the remaining $p-k$ predictors, separately adding the predictors to model $\mathcal{M}_k$.
+
+  - Define $\mathcal{M}_{k+1}$ as the "best" model of the $p-k$ models.
+
+1. Select the "best" model from $\mathcal{M}_0,\,\ldots,\, \mathcal{M}_p$.
+]
+
+--
+
+What do we mean by "best"?
+<br> .mono-small[2:] .it[best] is often RSS or R.super[2].
+<br> .mono-small[3:] .it[best] should be a cross-validated fit criterion.
+
+---
+layout: false
+class: clear
+
+.hi-purple[Forward stepwise selection] with `caret` in R
+
+```{R, forward-train, echo = T}
+train_forward = train(
+  y = credit_dt[["balance"]],
+  x = credit_dt %>% dplyr::select(-balance),
+  trControl = trainControl(method = "cv", number = 5),
+  method = "leapForward",
+  tuneGrid = expand.grid(nvmax = 1:11)
+)
+```
+
+--
+
+.col-left[
+
+```{R, forward-train-results, echo = F}
+datatable(
+  train_forward$results[,1:4],
+  height = 300,
+  width = '100%',
+  rownames = F,
+  options = list(dom = 't'),
+  colnames = c("N vars", "RMSE", "R2", "MAE")
+) %>% formatRound(columns = 2:4, digits = c(2, 3, 1))
+```
+]
+
+.col-right[
+
+```{R, forward-train-plot, echo = F, fig.height = 9, out.width = '100%'}
+ggplot(data = train_forward$results, aes(x = nvmax, y = RMSE)) +
+geom_line(color = purple, size = 1) +
+geom_point(color = purple, size = 4.5) +
+scale_y_continuous("RMSE") +
+scale_x_continuous("Number of variables") +
+theme_minimal(base_size = 32, base_family = "Fira Sans Book")
+```
+
+]
+
+---
+name: backward
+# Model selection
+## Backward stepwise selection
+
+The process for .attn[backward stepwise selection] is quite similar...
+
+--
+
+.mono-small[
+1. Start with a model that includes all $p$ predictors: $\mathcal{M}_p$.
+
+1. For $k=p,\, p-1,\, \ldots,\,1$:
+
+  - Estimate $k$ models, where each model removes exactly one of the $k$ predictors from $\mathcal{M}_k$.
+
+  - Define $\mathcal{M}_{k-1}$ as the "best" of the $k$ models.
+
+1. Select the "best" model from $\mathcal{M}_0,\,\ldots,\, \mathcal{M}_p$.
+]
+
+--
+
+What do we mean by "best"?
+<br> .mono-small[2:] .it[best] is often RSS or R.super[2].
+<br> .mono-small[3:] .it[best] should be a cross-validated fit criterion.
+
+---
+layout: false
+class: clear
+
+.hi-pink[Backward stepwise selection] with `caret` in R
+
+```{R, backward-train, echo = T}
+train_backward = train(
+  y = credit_dt[["balance"]],
+  x = credit_dt %>% dplyr::select(-balance),
+  trControl = trainControl(method = "cv", number = 5),
+  method = "leapBackward",
+  tuneGrid = expand.grid(nvmax = 1:11)
+)
+```
+
+--
+
+.col-left[
+
+```{R, backward-train-results, echo = F}
+datatable(
+  train_backward$results[,1:4],
+  height = 300,
+  width = '100%',
+  rownames = F,
+  options = list(dom = 't'),
+  colnames = c("N vars", "RMSE", "R2", "MAE")
+) %>% formatRound(columns = 2:4, digits = c(2, 3, 1))
+```
+]
+
+.col-right[
+
+```{R, backward-train-plot, echo = F, fig.height = 9, out.width = '100%'}
+ggplot(data = train_backward$results, aes(x = nvmax, y = RMSE)) +
+geom_line(data = train_forward$results, color = purple, size = 1, alpha = 0.3) +
+geom_point(data = train_forward$results, color = purple, size = 4.5, alpha = 0.3) +
+geom_line(color = red_pink, size = 1) +
+geom_point(color = red_pink, size = 4.5) +
+scale_y_continuous("RMSE") +
+scale_x_continuous("Number of variables") +
+theme_minimal(base_size = 32, base_family = "Fira Sans Book")
+```
+
+]
+
+---
+class: clear, middle
+
+.note[Note:] .hi-purple[forward] and .hi-pink[backward] step. selection can choose different models.
+
+```{R, stepwise-plot-zoom, echo = F}
+ggplot(data = train_backward$results, aes(x = nvmax, y = RMSE)) +
+geom_line(data = train_forward$results, color = purple, alpha = 0.3, size = 0.9) +
+geom_point(data = train_forward$results, color = purple, size = 3.5, alpha = 0.3) +
+geom_line(color = red_pink, size = 0.8) +
+geom_point(color = red_pink, size = 4.5, shape = 1) +
+scale_y_continuous("RMSE") +
+scale_x_continuous("Number of variables") +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book")
+```
+
+
+---
+name: stepwise-notes
+# Model selection
+## Stepwise selection
+
+Notes on stepwise selection
+
+- .b[Less computationally intensive] (relative to best subset selection)
+  - With $p=20$, BSS fits 1,048,576 models.
+  - With $p=20$, foward/backward selection fits 211 models.
+
+- There is .b[no guarantee] that stepwise selection finds the best model.
+
+- .b.it[Best] is defined by your fit criterion (as always).
+
+- Again, .b[cross validation is key] to avoiding overfitting.
+
+---
+name: criteria
+# Model selection
+## Criteria
+
+Which model you choose is a function of .b[how you define "best"].
+
+--
+
+And we have many options...
+--
+ We've seen RSS, (R)MSE, RSE, MA, R.super[2], Adj. R.super[2].
+
+--
+
+Of course, there's more. Each .hi-purple[penalizes] the $d$ predictors differently.
+$$
+\begin{align}
+  C_p &= \frac{1}{n} \left( \text{RSS} + \color{#6A5ACD}{2 d \hat{\sigma}^2 }\right)
+  \\[1ex]
+  \text{AIC} &= \frac{1}{n\hat{\sigma}^2} \left( \text{RSS} + \color{#6A5ACD}{2 d \hat{\sigma}^2 }\right)
+  \\[1ex]
+  \text{BIC} &= \frac{1}{n\hat{\sigma}^2} \left( \text{RSS} + \color{#6A5ACD}{\log(n) d \hat{\sigma}^2 }\right)
+\end{align}
+$$
+---
+# Model selection
+## Criteria
+
+> $C_p$, $AIC$, and $BIC$ all have rigorous theoretical justifications... the adjusted $R^2$ is not as well motivated in statistical theory
+
+.grey-light.it[ISL, p. 213]
+
+In general, we will stick with cross-validated criteria, but you still need to choose a selection criterion.
 
 
 
@@ -175,7 +950,19 @@ These notes draw upon
 - [Roadmap](#admin-roadmap)
 
 #### Linear regression
+- [Regression regression](#regression-intro)
+- [Performance](#performance)
+- [Overfit](#overfit)
 
+#### Model selection
+- [A better way?](#better)
+- [Subset selection](#subset-selection)
+  - [Best subset selection](#best-subset)
+  - [Stepwise selection](#stepwise)
+    - [Forward](#forward)
+    - [Backward](#backward)
+    - [Notes](#stepwise-notes)
+- [Criteria](#criteria)
 ]
 ]
 
