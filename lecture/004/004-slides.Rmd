@@ -3,7 +3,7 @@ title: "Lecture .mono[004]"
 subtitle: "Regression strikes back"
 author: "Edward Rubin"
 #date: "`r format(Sys.time(), '%d %B %Y')`"
-date: "28 January 2020"
+date: "04 February 2020"
 output:
   xaringan::moon_reader:
     css: ['default', 'metropolis', 'metropolis-fonts', 'my-css.css']
@@ -188,7 +188,7 @@ Linear regression uses the L.sub[2] loss function—also called .it[residual sum
 
 $$
 \begin{align}
-  \text{RSS} = e_1 + e_2 + \cdots + e_n^2 = \sum_{i=1}^n e_i^2
+  \text{RSS} = e_1^2 + e_2^2 + \cdots + e_n^2 = \sum_{i=1}^n e_i^2
 \end{align}
 $$
 
@@ -556,7 +556,7 @@ We're going to use the `Credit` dataset from .it[ISL]'s R package `ISLR`.
 # Print it
 datatable(
   ISLR::Credit,
-  height = '60%',
+  height = '40%',
   rownames = F,
   options = list(dom = 't')
 )
@@ -590,7 +590,7 @@ We need to pre-process the dataset before we can select a model...
 # Print it
 datatable(
   credit_dt,
-  height = '60%',
+  height = '40%',
   rownames = F,
   options = list(dom = 't')
 )
@@ -764,7 +764,7 @@ train_forward = train(
 ```{R, forward-train-results, echo = F}
 datatable(
   train_forward$results[,1:4],
-  height = 300,
+  height = '50%',
   width = '100%',
   rownames = F,
   options = list(dom = 't'),
@@ -836,7 +836,7 @@ train_backward = train(
 ```{R, backward-train-results, echo = F}
 datatable(
   train_backward$results[,1:4],
-  height = 300,
+  height = '50%',
   width = '100%',
   rownames = F,
   options = list(dom = 't'),

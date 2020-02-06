@@ -80,6 +80,14 @@ Welcome to Economics 524 (424): Prediction and machine-learning in econometrics,
 
 **Formats** [.html](https://raw.githack.com/edrubin/EC524W20/master/lecture/004/004-slides.html) | [.pdf](https://raw.githack.com/edrubin/EC524W20/master/lecture/004/004-slides.pdf) | [.Rmd](https://raw.githack.com/edrubin/EC524W20/master/lecture/004/004-slides.Rmd)
 
+[**005 - Shrinkage methods**](https://raw.githack.com/edrubin/EC524W20/master/lecture/005/005-slides.html)
+
+1. Ridge regression
+1. Lasso
+1. Elasticnet
+
+**Formats** [.html](https://raw.githack.com/edrubin/EC524W20/master/lecture/005/005-slides.html) | [.pdf](https://raw.githack.com/edrubin/EC524W20/master/lecture/005/005-slides.pdf) | [.Rmd](https://raw.githack.com/edrubin/EC524W20/master/lecture/005/005-slides.Rmd)
+
 ## Projects
 
 **Intro** [Predicting sales price in housing data (Kaggle)](https://github.com/edrubin/EC524W20/tree/master/projects/kaggle-house-prices)
@@ -93,6 +101,10 @@ You will need to sign into you Kaggle account and then hit "Copy and Edit" to ad
 **002** [Cross validation and linear regression (Kaggle notebook)](https://www.kaggle.com/edwardarubin/ec524-cross-validation)
 <br>
 *Due* 04 February 2020 before midnight.
+
+**003** [Cross validation and linear regression (Kaggle notebook)](https://www.kaggle.com/edwardarubin/ec524-shrinkage/)
+<br>
+*Due* 13 February 2020 before midnight.
 
 ## Lab notes
 
