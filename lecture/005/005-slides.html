@@ -353,6 +353,8 @@ ridge_cv = cv.glmnet(
 layout: false
 class: clear, middle
 
+.b[Cross-validated RMSE and] `\(\lambda\)`: Which `\(\color{#e64173}{\lambda}\)` minimizes CV RMSE?
+
 &lt;img src="005-slides_files/figure-html/plot-cv-ridge-1.svg" style="display: block; margin: auto;" /&gt;
 
 ---
@@ -366,6 +368,7 @@ class: clear, middle
 
 
 
+.b[Cross-validated RMSE and] `\(\lambda\)`: Which `\(\color{#e64173}{\lambda}\)` minimizes CV RMSE?
 
 &lt;img src="005-slides_files/figure-html/plot-cv-ridge2-1.svg" style="display: block; margin: auto;" /&gt;
 
@@ -405,7 +408,7 @@ Once you find your `\(\lambda\)` via cross validation
 
 ```r
 # Fit final model
-final_ridge = est_ridge = glmnet(
+final_ridge =  glmnet(
   x = credit_stnd %&gt;% dplyr::select(-balance) %&gt;% as.matrix(),
   y = credit_stnd$balance,
   standardize = T,
@@ -431,7 +434,7 @@ predict(
   # Our chosen lambda
   s = ridge_cv$lambda.min,
   # Our data
-  credit_stnd %&gt;% dplyr::select(-balance) %&gt;% as.matrix()
+  newx = credit_stnd %&gt;% dplyr::select(-balance) %&gt;% as.matrix()
 )
 ```
 
@@ -591,6 +594,8 @@ lasso_cv = cv.glmnet(
 layout: false
 class: clear, middle
 
+.b[Cross-validated RMSE and] `\(\lambda\)`: Which `\(\color{#8AA19E}{\lambda}\)` minimizes CV RMSE?
+
 &lt;img src="005-slides_files/figure-html/plot-cv-lasso-1.svg" style="display: block; margin: auto;" /&gt;
 ---
 class: clear, middle
@@ -600,6 +605,7 @@ Again, you will have a minimum farther away from your extremes...
 ---
 class: clear, middle
 
+.b[Cross-validated RMSE and] `\(\lambda\)`: Which `\(\color{#8AA19E}{\lambda}\)` minimizes CV RMSE?
 
 
 
@@ -628,7 +634,7 @@ name: or
 ]
 
 .col-right.purple[
-.b[Ridge regression]
+.b[Lasso]
 &lt;br&gt;
 &lt;br&gt;.b.orange[+] shrinks `\(\hat{\beta}_j\)` to 0
 &lt;br&gt;.b.orange[+] many `\(\hat\beta_j=\)` 0
@@ -658,11 +664,11 @@ layout: false
 
 $$
 `\begin{align}
-\min_{\beta^E} \sum_{i=1}^{n} \big( \color{#FFA500}{y_i} - \color{#6A5ACD}{\hat{y}_i} \big)^2 + \color{#1e88e5}{(1-\alpha)} \color{#e64173}{\lambda \sum_{j=1}^{p} \beta_j^2} + \color{#1e88e5}{\alpha} \color{#8AA19E}{\lambda \sum_{j=1}^{p} \big|\beta_j\big|}
+\min_{\beta^E} \sum_{i=1}^{n} \big( \color{#FFA500}{y_i} - \color{#6A5ACD}{\hat{y}_i} \big)^2 + \color{#181485}{(1-\alpha)} \color{#e64173}{\lambda \sum_{j=1}^{p} \beta_j^2} + \color{#181485}{\alpha} \color{#8AA19E}{\lambda \sum_{j=1}^{p} \big|\beta_j\big|}
 \end{align}`
 $$
 
-(We now have two tuning parameters: `\(\lambda\)` and `\(\color{#1e88e5}{\alpha}\)`.
+(We now have two tuning parameters: `\(\lambda\)` and `\(\color{#181485}{\alpha}\)`.
 
 --
 

@@ -412,6 +412,8 @@ ridge_cv = cv.glmnet(
 layout: false
 class: clear, middle
 
+.b[Cross-validated RMSE and] $\lambda$: Which $\color{#e64173}{\lambda}$ minimizes CV RMSE?
+
 ```{R, plot-cv-ridge, echo = F}
 # Create data frame of our results
 ridge_cv_df = data.frame(
@@ -424,6 +426,11 @@ ggplot(
   aes(x = lambda, y = rmse)
 ) +
 geom_line() +
+geom_point(
+  data = ridge_cv_df %>% filter(rmse == min(rmse)),
+  size = 3.5,
+  color = red_pink
+) +
 scale_y_continuous("RMSE") +
 scale_x_continuous(
   expression(lambda),
@@ -443,7 +450,6 @@ Often, you will have a minimum farther away from your extremes...
 layout: false
 class: clear, middle
 
-
 ```{R, cv-ridge2, cache = T, include = F}
 # Define our lambdas
 lambdas = 10^seq(from = 5, to = -2, length = 100)
@@ -460,6 +466,8 @@ ridge_cv2 = cv.glmnet(
 )
 ```
 
+.b[Cross-validated RMSE and] $\lambda$: Which $\color{#e64173}{\lambda}$ minimizes CV RMSE?
+
 ```{R, plot-cv-ridge2, echo = F}
 # Create data frame of our results
 ridge_cv_df2 = data.frame(
@@ -474,7 +482,8 @@ ggplot(
 geom_line() +
 geom_point(
   data = ridge_cv_df2 %>% filter(rmse == min(rmse)),
-  size = 3.5
+  size = 3.5,
+  color = red_pink
 ) +
 scale_y_continuous("RMSE") +
 scale_x_continuous(
@@ -520,7 +529,7 @@ Once you find your $\lambda$ via cross validation
 1\. Fit your model on the full dataset using the optimal $\lambda$
 ```{R, ridge-final-1, eval = F}
 # Fit final model
-final_ridge = est_ridge = glmnet(
+final_ridge =  glmnet(
   x = credit_stnd %>% dplyr::select(-balance) %>% as.matrix(),
   y = credit_stnd$balance,
   standardize = T,
@@ -545,7 +554,7 @@ predict(
   # Our chosen lambda
   s = ridge_cv$lambda.min,
   # Our data
-  credit_stnd %>% dplyr::select(-balance) %>% as.matrix()
+  newx = credit_stnd %>% dplyr::select(-balance) %>% as.matrix()
 )
 ```
 
@@ -741,6 +750,8 @@ lasso_cv = cv.glmnet(
 layout: false
 class: clear, middle
 
+.b[Cross-validated RMSE and] $\lambda$: Which $\color{#8AA19E}{\lambda}$ minimizes CV RMSE?
+
 ```{R, plot-cv-lasso, echo = F}
 # Create data frame of our results
 lasso_cv_df = data.frame(
@@ -753,6 +764,11 @@ ggplot(
   aes(x = lambda, y = rmse)
 ) +
 geom_line() +
+geom_point(
+  data = lasso_cv_df %>% filter(rmse == min(rmse)),
+  size = 3.5,
+  color = "#8AA19E"
+) +
 scale_y_continuous("RMSE") +
 scale_x_continuous(
   expression(lambda),
@@ -770,6 +786,7 @@ Again, you will have a minimum farther away from your extremes...
 ---
 class: clear, middle
 
+.b[Cross-validated RMSE and] $\lambda$: Which $\color{#8AA19E}{\lambda}$ minimizes CV RMSE?
 
 ```{R, cv-lasso2, cache = T, include = F}
 # Define our lambdas
@@ -801,7 +818,8 @@ ggplot(
 geom_line() +
 geom_point(
   data = lasso_cv_df2 %>% filter(rmse == min(rmse)),
-  size = 3.5
+  size = 3.5,
+  color = "#8AA19E"
 ) +
 scale_y_continuous("RMSE") +
 scale_x_continuous(
@@ -836,7 +854,7 @@ name: or
 ]
 
 .col-right.purple[
-.b[Ridge regression]
+.b[Lasso]
 <br>
 <br>.b.orange[+] shrinks $\hat{\beta}_j$ to 0
 <br>.b.orange[+] many $\hat\beta_j=$ 0
@@ -866,11 +884,11 @@ layout: false
 
 $$
 \begin{align}
-\min_{\beta^E} \sum_{i=1}^{n} \big( \color{#FFA500}{y_i} - \color{#6A5ACD}{\hat{y}_i} \big)^2 + \color{#1e88e5}{(1-\alpha)} \color{#e64173}{\lambda \sum_{j=1}^{p} \beta_j^2} + \color{#1e88e5}{\alpha} \color{#8AA19E}{\lambda \sum_{j=1}^{p} \big|\beta_j\big|}
+\min_{\beta^E} \sum_{i=1}^{n} \big( \color{#FFA500}{y_i} - \color{#6A5ACD}{\hat{y}_i} \big)^2 + \color{#181485}{(1-\alpha)} \color{#e64173}{\lambda \sum_{j=1}^{p} \beta_j^2} + \color{#181485}{\alpha} \color{#8AA19E}{\lambda \sum_{j=1}^{p} \big|\beta_j\big|}
 \end{align}
 $$
 
-(We now have two tuning parameters: $\lambda$ and $\color{#1e88e5}{\alpha}$.
+(We now have two tuning parameters: $\lambda$ and $\color{#181485}{\alpha}$.
 
 --
 
