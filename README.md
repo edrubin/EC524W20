@@ -133,6 +133,19 @@ You will need to sign into you Kaggle account and then hit "Copy and Edit" to ad
 
 **Additional** [R script for simulation](https://raw.githack.com/edrubin/EC524W20/master/lab/002-resampling/cv-sim.R)
 
+**003**
+
+**004**
+
+**005**
+
+**Additional** [Data cleaning in R](https://www.kaggle.com/edwardarubin/ec524-clean-data/) (with `caret`)
+
+- Converting numeric variables to categorical
+- Converting categorical variables to dummies
+- Imputing missing values
+- Standardizing variables (centering and scaling)
+
 ## Additional resources
 
 ### R
