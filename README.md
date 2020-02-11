@@ -106,6 +106,8 @@ You will need to sign into you Kaggle account and then hit "Copy and Edit" to ad
 <br>
 *Due* 13 February 2020 before midnight.
 
+**004** [Predicting heart disease (Kaggle competition)]((https://github.com/edrubin/EC524W20/tree/master/projects/kaggle-house-prices)) | [Competition](https://www.kaggle.com/c/ec524-heart-disease/)
+
 ## Lab notes
 
 [**000 - Workflow and cleaning**](https://raw.githack.com/edrubin/EC524W20/master/lab/000-cleaning/000-slides.html)

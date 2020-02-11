@@ -21,7 +21,7 @@ Welcome to day one of our prediction course. Today we're going to try to predict
    - You're in charge here—do whatever you think will achieve good (out-of-sample) predictions.
    - *Hint:* You need a way to "deal with" missing values (`NA`s)—and you need to apply this strategy in both the training and in the testing datasets.
    - *Another hint:* You probably don't want to use `Id` when fitting your model.
-5. Use your trained model(s) to create an estimate for `SalePrice` in the training data.
+5. Use your trained model(s) to create an estimate for `SalePrice` in the test data.
    - *Hint:* The `predict()` function seems like a good candidate.
    - *Another hint:* The `predict()` function has a helpful argument called `newdata` that allows you to make predictions onto new data—observations your trained/fitted model has yet to see.
 6. [Submit your predictions to the competition on Kaggle](https://www.kaggle.com/c/house-prices-advanced-regression-techniques/submit).
