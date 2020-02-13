@@ -1,0 +1,1011 @@
+---
+title: "Lecture .mono[006]"
+subtitle: "Classification"
+author: "Edward Rubin"
+#date: "`r format(Sys.time(), '%d %B %Y')`"
+date: "13 February 2020"
+output:
+  xaringan::moon_reader:
+    css: ['default', 'metropolis', 'metropolis-fonts', 'my-css.css']
+    # self_contained: true
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+exclude: true
+
+```{R, setup, include = F}
+library(pacman)
+p_load(
+  broom, tidyverse,
+  ggplot2, ggthemes, ggforce, ggridges, cowplot, scales,
+  latex2exp, viridis, extrafont, gridExtra, plotly, ggformula,
+  kableExtra, DT,
+  data.table, dplyr, snakecase, janitor,
+  lubridate, knitr, future, furrr,
+  MASS, estimatr, caret, glmnet,
+  huxtable, here, magrittr, parallel
+)
+# Define colors
+red_pink   = "#e64173"
+turquoise  = "#20B2AA"
+orange     = "#FFA500"
+red        = "#fb6107"
+blue       = "#3b3b9a"
+green      = "#8bb174"
+grey_light = "grey70"
+grey_mid   = "grey50"
+grey_dark  = "grey20"
+purple     = "#6A5ACD"
+slate      = "#314f4f"
+# Knitr options
+opts_chunk$set(
+  comment = "#>",
+  fig.align = "center",
+  fig.height = 7,
+  fig.width = 10.5,
+  warning = F,
+  message = F
+)
+opts_chunk$set(dev = "svg")
+options(device = function(file, width, height) {
+  svg(tempfile(), width = width, height = height)
+})
+options(knitr.table.format = "html")
+```
+---
+layout: true
+# Admin
+
+---
+class: inverse, middle
+---
+name: admin-today
+## Material
+
+.b[Last time] Shrinkage methods
+- Ridge regression
+- (The) lasso
+- Elasticnet
+
+.b[Today] Classification methods
+- Introduction to classification
+- Linear probability models
+- Logistic regression
+
+.note[Also:] Class will end today at 11:30am..super[.pink[†]]
+
+.footnote[
+.pink[†] 🎉?
+]
+
+
+
+---
+name: admin-soon
+
+## Upcoming
+
+.b[Readings] .note[Today] .it[ISL] Ch. 4
+
+.b[Problem sets]
+- .it[Shrinkage methods] Due today
+- .it[Classification] Due next week
+---
+layout: true
+# Classification
+
+---
+class: inverse, middle
+
+---
+name: intro
+## Intro
+
+.attn[Regression problems] seek to predict the number an outcome will take—integers (_e.g._, number of cats), reals (_e.g._, home/cat value), _etc._ .super[.pink[†]]
+
+.footnote[
+.pink[†] Maybe: Binary indicators...
+]
+
+--
+
+.attn[Classification problems] instead seek to predict the category of an outcome
+
+- .b[Binary outcomes]<br>success/failure; true/false; A or B; cat or .it[not cat];  _etc._
+
+- .b[Multi-class outcomes]<br>yes, no, .it[or maybe]; colors; letters; type of cat;.super[.pink[††]] _etc._
+
+.footnote[
+.tran[† Maybe: Binary indicators...] .pink[††] It turns out, all of machine learning is about cats.
+]
+
+This type of outcome is often called a .it[qualitative] or .it[categorical] response.
+
+---
+name: examples
+## Examples
+
+For the past few weeks, we've been immersed in regression problems.
+
+It's probably helpful to mention a few .hi[examples of classification problems].
+
+--
+
+- Using life/criminal history (and demographics?):<br>Can we predict whether a defendant is .b[granted bail]?
+
+--
+
+- Based upon a set of symptoms and observations:<br>Can we predict a patient's .b[medical condition](s)?
+
+--
+
+- From the pixels in an image:<br>Can we classify images as .b[bagel, puppy, or other]?
+
+---
+## Approach
+
+One can imagine two.super[.pink[†]] related .hi[approaches to classification]
+
+.footnote[
+.pink[†] At least.
+]
+
+
+1. Predict .b[which category] the outcome will take.
+
+1. Estimate the .b[probability of each category] for the outcome.
+
+--
+
+That said, the general approach will
+
+- Take a set of training observations $(x_1,y_1),\, (x_2,y_2),\,\ldots,\,(x_n,y_n)$
+- Build a classifier $\hat{y}_o=\mathop{f}(x_o)$
+
+all while balancing bias and variance..super[.pink[††]]
+
+.footnote[
+.tran[† At least.] .pink[††] Sound familiar?
+]
+
+---
+layout: false
+class: clear, middle
+
+.qa[Q] If everything is so similar, can't we use regression methods?
+
+.white[No]
+---
+class: clear, middle
+
+.qa[Q] If everything is so similar, can't we use regression methods?
+
+.qa[A] .it[Sometimes.]
+--
+ .it[Other times:] No.
+--
+ Plus you still need new tools.
+
+---
+layout: true
+# Classification
+## Why not regression?
+
+---
+name: no-regress
+
+Regression methods are not made to deal with .b[multiple categories].
+
+.ex[Ex.] Consider three medical diagnoses: .pink[stroke], .purple[overdose], and .orange[seizure].
+
+Regression needs a numeric outcome—how should we code our categories?
+
+--
+
+.left-third[
+.center.note[Option 1]
+$$Y=\begin{cases}
+  \displaystyle 1 & \text{if }\color{#e64173}{\text{ stroke}} \\
+  \displaystyle 2 & \text{if }\color{#6A5ACD}{\text{ overdose}} \\
+  \displaystyle 3 & \text{if }\color{#FFA500}{\text{ seizure}} \\
+\end{cases}$$
+]
+
+--
+
+.left-third[
+.center.note[Option 2]
+$$Y=\begin{cases}
+  \displaystyle 1 & \text{if }\color{#6A5ACD}{\text{ overdose}} \\
+  \displaystyle 2 & \text{if }\color{#e64173}{\text{ stroke}} \\
+  \displaystyle 3 & \text{if }\color{#FFA500}{\text{ seizure}} \\
+\end{cases}$$
+]
+
+--
+
+.left-third[
+.center.note[Option 3]
+$$Y=\begin{cases}
+  \displaystyle 1 & \text{if }\color{#FFA500}{\text{ seizure}} \\
+  \displaystyle 2 & \text{if }\color{#e64173}{\text{ stroke}} \\
+  \displaystyle 3 & \text{if }\color{#6A5ACD}{\text{ overdose}} \\
+\end{cases}$$
+]
+
+--
+
+The categories' ordering is unclear—let alone the actual valuation.
+<br>
+The choice of ordering and valuation can affect predictions. 😿
+
+---
+
+As we've seen, .b[binary outcomes] are simpler.
+
+--
+
+.ex[Ex] If we are only choosing between .pink[stroke] and .purple[overdose]
+
+.left-wide[
+.center.note[Option 1]
+$$Y=\begin{cases}
+  \displaystyle 0 & \text{if }\color{#e64173}{\text{ stroke}} \\
+  \displaystyle 1 & \text{if }\color{#6A5ACD}{\text{ overdose}} \\
+\end{cases}$$
+]
+.left-thin.center[<br><br>.center[and]]
+.left-wide[
+.center.note[Option 2]
+$$Y=\begin{cases}
+  \displaystyle 0 & \text{if }\color{#6A5ACD}{\text{ overdose}} \\
+  \displaystyle 1 & \text{if }\color{#e64173}{\text{ stroke}} \\
+\end{cases}$$
+]
+
+.clear-up[
+will provide the same results.
+]
+
+---
+name: lpm
+
+In these .b[binary outcome] cases, we .it[can] apply linear regression.
+
+These models are called .attn[linear probability models] (LPMs).
+
+The .b[predictions] from an LPM
+
+1. estimate the conditional probability $y_i = 1$, _i.e._, $\mathop{\text{Pr}}\left(y_o = 1 \mid x_o\right)$
+
+1. are not restricted to being between 0 and 1.super[.pink[†]]
+
+1. provide an ordering—and a reasonable estimate of probability
+
+.footnote[
+.pink[†] Some people get very worked up about this point.
+]
+
+--
+
+.note[Other benefits:] Coefficients are easily interpreted + we know how OLS works.
+
+---
+layout: true
+class: clear, middle
+
+---
+
+Let's consider an example: the `Default` dataset from `ISLR`
+
+```{R, datatable-default, echo = F, cache = T}
+set.seed(1)
+ISLR::Default %>% sample_n(100) %>% datatable(
+  rownames = F,
+  options = list(dom = 't')
+) %>% formatRound(columns = 3:4, digits = c(2, 0))
+```
+
+---
+exclude: true
+
+```{R, clean-default-data, include = F}
+# Clean data
+default_df = ISLR::Default %>% mutate(i_default = 1 * (default == "Yes"))
+```
+
+---
+
+.hi-purple[The data:] The outcome, default, only takes two values (only `r default_df$i_default %>% mean() %>% scales::percent(accuracy = 0.1)` default).
+
+```{R, boxplot-default-balance, echo = F, cache = T}
+ggplot(data = default_df, aes(x = default, y = balance)) +
+geom_boxplot(outlier.shape = NA, fill = "grey90") +
+geom_jitter(width = 0.2, alpha = 0.1, color = purple) +
+xlab("Default") +
+scale_y_continuous("Balance", labels = scales::comma) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+coord_flip()
+```
+
+---
+
+
+.hi-purple[The data:] The outcome, default, only takes two values (only `r default_df$i_default %>% mean() %>% scales::percent(accuracy = 0.1)` default).
+
+```{R, plot-default-points, echo = F, cache = T}
+# Plot points
+ggplot(data = default_df, aes(x = balance, y = i_default)) +
+geom_point(alpha = 0.05, size = 3.5, color = purple) +
+geom_line(stat = "smooth", color = NA, method = lm, size = 1.5) +
+scale_y_continuous("Default") +
+scale_x_continuous("Balance", labels = scales::comma) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book")
+```
+---
+
+.hi-pink[The linear probability model] struggles with prediction in this setting.
+
+```{R, plot-default-lpm, echo = F, cache = T}
+ggplot(data = default_df, aes(x = balance, y = i_default)) +
+geom_point(alpha = 0.05, size = 3.5, color = purple) +
+geom_line(stat = "smooth", color = red_pink, method = lm, size = 1.5) +
+scale_y_continuous("Default") +
+scale_x_continuous("Balance", labels = scales::comma) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book")
+```
+
+---
+
+.hi-orange[Logistic regression] .it[appears] to offer an improvement.
+
+```{R, plot-default-logistic, echo = F, cache = T}
+ggplot(data = default_df, aes(x = balance, y = i_default)) +
+geom_point(alpha = 0.05, size = 3.5, color = purple) +
+geom_line(stat = "smooth", color = red_pink, method = lm, size = 1.5, alpha = 0.2) +
+geom_line(stat = "smooth", color = orange, method = "glm", method.args = list(family = "binomial"), size = 1.5) +
+scale_y_continuous("Default") +
+scale_x_continuous("Balance", labels = scales::comma) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book")
+```
+
+---
+
+So... what's logistic regression?
+
+---
+layout: true
+# Logistic regression
+
+---
+class: inverse, middle
+
+---
+name: logistic-intro
+## Intro
+
+.attn[Logistic regression] .b[models the probability] that our outcome $Y$ belongs to a .b[specific category] (often whichever category we think of as `TRUE`).
+
+--
+
+For example, we just saw a graph where
+$$
+\begin{align}
+  \mathop{\text{Pr}}\left(\text{Default} = \text{Yes} | \text{Balance}\right) = p(\text{Balance})
+\end{align}
+$$
+we are modeling the probability of `default` as a function of `balance`.
+
+--
+
+We use the .b[estimated probabilities] to .b[make predictions], _e.g._,
+- if $p(\text{Balance})\geq 0.5$, we could predict "Yes" for Default
+- to be conservative, we could predict "Yes" if $p(\text{Balance})\geq0.1$
+
+---
+name: logistic-logistic
+## What's .it[logistic]?
+
+We want to model probability as a function of the predictors $\left(\beta_0 + \beta_1 X\right)$.
+
+.col-centered[
+.hi-pink[Linear probability model]
+<br>
+.pink[linear] transform. of predictors
+
+$$
+\begin{align}
+  p(X) = \beta_0 + \beta_1 X
+\end{align}
+$$
+]
+
+.col-centered[
+.hi-orange[Logistic model]
+<br>
+.orange[logistic] transform. of predictors
+
+$$
+\begin{align}
+  p(X) = \dfrac{e^{\beta_0 + \beta_1 X}}{1 + e^{\beta_0 + \beta_1 X}}
+\end{align}
+$$
+]
+
+.clear-up[
+What does this .it[logistic function] $\left(\frac{e^x}{1+e^x}\right)$ do?
+]
+
+1. ensures predictions are between 0 $(x\rightarrow-\infty)$ and 1 $(x\rightarrow\infty)$
+
+1. forces an S-shaped curved through the data (not linear)
+
+---
+## What's .it[logistic]?
+
+With a little math, you can show
+$$
+\begin{align}
+  p(X) = \dfrac{e^{\beta_0 + \beta_1 X}}{1 + e^{\beta_0 + \beta_1 X}} \implies \color{#e64173}{\log \left( \dfrac{p(X)}{1-p(X)}\right)} = \color{#6A5ACD}{\beta_0 + \beta_1 X}
+\end{align}
+$$
+
+.note[New definition:] .hi-pink[log odds].super[.pink[†]] on the RHS and .hi-purple[linear predictors] on the LHS.
+
+.footnote[
+.pink[†] The "log odds" is sometimes called "logit".
+]
+
+
+--
+
+1. .b[interpretation] of $\beta_j$ is about .pink[log odds]—not probability
+
+--
+
+1. .b[changes in probability] due to $X$ depend on level of $X$.super[.pink[†]]
+
+.footnote[
+.tran[† The "log odds" is sometimes called "logit".] .pink[††] It's nonlinear!
+]
+
+---
+name: logistic-estimation
+## Estimation
+
+Before we can start predicting, we need to estimate the $\beta_j$s.
+$$
+\begin{align}
+  p(X) = \dfrac{e^{\beta_0 + \beta_1 X}}{1 + e^{\beta_0 + \beta_1 X}} \implies \color{#e64173}{\log \left( \dfrac{p(X)}{1-p(X)}\right)} = \color{#6A5ACD}{\beta_0 + \beta_1 X}
+\end{align}
+$$
+
+We estimate logistic regression using .attn[maximum likelihood estimation].
+
+--
+
+.attn[Maximum likelihood estimation] (MLE) searches for the $\beta_j$s that make our data "most likely" given the model we've written.
+
+---
+name: logistic-mle
+## Maximum likelihood
+
+.attn[MLE] searches for the $\beta_j$s that make our data "most likely" using our model.
+
+$$
+\begin{align}
+  \color{#e64173}{\log \left( \dfrac{p(X)}{1-p(X)}\right)} = \color{#6A5ACD}{\beta_0 + \beta_1 X}
+\end{align}
+$$
+
+--
+
+1. $\color{#6A5ACD}{\beta_j}$ tells us how $x_j$ affects the .pink[log odds]
+
+--
+
+1. odds $= \dfrac{p(X)}{1-p(X)}$.
+--
+ If $p(X) > 0.5$, then odds $>1$ and .pink[log odds] $> 0$.
+
+--
+
+So we want choose $\color{#6A5ACD}{\beta_j}$ such that
+- .pink[log odds] are above zero for observations where $y_i=1$
+- .pink[log odds] even larger for areas of $x_j$ where most $i$s have $y_i=1$
+
+---
+## Formally: The likelihood function
+
+We estimate logistic regression by maximizing .attn[the likelihood function].super[.pink[†]]
+
+.footnote[
+.pink[†] Generally, we actually will maximize the .it[log] of the likelihood function.
+]
+
+$$
+\begin{align}
+  \mathop{\ell}(\beta_0,\beta_1) = \prod_{i:y_i=1} \mathop{p}(x_i) \prod_{i:y_i=0} (1-\mathop{p}(x_i))
+\end{align}
+$$
+
+The likelihood function is maximized by
+- making $p(x_i)$ large for individuals with $y_i = 1$
+- making $p(x_i)$ small for individuals with $y_i = 0$
+
+.it[Put simply:] Maximum likelihood maximizes a predictive performance, conditional on the model we have written down.
+
+---
+name: logistic-r
+## In R
+
+In R, you can run logistic regression using the `glm()` function.
+
+--
+
+.note[Aside:] Related to `lm`, `glm` stands for .it[generalized] (linear model).
+
+--
+
+"Generalized" essentially means that we're applying some transformation to $\beta_0 + \beta_1 X$ like logistic regression applies the logistic function.
+
+---
+## In R
+
+In R, you can run logistic regression using the `glm()` function.
+
+.b[Key arguments] (very similar to `lm()`)
+
+- specify a `formula`,.super[.pink[†]] _e.g._, `y ~ .` or `y ~ x + I(x^2)`
+
+- define `family = "binomial"` (so R knows to run logistic regression)
+
+- give the function some `data`
+
+.footnote[
+.pink[†] Notice that we're back in the world of needing to select a model...
+]
+
+--
+
+```{R, ex-glm}
+est_logistic = glm(
+  i_default ~ balance,
+  family = "binomial", #<<
+  data = default_df
+)
+```
+
+---
+layout: false
+class: clear
+
+```{R, summary-glm, highlight.output = 10:12}
+est_logistic %>% summary()
+```
+
+---
+layout: true
+# Logistic regression
+
+---
+name: logistic-prediction
+## Estimates and predictions
+
+```{R, beta-hats, include = F}
+# Unrounded
+b0 = est_logistic$coefficients[1]
+b1 = est_logistic$coefficients[2]
+# Rounded
+br0 = est_logistic$coefficients[1] %>% round(2)
+br1 = est_logistic$coefficients[2] %>% round(4)
+```
+
+Thus, our estimates are $\hat{\beta}_0 \approx `r br0`$ and $\hat{\beta}_1 \approx `r br1`$.
+
+.note[Remember:] These coefficients are for the .b[log odds].
+
+--
+
+If we want .hi[to make predictions] for $y_i$ (whether or not $i$ defaults),
+<br>then we first must .hi[estimate the probability] $\mathop{p}(\text{Balance})$
+$$
+\begin{align}
+  \hat{p}(\text{Balance}) = \dfrac{e^{\hat{\beta}_0 + \hat{\beta}_1 \text{Balance}}}{1 + e^{\hat{\beta}_0 + \hat{\beta}_1 \text{Balance}}}
+  \approx
+  \dfrac{e^{`r br0` + `r br1` \cdot \text{Balance}}}{1 + e^{`r br0` + `r br1` \cdot \text{Balance}}}
+\end{align}
+$$
+
+--
+
+- If $\text{Balance} = 0$, we then estimate $\mathop{\hat{p}} \approx `r (exp(b0)/(1+exp(b0))) %>% round(6) %>% format(scientific = F)`$
+- If $\text{Balance} = 2,000$, we then estimate $\mathop{\hat{p}} \approx `r (exp(b0 + b1 * 2e3)/(1+exp(b0 + b1 * 2e3))) %>% round(3)`$
+- If $\text{Balance} = 3,000$, we then estimate $\mathop{\hat{p}} \approx `r (exp(b0 + b1 * 3e3)/(1+exp(b0 + b1 * 3e3))) %>% round(3)`$ .super[.pink[†]]
+
+.footnote[
+.pink[†] You get a sense of the nonlinearity of the predictors' effects.
+]
+
+---
+layout: false
+class: clear, middle
+
+.hi-orange[Logistic regression]'s predictions of $\mathop{p}(\text{Balance})$
+
+```{R, plot-default-logistic-2, echo = F, cache = T}
+ggplot(data = default_df, aes(x = balance, y = i_default)) +
+geom_point(alpha = 0.05, size = 3.5, color = purple) +
+geom_line(stat = "smooth", color = red_pink, method = lm, size = 1.5, alpha = 0.2) +
+geom_line(stat = "smooth", color = orange, method = "glm", method.args = list(family = "binomial"), size = 1.5) +
+scale_y_continuous("Default") +
+scale_x_continuous("Balance", labels = scales::comma) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book")
+```
+
+---
+class: clear, middle
+
+.note[Note:] Everything we've done so far extends to models with many predictors.
+
+---
+layout: true
+# Logistic regression
+## Prediction
+
+.note[Old news:] You can use `predict()` to get predictions out of `glm` objects.
+
+--
+
+.b[New and important:] `predict()` produces multiple `type`.small[s] of predictions
+
+1. `type = "response"` predicts .it[on the scale of the response variable]
+<br>for logistic regression, this means .b[predicted probabilities] (0 to 1)
+
+1. `type = "link"` predicts .it[on the scale of the linear predictors]
+<br>for logistic regression, this means .b[predicted log odds] (-∞ to ∞)
+
+.attn[Beware:] The default is `type = "link"`, which you may not want.
+
+---
+
+Putting it all together, we can get (estimated) probabilities $\hat{p}(X)$
+
+```{R, ex-p-hat}
+# Predictions on scale of response (outcome) variable
+p_hat = predict(est_logistic, type = "response")
+```
+
+which we can use to make predictions on $y$
+
+```{R, ex-y-hat}
+# Predict '1' if p_hat is greater or equal to 0.5
+y_hat = as.numeric(p_hat >= 0.5)
+```
+
+---
+layout: false
+class: clear, middle
+
+So how did we do?
+
+---
+layout: true
+# Assessment
+
+---
+class: inverse, middle
+
+---
+name: how
+## How did we do?
+
+We guessed `r mean(y_hat == default_df$i_default) %>% scales::percent(accuracy = 0.01)` of the observations correctly.
+
+--
+
+.qa[Q] `r mean(y_hat == default_df$i_default) %>% scales::percent(accuracy = 0.01)` is pretty good, right?
+
+--
+
+.qa[A] It depends...
+--
+ Remember that `r mean(default_df$i_default) %>% scales::percent(accuracy = 0.01)` of the observations did not default.
+--
+<br>So we would get `r (1 - mean(default_df$i_default)) %>% scales::percent(accuracy = 0.01)` right by guessing "No" for everyone..super[.pink[†]]
+
+.footnote[
+.pink[†] This idea is called the .it[null classifier].
+]
+
+
+--
+
+```{R, calc-sensitivity, include = F}
+tmp_df = tibble(
+  y = default_df$i_default,
+  y_hat = y_hat,
+  y_hat_base = 0
+)
+ex_sensitivity = tmp_df %>% filter(y == 1) %>% transmute(y == y_hat) %>% unlist() %>% mean()
+ex_sensitivity_base = tmp_df %>% filter(y == 1) %>% transmute(y == y_hat_base) %>% unlist() %>% mean()
+```
+
+We .it[did] guess `r ex_sensitivity %>% scales::percent(accuracy = 0.01)` of the defaults
+--
+, which is clearer better than 0%.
+
+--
+
+.qa[Q] How can we more formally assess our model's performance?
+
+--
+
+.qa[A] All roads lead to the .attn[confusion matrix].
+
+---
+name: confusion
+## The confusion matrix
+
+The .attn[confusion matrix] is us a convenient way to display
+<br>.hi-orange[correct] and .hi-purple[incorrect] predictions for each class of our outcome.
+
+```{R, default-confusion-matrix, include = F, cache = T}
+# Create data frame
+conf_df = data.frame(
+  No = c("True Negative (TN)", "False Positive (FP)"),
+  Yes = c("False Negative (FN)", "True Positive (TP)")
+)
+rownames(conf_df) = c("No", "Yes")
+# Create the matrix
+conf_mat = conf_df %>% hux() %>%
+  add_rownames("") %>% add_colnames() %>%
+  insert_row(c("", "Truth", "Truth"), after = 0) %>% merge_cells(1, 2:3) %>%
+  insert_column(c("", "", "Prediction", "Prediction"), after = 0) %>% merge_cells(3:4, 1) %>%
+  set_bold(1:2, everywhere, T) %>%
+  set_bold(everywhere, 1:2, T) %>%
+  set_align(1:2, 1:4, "center") %>%
+  set_valign(3:4, 1, "middle") %>%
+  set_top_border(3, 3:4, 1) %>%
+  set_left_border(3:4, 3, 1)
+```
+
+```{R, cm-right-wrong, echo = F}
+conf_mat %>%
+set_text_color(3,3,orange) %>%
+set_text_color(3,4,purple) %>%
+set_text_color(4,3,purple) %>%
+set_text_color(4,4,orange)
+```
+
+--
+
+The .attn[accuracy] of a method is the share of .orange[correct] predictions, _i.e._,
+.center[
+.b[Accuracy] = (.hi-orange[TN] + .hi-orange[TP]) / (.hi-orange[TN] + .hi-orange[TP] + .hi-purple[FN] + .hi-purple[FP])
+]
+
+--
+
+This matrix also helps display many other measures of assessment.
+
+---
+## The confusion matrix
+
+.attn[Sensitivity:] the share of positive outcomes $Y=1$ that we correctly predict.
+
+.center[
+.b[Sensitivity] = .hi-orange[TP] / (.hi-orange[TP] + .hi-purple[FN])
+]
+
+```{R, cm-sensitivity, echo = F}
+conf_mat %>%
+set_text_color(2:4,4,purple) %>%
+set_text_color(4,4,orange)
+```
+
+Sensitivity is also called .attn[recall] and the .attn[true-positive rate].
+
+One minus sensitivity is the .attn[type-II error rate].
+---
+## The confusion matrix
+
+.attn[Specificity:] the share of neg. outcomes $(Y=0)$ that we correctly predict.
+
+.center[
+.b[Specificity] = .hi-orange[TN] / (.hi-orange[TN] + .hi-purple[FP])
+]
+
+```{R, cm-specificity, echo = F}
+conf_mat %>%
+set_text_color(2:4,3,purple) %>%
+set_text_color(3,3,orange)
+```
+
+One minus specificity is the .attn[false-positive rate] or .attn[type-I error rate].
+
+---
+## The confusion matrix
+
+.attn[Precision:] the share of predicted positives $(\hat{Y}=1)$ that are correct.
+
+.center[
+.b[Precision] = .hi-orange[TP] / (.hi-orange[TP] + .hi-purple[FP])
+]
+
+```{R, cm-precision, echo = F}
+conf_mat %>%
+set_text_color(4,2:4,purple) %>%
+set_text_color(4,4,orange)
+```
+
+---
+## Which assessment?
+
+.qa[Q] So .it[which] criterion should we use?
+
+--
+
+.qa[A] You should use the .it[right] criterion for your context.
+
+- Are true positives more valuable than true negatives?
+--
+<br>.note[Sensitivity] will be key.
+
+--
+
+- Do you want to have high confidence in predicted positives?
+--
+<br>.note[Precision] is your friend
+
+--
+
+- Are all errors equal?
+--
+<br>
+.note[Accuracy] is perfect.
+
+--
+
+There's a lot more, _e.g._, the .attn[F.sub[1] score] combines precision and sensitivity.
+
+---
+name: cm-r
+## Confusion in R
+
+`confusionMatrix()` from `caret` calculates the confusion matrix—and many other statistics.
+
+- `data`: a `factor` vector of predictions (use `as.factor()` if needed)
+
+- `reference`: a `factor` vector of true outcomes
+
+--
+
+```{R, est-cm}
+cm_logistic = confusionMatrix(
+  # Our predictions
+  data = y_hat %>% as.factor(),
+  # Truth
+  reference = default_df$i_default %>% as.factor()
+)
+```
+
+---
+layout: false
+class: clear
+
+```{R, est-cm-out, echo = F}
+cm_logistic %>% capture.output() %>% extract(1:24) %>% paste(., collapse = " \n ") %>% cat()
+```
+
+---
+layout: true
+# Assessment
+
+---
+## Thresholds
+
+Your setting also dictates the "optimal" threshold that moves a prediction from one class (_e.g._, Default = No) to another class (Default = Yes).
+
+The Bayes classifier suggests a probability threshold of 0.5.
+
+The Bayes classifier can't be beat in terms of .note[accuracy], but if you have goals other than accuracy, you should consider other thresholds.
+
+---
+name: roc
+layout: false
+class: clear, middle
+
+The .attn[ROC curve] depicts the .pink[error rates] for the two classes of outcomes.
+
+```{R, calc-roc, include = F, cache = T}
+roc_df = lapply(
+  X = seq(0, 1, by = 0.01),
+  FUN = function(cutoff) {
+    # The predictions
+    y_df = tibble(
+      y = default_df$i_default,
+      y_hat = (1 * (p_hat > cutoff))
+    )
+    # Results
+    data.frame(
+      cutoff = cutoff,
+      full = mean(y_df$y != y_df$y_hat),
+      type1 = y_df %>% filter(y == 0) %>% transmute(y != y_hat) %>% unlist() %>% mean(),
+      type2 = y_df %>% filter(y == 1) %>% transmute(y != y_hat) %>% unlist() %>% mean()
+    )
+  }
+) %>% bind_rows()
+```
+
+```{R, plot-roc, echo = F}
+ggplot(data = roc_df, aes(x = cutoff)) +
+geom_hline(yintercept = 0) +
+geom_line(aes(y = type1, color = "1"), size = 1) +
+geom_line(aes(y = type2, color = "2"), size = 1) +
+geom_line(aes(y = full, color = "3"), size = 0.3, linetype = "longdash") +
+scale_y_continuous("Error rate", labels = scales::percent) +
+scale_x_continuous("Threshold for positive prediction") +
+scale_color_manual(
+  "Error rate:",
+  labels = c("Type I (FP/N)", "Type II (FN/P)", "All"),
+  values = c(purple, orange, slate)
+) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(legend.position = "bottom")
+```
+
+---
+class: clear, middle
+
+More on ROC curves next time.
+
+
+---
+name: sources
+layout: false
+# Sources
+
+These notes draw upon
+
+- [An Introduction to Statistical Learning](http://faculty.marshall.usc.edu/gareth-james/ISL/) (*ISL*)<br>James, Witten, Hastie, and Tibshirani
+---
+# Table of contents
+
+.col-left[
+.smallest[
+#### Admin
+- [Today](#admin-today)
+- [Upcoming](#admin-soon)
+
+#### Classification
+- [Introduction](#intro)
+- [Introductory examples](#examples)
+- [Why not linear regression](#no-regress)
+- [Linear probability models](#lpm)
+
+]
+]
+.col-right[
+.smallest[
+
+#### Logistic regression
+- [Intro](#logistic-intro)
+- [The logistic function](#logistic-logistic)
+- [Estimation](#logistic-estimation)
+- [Maximum likelihood](#logistic-mle)
+- [In R](#logistic-r)
+- [Prediction](#logistic-prediction)
+
+#### Assessment
+- [How did we do?](#how)
+- [The confusion matrix](#confusion)
+- [In R](#cm-r)
+- [ROC curve](#roc)
+
+#### Other
+- [Sources/references](#sources)
+]
+]

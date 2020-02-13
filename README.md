@@ -88,6 +88,15 @@ Welcome to Economics 524 (424): Prediction and machine-learning in econometrics,
 
 **Formats** [.html](https://raw.githack.com/edrubin/EC524W20/master/lecture/005/005-slides.html) | [.pdf](https://raw.githack.com/edrubin/EC524W20/master/lecture/005/005-slides.pdf) | [.Rmd](https://raw.githack.com/edrubin/EC524W20/master/lecture/005/005-slides.Rmd)
 
+[**006 - Classification intro**](https://raw.githack.com/edrubin/EC524W20/master/lecture/006/006-slides.html)
+
+1. Introduction to classification
+1. Why not regression?
+1. But also: Logistic regression
+1. Assessment: Confusion matrix, assessment criteria, ROC
+
+**Formats** [.html](https://raw.githack.com/edrubin/EC524W20/master/lecture/006/006-slides.html) | [.pdf](https://raw.githack.com/edrubin/EC524W20/master/lecture/006/006-slides.pdf) | [.Rmd](https://raw.githack.com/edrubin/EC524W20/master/lecture/006/006-slides.Rmd)
+
 ## Projects
 
 **Intro** [Predicting sales price in housing data (Kaggle)](https://github.com/edrubin/EC524W20/tree/master/projects/kaggle-house-prices)
