@@ -115,7 +115,9 @@ You will need to sign into you Kaggle account and then hit "Copy and Edit" to ad
 <br>
 *Due* 13 February 2020 before midnight.
 
-**004** [Predicting heart disease (Kaggle competition)](https://github.com/edrubin/EC524W20/tree/master/projects/kaggle-heart-disease)) | [Competition](https://www.kaggle.com/c/ec524-heart-disease/)
+**004** [Predicting heart disease (Kaggle competition)](https://github.com/edrubin/EC524W20/tree/master/projects/kaggle-heart-disease) | [Competition](https://www.kaggle.com/c/ec524-heart-disease/)
+
+[**Class project**](https://github.com/edrubin/EC524W20/tree/master/projects/class-project)
 
 ## Lab notes
 
