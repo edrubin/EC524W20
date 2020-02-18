@@ -75,4 +75,16 @@ Submit a short evaluation of whether you and your group-member equally distribut
 
 | ID | Member 1 | Member 2  | Topic/Title |
 |----|----------|-----------|-------|
-|1   | Ed R.    | Connor L. | Predicting Yelp scores with emojis. 😐 |
+| 1  | Matthew Jobe |   | NBA: Predicting game outcomes (with injuries) |
+| 2  | Craig Asberry |   | Predicting commonness of topics in Congressional speeches |
+| 3  | Elizabeth Montoya | Connor Weinstein | Baseball scores |
+| 4  | Nina Kerkebane | Rebecca Amadeo | Predicting retention rates in US colleges |
+| 5  | Brad Bailey | Jake Schefrin | Annual expansion of pine beetle in Western US |
+| 6  | Jeffrey Stenquist | Michael Wagnon | Predicting college football game outcomes |
+| 7.1 | Mary McDonough | Evan Jonson | Airbnb price prediction |
+| 7.2 | Mary McDonough | Evan Jonson | Movie ratings and box office |
+| 7.3 | Mary McDonough | Evan Jonson | Twitter sentiment and primary results |
+| 8  | Elliott Chase | Eli Willman | Uber and Lyft pricing |
+| 9  | Zeng Youshi |   | Cold calls and car insurance |
+| 10.1 | Juliette Soia | Natalie Weaver | SF bike share |
+| 10.2 | Juliette Soia | Natalie Weaver | Building efficiency |
