@@ -947,143 +947,30 @@ The Bayes classifier can't be beat in terms of .note[accuracy], but if you have 
 ---
 name: thresholds
 layout: false
-class: clear
+class: clear, middle
 
-As we vary the threshold, our error rates (types .hi-purple[I], .hi-orange[II], and .hi-slate[overall]) change.
+As we vary the threshold, our error rates (TP, FP, and overall) change.
 
 
 
 &lt;img src="006-slides_files/figure-html/plot-threshold-1.svg" style="display: block; margin: auto;" /&gt;
 ---
 name: roc
-class: clear
+layout: false
+class: clear, middle
 
-The .attn[ROC curve] plots the true- (TP/P) and the false-positive rates (FP/N).
+The .attn[ROC curve] depicts the .pink[error rates] for the two classes of outcomes.
 
 
 
 &lt;img src="006-slides_files/figure-html/plot-roc-1.svg" style="display: block; margin: auto;" /&gt;
 
---
-
-"Best performance" means the .pink[ROC curve] hugs the top-left corner.
-
----
-class: clear
-
-The .hi-orange[AUC] gives the .orange[area under the (ROC) curve].
-
-&lt;img src="006-slides_files/figure-html/plot-auc-1.svg" style="display: block; margin: auto;" /&gt;
-
---
-
-"Best performance" means the .orange[AUC] is near 1. Random chance: 0.5
-
 ---
 class: clear, middle
 
-.qa[Q] So what information is AUC telling us?
-
-.tran[.b[A] Nothing]
-
----
-class: clear, middle
-
-.qa[Q] So what information is AUC telling us?
-
-.qa[A] AUC tells us how much we've .b[separated] the .it[positive] and .it[negative] labels.
-
----
-layout: true
-class: clear
+More on ROC curves next time.
 
 
----
-exclude: true
-
-
-
----
-
-.ex[Example:] Distributions of probabilities for .hi-orange[negative] and .hi-purple[positive] outcomes.
-
-&lt;img src="006-slides_files/figure-html/roc-ex1-d-1.svg" style="display: block; margin: auto;" /&gt;
-
----
-
-For any given .hi-pink[threshold]
-
-&lt;img src="006-slides_files/figure-html/roc-ex1-threshold-1.svg" style="display: block; margin: auto;" /&gt;
----
-
-For any given .hi-pink[threshold], we get .hi-yellow[false positives]
-
-&lt;img src="006-slides_files/figure-html/roc-ex1-threshold2-1.svg" style="display: block; margin: auto;" /&gt;
----
-
-For any given .hi-pink[threshold], we get false positives and .hi-yellow[true positives].
-
-&lt;img src="006-slides_files/figure-html/roc-ex1-threshold3-1.svg" style="display: block; margin: auto;" /&gt;
-
----
-
-
-
-... moving through all possible thresholds generates the .hi-pink[ROC] (.hi-orange[AUC] ≈ 0.872).
-
-&lt;img src="006-slides_files/figure-html/roc-ex1-roc-1.svg" style="display: block; margin: auto;" /&gt;
----
-
-Increasing separation between .hi-orange[negative] and .hi-purple[positive] outcomes...
-
-&lt;img src="006-slides_files/figure-html/roc-ex2-d-1.svg" style="display: block; margin: auto;" /&gt;
-
----
-
-
-
-... reduces error (shifts .hi-pink[ROC]) and increases .hi-orange[AUC] (≈ 0.994).
-
-&lt;img src="006-slides_files/figure-html/roc-ex2-roc-1.svg" style="display: block; margin: auto;" /&gt;
----
-
-Further increasing separation between .hi-orange[negative] and .hi-purple[positive] outcomes...
-
-&lt;img src="006-slides_files/figure-html/roc-ex3-d-1.svg" style="display: block; margin: auto;" /&gt;
-
----
-
-
-
-... reduces error (shifts .hi-pink[ROC]) and increases .hi-orange[AUC] (≈ 1).
-
-&lt;img src="006-slides_files/figure-html/roc-ex3-roc-1.svg" style="display: block; margin: auto;" /&gt;
----
-
-Tiny separation ("guessing") between .hi-orange[negative] and .hi-purple[positive] outcomes...
-
-&lt;img src="006-slides_files/figure-html/roc-ex4-d-1.svg" style="display: block; margin: auto;" /&gt;
-
----
-
-
-
-... increases error (shifts .hi-pink[ROC]) and pushes .hi-orange[AUC] toward 0.5 (here ≈ 0.523).
-
-&lt;img src="006-slides_files/figure-html/roc-ex4-roc-1.svg" style="display: block; margin: auto;" /&gt;
----
-
-Getting .hi-orange[negative] and .hi-purple[positive] outcomes backwards...
-
-&lt;img src="006-slides_files/figure-html/roc-ex5-d-1.svg" style="display: block; margin: auto;" /&gt;
-
----
-
-
-
-... increases error (shifts .hi-pink[ROC]) and pushes .hi-orange[AUC] toward 0 (here ≈ 0.012).
-
-&lt;img src="006-slides_files/figure-html/roc-ex5-roc-1.svg" style="display: block; margin: auto;" /&gt;
 ---
 name: sources
 layout: false
@@ -1092,8 +979,6 @@ layout: false
 These notes draw upon
 
 - [An Introduction to Statistical Learning](http://faculty.marshall.usc.edu/gareth-james/ISL/) (*ISL*)&lt;br&gt;James, Witten, Hastie, and Tibshirani
-
-- *[Receiver Operating Characteristic Curves Demystified (in Python)](https://towardsdatascience.com/receiver-operating-characteristic-curves-demystified-in-python-bd531a4364d0)*
 ---
 # Table of contents
 
@@ -1109,6 +994,11 @@ These notes draw upon
 - [Why not linear regression](#no-regress)
 - [Linear probability models](#lpm)
 
+]
+]
+.col-right[
+.smallest[
+
 #### Logistic regression
 - [Intro](#logistic-intro)
 - [The logistic function](#logistic-logistic)
@@ -1117,17 +1007,12 @@ These notes draw upon
 - [In R](#logistic-r)
 - [Prediction](#logistic-prediction)
 
-]
-]
-.col-right[
-.smallest[
-
 #### Assessment
 - [How did we do?](#how)
 - [The confusion matrix](#confusion)
 - [In R](#cm-r)
 - [Thresholds](#thresholds)
-- [ROC curves and AUC](#roc)
+- [ROC curve](#roc)
 
 #### Other
 - [Sources/references](#sources)

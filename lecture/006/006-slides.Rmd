@@ -18,6 +18,7 @@ exclude: true
 ```{R, setup, include = F}
 library(pacman)
 p_load(
+  ISLR,
   broom, tidyverse,
   ggplot2, ggthemes, ggforce, ggridges, cowplot, scales,
   latex2exp, viridis, extrafont, gridExtra, plotly, ggformula,
@@ -32,8 +33,10 @@ red_pink   = "#e64173"
 turquoise  = "#20B2AA"
 orange     = "#FFA500"
 red        = "#fb6107"
-blue       = "#3b3b9a"
+blue       = "#181485"
+navy       = "#150E37FF"
 green      = "#8bb174"
+yellow     = "#D8BD44"
 grey_light = "grey70"
 grey_mid   = "grey50"
 grey_dark  = "grey20"
@@ -313,7 +316,7 @@ exclude: true
 
 ```{R, clean-default-data, include = F}
 # Clean data
-default_df = ISLR::Default %>% mutate(i_default = 1 * (default == "Yes"))
+default_df = ISLR::Default %>% dplyr::mutate(i_default = 1 * (default == "Yes"))
 ```
 
 ---
@@ -655,9 +658,9 @@ layout: true
 # Logistic regression
 ## Prediction
 
-.note[Old news:] You can use `predict()` to get predictions out of `glm` objects.
-
 --
+
+.note[Old news:] You can use `predict()` to get predictions out of `glm` objects.
 
 .b[New and important:] `predict()` produces multiple `type`.small[s] of predictions
 
@@ -712,7 +715,7 @@ We guessed `r mean(y_hat == default_df$i_default) %>% scales::percent(accuracy =
 
 .qa[A] It depends...
 --
- Remember that `r mean(default_df$i_default) %>% scales::percent(accuracy = 0.01)` of the observations did not default.
+ Remember that `r mean(default_df$i_default) %>% scales::percent(accuracy = 0.01)` of the observations actually defaulted.
 --
 <br>So we would get `r (1 - mean(default_df$i_default)) %>% scales::percent(accuracy = 0.01)` right by guessing "No" for everyone..super[.pink[†]]
 
@@ -914,15 +917,15 @@ The Bayes classifier suggests a probability threshold of 0.5.
 The Bayes classifier can't be beat in terms of .note[accuracy], but if you have goals other than accuracy, you should consider other thresholds.
 
 ---
-name: roc
+name: thresholds
 layout: false
-class: clear, middle
+class: clear
 
-The .attn[ROC curve] depicts the .pink[error rates] for the two classes of outcomes.
+As we vary the threshold, our error rates (types .hi-purple[I], .hi-orange[II], and .hi-slate[overall]) change.
 
-```{R, calc-roc, include = F, cache = T}
-roc_df = lapply(
-  X = seq(0, 1, by = 0.01),
+```{R, calc-threshold, include = F, cache = T}
+threshold_df = mclapply(
+  X = seq(0, 1, by = 0.00001),
   FUN = function(cutoff) {
     # The predictions
     y_df = tibble(
@@ -936,12 +939,13 @@ roc_df = lapply(
       type1 = y_df %>% filter(y == 0) %>% transmute(y != y_hat) %>% unlist() %>% mean(),
       type2 = y_df %>% filter(y == 1) %>% transmute(y != y_hat) %>% unlist() %>% mean()
     )
-  }
+  },
+  mc.cores = 12
 ) %>% bind_rows()
 ```
 
-```{R, plot-roc, echo = F}
-ggplot(data = roc_df, aes(x = cutoff)) +
+```{R, plot-threshold, echo = F}
+ggplot(data = threshold_df, aes(x = cutoff)) +
 geom_hline(yintercept = 0) +
 geom_line(aes(y = type1, color = "1"), size = 1) +
 geom_line(aes(y = type2, color = "2"), size = 1) +
@@ -956,13 +960,402 @@ scale_color_manual(
 theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
 theme(legend.position = "bottom")
 ```
+---
+name: roc
+class: clear
+
+The .attn[ROC curve] plots the true- (TP/P) and the false-positive rates (FP/N).
+
+```{R, calc-roc, include = F, cache = T}
+roc_df = threshold_df %>% transmute(
+  fpr = type1,
+  tpr = 1 - type2
+) %>% as_tibble()
+```
+
+```{R, plot-roc, echo = F, fig.height = 6, cache = T}
+ggplot(data = roc_df, aes(x = fpr, y = tpr)) +
+geom_path(color = red_pink, size = 1) +
+geom_hline(yintercept = 0) +
+geom_vline(xintercept = 0) +
+geom_abline(intercept = 0, slope = 1, color = slate, linetype = "dotted", size = 0.5) +
+scale_x_continuous("False positive rate (FP/N)", labels = scales::percent) +
+scale_y_continuous("True positive rate (TP/P)", labels = scales::percent) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(legend.position = "bottom")
+```
+
+--
+
+"Best performance" means the .pink[ROC curve] hugs the top-left corner.
+
+---
+class: clear
+
+The .hi-orange[AUC] gives the .orange[area under the (ROC) curve].
+
+```{R, plot-auc, echo = F, fig.height = 6, cache = T}
+ggplot(data = roc_df, aes(x = fpr, y = tpr)) +
+geom_ribbon(
+  aes(ymin = 0, ymax = tpr),
+  fill = orange, alpha = 0.75
+) +
+geom_path(color = red_pink, size = 1) +
+geom_hline(yintercept = 0) +
+geom_vline(xintercept = 0) +
+geom_abline(intercept = 0, slope = 1, color = slate, linetype = "dotted", size = 0.5) +
+scale_x_continuous("False positive rate (FP/N)", labels = scales::percent) +
+scale_y_continuous("True positive rate (TP/P)", labels = scales::percent) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(legend.position = "bottom")
+```
+
+--
+
+"Best performance" means the .orange[AUC] is near 1. Random chance: 0.5
 
 ---
 class: clear, middle
 
-More on ROC curves next time.
+.qa[Q] So what information is AUC telling us?
+
+.tran[.b[A] Nothing]
+
+---
+class: clear, middle
+
+.qa[Q] So what information is AUC telling us?
+
+.qa[A] AUC tells us how much we've .b[separated] the .it[positive] and .it[negative] labels.
+
+---
+layout: true
+class: clear
 
 
+---
+exclude: true
+
+```{R, roc-setup, include = F}
+# Distributions of positive and negative lables
+d_pos = function(x, sep) dbeta(x, 15, 15-sep)
+d_neg = function(x, sep) dbeta(x, 15-sep, 15)
+# The implied TPR and FPR given a threshold
+tpr = function(threshold, sep) pbeta(threshold, 15, 15-sep, lower.tail = F)
+fpr = function(threshold, sep) pbeta(threshold, 15-sep, 15, lower.tail = F)
+```
+
+---
+
+.ex[Example:] Distributions of probabilities for .hi-orange[negative] and .hi-purple[positive] outcomes.
+
+```{R, roc-ex1-d, echo = F}
+ggplot(
+  data = tibble(x = seq(0, 1, 0.001)),
+  aes(x = x)
+) +
+geom_area(stat = "function", fun = . %>% d_pos(., sep = 4), color = purple, fill = purple) +
+geom_area(stat = "function", fun = . %>% d_neg(., sep = 4), color = orange, fill = orange, alpha = 0.2) +
+geom_hline(yintercept = 0) +
+scale_x_continuous("Threshold for predicting 'Positive'", labels = scales::percent) +
+ylab("Density") +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(legend.position = "bottom")
+```
+
+---
+
+For any given .hi-pink[threshold]
+
+```{R, roc-ex1-threshold, echo = F}
+ggplot(
+  data = tibble(x = seq(0, 1, 0.001)),
+  aes(x = x)
+) +
+geom_area(stat = "function", fun = . %>% d_pos(., sep = 4), color = purple, fill = purple) +
+geom_area(stat = "function", fun = . %>% d_neg(., sep = 4), color = orange, fill = orange, alpha = 0.2) +
+geom_hline(yintercept = 0) +
+geom_vline(xintercept = 0.4375, color = red_pink, size = 1.2) +
+scale_x_continuous("Threshold for predicting 'Positive'", labels = scales::percent) +
+ylab("Density") +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(legend.position = "bottom")
+```
+---
+
+For any given .hi-pink[threshold], we get .hi-yellow[false positives]
+
+```{R, roc-ex1-threshold2, echo = F}
+ggplot(
+  data = tibble(x = seq(0, 1, 0.001)),
+  aes(x = x)
+) +
+geom_area(stat = "function", fun = . %>% d_pos(., sep = 4), color = purple, fill = purple) +
+geom_area(stat = "function", fun = . %>% d_neg(., sep = 4), color = orange, fill = orange, alpha = 0.2) +
+geom_area(
+  stat = "function", fun = . %>% d_neg(., sep = 4), color = yellow, fill = yellow, alpha = 0.8,
+  xlim = c(0.4375, 1)
+) +
+geom_hline(yintercept = 0) +
+geom_vline(xintercept = 0.4375, color = red_pink, size = 1.2) +
+scale_x_continuous("Threshold for predicting 'Positive'", labels = scales::percent) +
+ylab("Density") +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(legend.position = "bottom")
+```
+---
+
+For any given .hi-pink[threshold], we get false positives and .hi-yellow[true positives].
+
+```{R, roc-ex1-threshold3, echo = F}
+ggplot(
+  data = tibble(x = seq(0, 1, 0.001)),
+  aes(x = x)
+) +
+geom_area(
+  stat = "function", fun = . %>% d_pos(., sep = 4), color = purple, fill = purple,
+  xlim = c(0, 0.4375)
+) +
+geom_area(stat = "function", fun = . %>% d_neg(., sep = 4), color = orange, fill = orange, alpha = 0.2) +
+geom_area(
+  stat = "function", fun = . %>% d_pos(., sep = 4), color = yellow, fill = yellow, alpha = 0.8,
+  xlim = c(0.4375, 1)
+) +
+geom_hline(yintercept = 0) +
+geom_vline(xintercept = 0.4375, color = red_pink, size = 1.2) +
+scale_x_continuous("Threshold for predicting 'Positive'", labels = scales::percent) +
+ylab("Density") +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(legend.position = "bottom")
+```
+
+---
+
+```{R, roc-ex1-data, include = F}
+# Generate data
+roc1 = tibble(
+  tpr = seq(0, 1, 0.001) %>% tpr(., sep = 4),
+  fpr = seq(0, 1, 0.001) %>% fpr(., sep = 4)
+)
+```
+
+... moving through all possible thresholds generates the .hi-pink[ROC] (.hi-orange[AUC] ≈ `r roc1 %>% arrange(fpr) %>% mutate(dist = fpr - lag(fpr)) %>% transmute(new = tpr * dist) %$% new %>% sum(na.rm = T) %>% round(3)`).
+
+```{R, roc-ex1-roc, echo = F}
+# Plot
+ggplot(
+  data = roc1,
+  aes(x = fpr, y = tpr)
+) +
+geom_ribbon(
+  aes(ymin = 0, ymax = tpr),
+  fill = orange, alpha = 0.75
+) +
+geom_path(color = red_pink, size = 1) +
+geom_hline(yintercept = 0) +
+geom_vline(xintercept = 0) +
+geom_abline(intercept = 0, slope = 1, color = slate, linetype = "dotted", size = 0.5) +
+scale_x_continuous("False positive rate (FP/N)", labels = scales::percent) +
+scale_y_continuous("True positive rate (TP/P)", labels = scales::percent) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(legend.position = "bottom")
+```
+---
+
+Increasing separation between .hi-orange[negative] and .hi-purple[positive] outcomes...
+
+```{R, roc-ex2-d, echo = F}
+ggplot(
+  data = tibble(x = seq(0, 1, 0.001)),
+  aes(x = x)
+) +
+geom_area(stat = "function", fun = . %>% d_pos(., sep = 8), color = purple, fill = purple) +
+geom_area(stat = "function", fun = . %>% d_neg(., sep = 8), color = orange, fill = orange, alpha = 0.2) +
+geom_hline(yintercept = 0) +
+scale_x_continuous("Threshold for predicting 'Positive'", labels = scales::percent) +
+ylab("Density") +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(legend.position = "bottom")
+```
+
+---
+
+```{R, roc-ex2-data, include = F}
+# Generate data
+roc2 = tibble(
+  tpr = seq(0, 1, 0.001) %>% tpr(., sep = 8),
+  fpr = seq(0, 1, 0.001) %>% fpr(., sep = 8)
+)
+```
+
+... reduces error (shifts .hi-pink[ROC]) and increases .hi-orange[AUC] (≈ `r roc2 %>% arrange(fpr) %>% mutate(dist = fpr - lag(fpr)) %>% transmute(new = tpr * dist) %$% new %>% sum(na.rm = T) %>% round(3)`).
+
+```{R, roc-ex2-roc, echo = F}
+# Plot
+ggplot(
+  data = roc2,
+  aes(x = fpr, y = tpr)
+) +
+geom_ribbon(
+  aes(ymin = 0, ymax = tpr),
+  fill = orange, alpha = 0.75
+) +
+geom_path(color = red_pink, size = 1) +
+geom_hline(yintercept = 0) +
+geom_vline(xintercept = 0) +
+geom_abline(intercept = 0, slope = 1, color = slate, linetype = "dotted", size = 0.5) +
+scale_x_continuous("False positive rate (FP/N)", labels = scales::percent) +
+scale_y_continuous("True positive rate (TP/P)", labels = scales::percent) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(legend.position = "bottom")
+```
+---
+
+Further increasing separation between .hi-orange[negative] and .hi-purple[positive] outcomes...
+
+```{R, roc-ex3-d, echo = F}
+ggplot(
+  data = tibble(x = seq(0, 1, 0.001)),
+  aes(x = x)
+) +
+geom_area(stat = "function", fun = . %>% d_pos(., sep = 10), color = purple, fill = purple) +
+geom_area(stat = "function", fun = . %>% d_neg(., sep = 10), color = orange, fill = orange, alpha = 0.2) +
+geom_hline(yintercept = 0) +
+scale_x_continuous("Threshold for predicting 'Positive'", labels = scales::percent) +
+ylab("Density") +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(legend.position = "bottom")
+```
+
+---
+
+```{R, roc-ex3-data, include = F}
+# Generate data
+roc3 = tibble(
+  tpr = seq(0, 1, 0.001) %>% tpr(., sep = 10),
+  fpr = seq(0, 1, 0.001) %>% fpr(., sep = 10)
+)
+```
+
+... reduces error (shifts .hi-pink[ROC]) and increases .hi-orange[AUC] (≈ `r roc3 %>% arrange(fpr) %>% mutate(dist = fpr - lag(fpr)) %>% transmute(new = tpr * dist) %$% new %>% sum(na.rm = T) %>% round(3)`).
+
+```{R, roc-ex3-roc, echo = F}
+# Plot
+ggplot(
+  data = roc3,
+  aes(x = fpr, y = tpr)
+) +
+geom_ribbon(
+  aes(ymin = 0, ymax = tpr),
+  fill = orange, alpha = 0.75
+) +
+geom_path(color = red_pink, size = 1) +
+geom_hline(yintercept = 0) +
+geom_vline(xintercept = 0) +
+geom_abline(intercept = 0, slope = 1, color = slate, linetype = "dotted", size = 0.5) +
+scale_x_continuous("False positive rate (FP/N)", labels = scales::percent) +
+scale_y_continuous("True positive rate (TP/P)", labels = scales::percent) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(legend.position = "bottom")
+```
+---
+
+Tiny separation ("guessing") between .hi-orange[negative] and .hi-purple[positive] outcomes...
+
+```{R, roc-ex4-d, echo = F}
+ggplot(
+  data = tibble(x = seq(0, 1, 0.001)),
+  aes(x = x)
+) +
+geom_area(stat = "function", fun = . %>% d_pos(., sep = 0.2), color = purple, fill = purple) +
+geom_area(stat = "function", fun = . %>% d_neg(., sep = 0.2), color = orange, fill = orange, alpha = 0.2) +
+geom_hline(yintercept = 0) +
+scale_x_continuous("Threshold for predicting 'Positive'", labels = scales::percent) +
+ylab("Density") +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(legend.position = "bottom")
+```
+
+---
+
+```{R, roc-ex4-data, include = F}
+# Generate data
+roc4 = tibble(
+  tpr = seq(0, 1, 0.001) %>% tpr(., sep = 0.2),
+  fpr = seq(0, 1, 0.001) %>% fpr(., sep = 0.2)
+)
+```
+
+... increases error (shifts .hi-pink[ROC]) and pushes .hi-orange[AUC] toward 0.5 (here ≈ `r roc4 %>% arrange(fpr) %>% mutate(dist = fpr - lag(fpr)) %>% transmute(new = tpr * dist) %$% new %>% sum(na.rm = T) %>% round(3)`).
+
+```{R, roc-ex4-roc, echo = F}
+# Plot
+ggplot(
+  data = roc4,
+  aes(x = fpr, y = tpr)
+) +
+geom_ribbon(
+  aes(ymin = 0, ymax = tpr),
+  fill = orange, alpha = 0.75
+) +
+geom_path(color = red_pink, size = 1) +
+geom_hline(yintercept = 0) +
+geom_vline(xintercept = 0) +
+geom_abline(intercept = 0, slope = 1, color = slate, linetype = "dotted", size = 0.5) +
+scale_x_continuous("False positive rate (FP/N)", labels = scales::percent) +
+scale_y_continuous("True positive rate (TP/P)", labels = scales::percent) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(legend.position = "bottom")
+```
+---
+
+Getting .hi-orange[negative] and .hi-purple[positive] outcomes backwards...
+
+```{R, roc-ex5-d, echo = F}
+ggplot(
+  data = tibble(x = seq(0, 1, 0.001)),
+  aes(x = x)
+) +
+geom_area(stat = "function", fun = . %>% d_pos(., sep = -10), color = purple, fill = purple) +
+geom_area(stat = "function", fun = . %>% d_neg(., sep = -10), color = orange, fill = orange, alpha = 0.2) +
+geom_hline(yintercept = 0) +
+scale_x_continuous("Threshold for predicting 'Positive'", labels = scales::percent) +
+ylab("Density") +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(legend.position = "bottom")
+```
+
+---
+
+```{R, roc-ex5-data, include = F}
+# Generate data
+roc5 = tibble(
+  tpr = seq(0, 1, 0.001) %>% tpr(., sep = -10),
+  fpr = seq(0, 1, 0.001) %>% fpr(., sep = -10)
+)
+```
+
+... increases error (shifts .hi-pink[ROC]) and pushes .hi-orange[AUC] toward 0 (here ≈ `r roc5 %>% arrange(fpr) %>% mutate(dist = fpr - lag(fpr)) %>% transmute(new = tpr * dist) %$% new %>% sum(na.rm = T) %>% round(3)`).
+
+```{R, roc-ex5-roc, echo = F}
+# Plot
+ggplot(
+  data = roc5,
+  aes(x = fpr, y = tpr)
+) +
+geom_ribbon(
+  aes(ymin = 0, ymax = tpr),
+  fill = orange, alpha = 0.75
+) +
+geom_path(color = red_pink, size = 1) +
+geom_hline(yintercept = 0) +
+geom_vline(xintercept = 0) +
+geom_abline(intercept = 0, slope = 1, color = slate, linetype = "dotted", size = 0.5) +
+scale_x_continuous("False positive rate (FP/N)", labels = scales::percent) +
+scale_y_continuous("True positive rate (TP/P)", labels = scales::percent) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(legend.position = "bottom")
+```
 ---
 name: sources
 layout: false
@@ -971,6 +1364,8 @@ layout: false
 These notes draw upon
 
 - [An Introduction to Statistical Learning](http://faculty.marshall.usc.edu/gareth-james/ISL/) (*ISL*)<br>James, Witten, Hastie, and Tibshirani
+
+- *[Receiver Operating Characteristic Curves Demystified (in Python)](https://towardsdatascience.com/receiver-operating-characteristic-curves-demystified-in-python-bd531a4364d0)*
 ---
 # Table of contents
 
@@ -986,11 +1381,6 @@ These notes draw upon
 - [Why not linear regression](#no-regress)
 - [Linear probability models](#lpm)
 
-]
-]
-.col-right[
-.smallest[
-
 #### Logistic regression
 - [Intro](#logistic-intro)
 - [The logistic function](#logistic-logistic)
@@ -999,11 +1389,17 @@ These notes draw upon
 - [In R](#logistic-r)
 - [Prediction](#logistic-prediction)
 
+]
+]
+.col-right[
+.smallest[
+
 #### Assessment
 - [How did we do?](#how)
 - [The confusion matrix](#confusion)
 - [In R](#cm-r)
-- [ROC curve](#roc)
+- [Thresholds](#thresholds)
+- [ROC curves and AUC](#roc)
 
 #### Other
 - [Sources/references](#sources)

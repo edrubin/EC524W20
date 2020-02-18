@@ -1,0 +1,110 @@
+---
+title: "Lecture .mono[007]"
+subtitle: "Classification"
+author: "Edward Rubin"
+#date: "`r format(Sys.time(), '%d %B %Y')`"
+date: "13 February 2020"
+output:
+  xaringan::moon_reader:
+    css: ['default', 'metropolis', 'metropolis-fonts', 'my-css.css']
+    # self_contained: true
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+exclude: true
+
+```{R, setup, include = F}
+library(pacman)
+p_load(
+  ISLR,
+  broom, tidyverse,
+  ggplot2, ggthemes, ggforce, ggridges, cowplot, scales,
+  latex2exp, viridis, extrafont, gridExtra, plotly, ggformula,
+  kableExtra, DT,
+  data.table, dplyr, snakecase, janitor,
+  lubridate, knitr, future, furrr,
+  MASS, estimatr, caret, glmnet,
+  huxtable, here, magrittr, parallel
+)
+# Define colors
+red_pink   = "#e64173"
+turquoise  = "#20B2AA"
+orange     = "#FFA500"
+red        = "#fb6107"
+blue       = "#3b3b9a"
+green      = "#8bb174"
+grey_light = "grey70"
+grey_mid   = "grey50"
+grey_dark  = "grey20"
+purple     = "#6A5ACD"
+slate      = "#314f4f"
+# Knitr options
+opts_chunk$set(
+  comment = "#>",
+  fig.align = "center",
+  fig.height = 7,
+  fig.width = 10.5,
+  warning = F,
+  message = F
+)
+opts_chunk$set(dev = "svg")
+options(device = function(file, width, height) {
+  svg(tempfile(), width = width, height = height)
+})
+options(knitr.table.format = "html")
+```
+---
+layout: true
+# Admin
+
+---
+class: inverse, middle
+---
+name: admin-today
+## Material
+
+---
+name: admin-soon
+
+## Upcoming
+
+.b[Readings] .note[Today] .it[ISL] Ch. 4
+
+.b[Problem sets]
+- .it[Classification] Due Thursday
+- Let Connor know if you are resubmitting
+
+.b[Project]
+
+---
+name: sources
+layout: false
+# Sources
+
+These notes draw upon
+
+- [An Introduction to Statistical Learning](http://faculty.marshall.usc.edu/gareth-james/ISL/) (*ISL*)<br>James, Witten, Hastie, and Tibshirani
+---
+# Table of contents
+
+.col-left[
+.smallest[
+#### Admin
+- [Today](#admin-today)
+- [Upcoming](#admin-soon)
+
+#### Classification
+
+]
+]
+.col-right[
+.smallest[
+
+#### Logistic regression
+
+#### Other
+- [Sources/references](#sources)
+]
+]

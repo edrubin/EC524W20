@@ -1,5 +1,5 @@
 # Fdb version 3
-["lualatex"] 1579547108 "syllabus.tex" "syllabus.pdf" "syllabus" 1579547110
+["lualatex"] 1582003549 "syllabus.tex" "syllabus.pdf" "syllabus" 1582003606
   "/Users/edwardarubin/Library/Fonts/FiraCode-Bold.otf" 1568090466 226304 ee5692490cda5eb25c1657d58829da21 ""
   "/Users/edwardarubin/Library/Fonts/FiraCode-Regular.otf" 1568090466 225664 e82cc5131cc0c9e7be6bec127f5507f2 ""
   "/Users/edwardarubin/Library/Fonts/FiraSans-Book.otf" 1542666288 359960 078b01ebfebe8cd48263eba26f9f4371 ""
@@ -164,9 +164,9 @@
   "/usr/local/texlive/2018/texmf-dist/tex/luatex/lualibs/lualibs-util-tpl.lua" 1480098845 7100 ccfb5023bc761673396964848d85b5e2 ""
   "/usr/local/texlive/2018/texmf-dist/tex/luatex/luaotfload/luaotfload-characters.lua" 1485820867 1548690 99578c3eff8b68cae3da45a4a7cbfcf2 ""
   "/usr/local/texlive/2018/texmf-var/web2c/luatex/lualatex.fmt" 1523934521 1360357 209de5184a1007f399e83ec8ebc7a3d8 ""
-  "syllabus.aux" 1579547109 1920 f6d2055b1d60c0a68099e7e539d6e6a8 ""
-  "syllabus.out" 1579547109 0 d41d8cd98f00b204e9800998ecf8427e ""
-  "syllabus.tex" 1579547107 13607 b7b3ab5a8ec4e8c4fdb1be2ea6f717de ""
+  "syllabus.aux" 1582003551 1920 f6d2055b1d60c0a68099e7e539d6e6a8 ""
+  "syllabus.out" 1582003551 0 d41d8cd98f00b204e9800998ecf8427e ""
+  "syllabus.tex" 1582003549 13593 54e9f2b43597703b1e8e418ea74e8927 ""
   (generated)
   "syllabus.aux"
   "syllabus.log"
