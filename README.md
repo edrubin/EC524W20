@@ -168,6 +168,7 @@ You will need to sign into you Kaggle account and then hit "Copy and Edit" to ad
 
 ### Data Science
 
+- Workflow diagram: [.pdf](https://raw.githack.com/edrubin/EC524W20/master/resources/data-workflow.pdf) | [.png](https://raw.githack.com/edrubin/EC524W20/master/resources/data-workflow.pdf) | [.ai](https://raw.githack.com/edrubin/EC524W20/master/resources/data-workflow.ai)
 - [Python Data Science Handbook](https://jakevdp.github.io/PythonDataScienceHandbook/) by Jake VanderPlas
 - [Elements of AI](https://course.elementsofai.com/)
 - [Caltech professor Yaser Abu-Mostafa: Lectures about machine learning on YouTube](https://www.youtube.com/user/caltech/search?query=Yaser+Abu-Mostafa)
