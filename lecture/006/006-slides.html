@@ -1085,6 +1085,33 @@ Getting .hi-orange[negative] and .hi-purple[positive] outcomes backwards...
 
 &lt;img src="006-slides_files/figure-html/roc-ex5-roc-1.svg" style="display: block; margin: auto;" /&gt;
 ---
+name: extras
+layout: false
+# R extras
+
+.b[AUC] You can calculate AUC in R using the `prSummary()` function from `caret`.
+&lt;br&gt;
+See [here](https://topepo.github.io/caret/measuring-performance.html#measures-for-predicted-classes) for an example.
+
+.b[Logistic elasticnet] `glmnet()` (for ridge , lasso, and elasticnet) extends to logistic regression.super[.pink[†]] by specifying the `family` argument of `glmnet`, _e.g._,
+
+
+```r
+# Example of logistic regression with lasso
+logistic_lasso = glmnet(
+  y = y,
+  x = x,
+  family = "binomial",
+  alpha = 1,
+  lambda = best_lambda
+)
+```
+
+.footnote[
+.pink[†] Or many other generalized linear models.
+]
+
+---
 name: sources
 layout: false
 # Sources
@@ -1130,6 +1157,7 @@ These notes draw upon
 - [ROC curves and AUC](#roc)
 
 #### Other
+- [Extras](#extras)
 - [Sources/references](#sources)
 ]
 ]
