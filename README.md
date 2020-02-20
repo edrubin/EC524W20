@@ -1,3 +1,4 @@
+
 # EC 524, Winter 2020
 
 Welcome to Economics 524 (424): Prediction and machine-learning in econometrics, taught by [Ed Rubin](https://edrub.in).
@@ -96,6 +97,14 @@ Welcome to Economics 524 (424): Prediction and machine-learning in econometrics,
 1. Assessment: Confusion matrix, assessment criteria, ROC, and AUC
 
 **Formats** [.html](https://raw.githack.com/edrubin/EC524W20/master/lecture/006/006-slides.html) | [.pdf](https://raw.githack.com/edrubin/EC524W20/master/lecture/006/006-slides.pdf) | [.Rmd](https://raw.githack.com/edrubin/EC524W20/master/lecture/006/006-slides.Rmd)
+
+[**007 - Decision trees**](https://raw.githack.com/edrubin/EC524W20/master/lecture/007/007-slides.html)
+
+1. Introduction to trees
+1. Regression trees
+1. Classification trees—including the Gini index, entropy, and error rate
+
+**Formats** [.html](https://raw.githack.com/edrubin/EC524W20/master/lecture/007/007-slides.html) | [.pdf](https://raw.githack.com/edrubin/EC524W20/master/lecture/007/007-slides.pdf) | [.Rmd](https://raw.githack.com/edrubin/EC524W20/master/lecture/007/007-slides.Rmd)
 
 ## Projects
 

@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+  <head>
+    <title>Lecture .mono[007]</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Edward Rubin" />
+    <meta name="date" content="2020-02-13" />
+    <link href="007-slides_files/remark-css-0.0.1/default.css" rel="stylesheet" />
+    <link href="007-slides_files/remark-css-0.0.1/metropolis.css" rel="stylesheet" />
+    <link href="007-slides_files/remark-css-0.0.1/metropolis-fonts.css" rel="stylesheet" />
+    <script src="007-slides_files/htmlwidgets-1.5.1/htmlwidgets.js"></script>
+    <script src="007-slides_files/viz-1.8.2/viz.js"></script>
+    <link href="007-slides_files/DiagrammeR-styles-0.2/styles.css" rel="stylesheet" />
+    <script src="007-slides_files/grViz-binding-1.0.5/grViz.js"></script>
+    <link rel="stylesheet" href="my-css.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Lecture .mono[007]
+## Trees 🌲🌴🌳
+### Edward Rubin
+### 13 February 2020
+
+---
+
+exclude: true
+
+
+---
+layout: true
+# Admin
+
+---
+class: inverse, middle
+---
+name: admin-today
+## Material
+
+Decision trees for regression and classification.
+
+---
+name: admin-soon
+
+## Upcoming
+
+.b[Readings]
+- .note[Today] .it[ISL] Ch. 8
+- .note[Next] .it[ISL] Ch. 9
+
+.b[Problem sets]
+- .it[Classification] Due today
+- Let Connor know if you are resubmitting
+
+.b[Project] Project topic due before midnight on Friday.
+
+---
+layout: true
+# Decision trees
+
+---
+class: inverse, middle
+
+---
+name: fundamentals
+## Fundamentals
+
+.attn[Decision trees]
+- split the .it[predictor space] (our `\(\mathbf{X}\)`) into regions
+- then predict the most-common value within a region
+
+--
+
+.attn[Tree-based methods]
+1. work for .hi[both classification and regression]
+
+--
+1. are inherently .hi[nonlinear]
+
+--
+1. are relatively .hi[simple] and  .hi[interpretable]
+
+--
+1. often .hi[underperform] relatively to competing methods
+
+--
+1. easily extend to .hi[very competitive ensemble methods] (*many* trees).super[🌲]
+
+.footnote[
+🌲 Though the ensembles will be much less interpretable.
+]
+
+---
+layout: true
+class: clear
+
+---
+exclude: true
+
+
+
+---
+.ex[Example:] .b[A simple decision tree] classifying credit-card default
+
+<div id="htmlwidget-a5742419e9e5593fea94" style="width:756px;height:504px;" class="grViz html-widget"></div>
+<script type="application/json" data-for="htmlwidget-a5742419e9e5593fea94">{"x":{"diagram":"\ndigraph {\n\ngraph [layout = dot, overlap = false, fontsize = 14]\n\nnode [shape = oval, fontname = \"Fira Sans\", color = Gray95, style = filled]\ns1 [label = \"Bal. > 1,800\"]\ns2 [label = \"Bal. < 1,972\"]\ns3 [label = \"Inc. > 27K\"]\n\nnode [shape = egg, fontname = \"Fira Sans\", color = Purple, style = filled, fontcolor = White]\nl1 [label = \"No (98%)\"]\nl4 [label = \"No (69%)\"]\n\nnode [shape = egg, fontname = \"Fira Sans\", color = Orange, style = filled, fontcolor = White]\nl2 [label = \"Yes (76%)\"]\nl3 [label = \"Yes (59%)\"]\n\nedge [fontname = \"Fira Sans\", color = Grey70]\ns1 -> l1 [label = \"F\"]\ns1 -> s2 [label = \"T\"]\ns2 -> s3 [label = \"T\"]\ns2 -> l2 [label = \"F\"]\ns3 -> l3 [label = \"T\"]\ns3 -> l4 [label = \"F\"]\n}\n","config":{"engine":"dot","options":null}},"evals":[],"jsHooks":[]}</script>
+
+---
+name: ex-partition
+
+Let's see how the tree works
+--
+—starting with our data (default: .orange[Yes] .it[vs.] .purple[No]).
+
+
+
+&lt;img src="007-slides_files/figure-html/plot-raw-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+
+The .hi-pink[first partition] splits balance at $1,800.
+
+&lt;img src="007-slides_files/figure-html/plot-split1-1.svg" style="display: block; margin: auto;" /&gt;
+---
+
+The .hi-pink[second partition] splits balance at $1,972, (.it[conditional on bal. &gt; $1,800]).
+
+&lt;img src="007-slides_files/figure-html/plot-split2-1.svg" style="display: block; margin: auto;" /&gt;
+---
+
+The .hi-pink[third partition] splits income at $27K .b[for] bal. between $1,800 and $1,972.
+
+&lt;img src="007-slides_files/figure-html/plot-split3-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+
+These three partitions give us four .b[regions]...
+
+&lt;img src="007-slides_files/figure-html/plot-split3b-1.svg" style="display: block; margin: auto;" /&gt;
+---
+
+.b[Predictions] cover each region (_e.g._, using the region's most common class).
+
+&lt;img src="007-slides_files/figure-html/plot-split3c-1.svg" style="display: block; margin: auto;" /&gt;
+---
+
+.b[Predictions] cover each region (_e.g._, using the region's most common class).
+
+&lt;img src="007-slides_files/figure-html/plot-split3d-1.svg" style="display: block; margin: auto;" /&gt;
+---
+
+.b[Predictions] cover each region (_e.g._, using the region's most common class).
+
+&lt;img src="007-slides_files/figure-html/plot-split3e-1.svg" style="display: block; margin: auto;" /&gt;
+---
+
+.b[Predictions] cover each region (_e.g._, using the region's most common class).
+
+&lt;img src="007-slides_files/figure-html/plot-split3f-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+name: defn
+
+The .hi-pink[regions] correspond to the tree's .attn[terminal nodes] (or .attn[leaves]).
+
+<div id="htmlwidget-aeb633c4efaff6e009e3" style="width:756px;height:504px;" class="grViz html-widget"></div>
+<script type="application/json" data-for="htmlwidget-aeb633c4efaff6e009e3">{"x":{"diagram":"\ndigraph {\n\ngraph [layout = dot, overlap = false, fontsize = 14]\n\nnode [shape = oval, fontname = \"Fira Sans\", color = Gray95, style = filled]\ns1 [label = \"Bal. > 1,800\"]\ns2 [label = \"Bal. < 1,972\"]\ns3 [label = \"Inc. > 27K\"]\n\nnode [shape = egg, fontname = \"Fira Sans\", color = DeepPink, style = filled, fontcolor = White]\nl1 [label = \"No (98%)\"]\nl4 [label = \"No (69%)\"]\n\nnode [shape = egg, fontname = \"Fira Sans\", color = DeepPink, style = filled, fontcolor = White]\nl2 [label = \"Yes (76%)\"]\nl3 [label = \"Yes (59%)\"]\n\nedge [fontname = \"Fira Sans\", color = Grey70]\ns1 -> l1 [label = \"F\"]\ns1 -> s2 [label = \"T\"]\ns2 -> s3 [label = \"T\"]\ns2 -> l2 [label = \"F\"]\ns3 -> l3 [label = \"T\"]\ns3 -> l4 [label = \"F\"]\n}\n","config":{"engine":"dot","options":null}},"evals":[],"jsHooks":[]}</script>
+---
+
+The graph's .hi-pink[separating lines] correspond to the tree's .attn[internal nodes].
+
+<div id="htmlwidget-be162ab9ff5fd7716072" style="width:756px;height:504px;" class="grViz html-widget"></div>
+<script type="application/json" data-for="htmlwidget-be162ab9ff5fd7716072">{"x":{"diagram":"\ndigraph {\n\ngraph [layout = dot, overlap = false, fontsize = 14]\n\nnode [shape = oval, fontname = \"Fira Sans\", color = DeepPink, style = filled, fontcolor = White]\ns1 [label = \"Bal. > 1,800\"]\ns2 [label = \"Bal. < 1,972\"]\ns3 [label = \"Inc. > 27K\"]\n\nnode [shape = egg, fontname = \"Fira Sans\", color = Grey95, style = filled, fontcolor = White]\nl1 [label = \"No (98%)\"]\nl4 [label = \"No (69%)\"]\n\nnode [shape = egg, fontname = \"Fira Sans\", color = Grey95, style = filled, fontcolor = White]\nl2 [label = \"Yes (76%)\"]\nl3 [label = \"Yes (59%)\"]\n\nedge [fontname = \"Fira Sans\", color = Grey70]\ns1 -> l1 [label = \"F\"]\ns1 -> s2 [label = \"T\"]\ns2 -> s3 [label = \"T\"]\ns2 -> l2 [label = \"F\"]\ns3 -> l3 [label = \"T\"]\ns3 -> l4 [label = \"F\"]\n}\n","config":{"engine":"dot","options":null}},"evals":[],"jsHooks":[]}</script>
+---
+
+The segments connecting the nodes within the tree are its .attn[branches].
+
+<div id="htmlwidget-c9be22be3a773df324e2" style="width:756px;height:504px;" class="grViz html-widget"></div>
+<script type="application/json" data-for="htmlwidget-c9be22be3a773df324e2">{"x":{"diagram":"\ndigraph {\n\ngraph [layout = dot, overlap = false, fontsize = 14]\n\nnode [shape = oval, fontname = \"Fira Sans\", color = Grey95, style = filled, fontcolor = White]\ns1 [label = \"Bal. > 1,800\"]\ns2 [label = \"Bal. < 1,972\"]\ns3 [label = \"Inc. > 27K\"]\n\nnode [shape = egg, fontname = \"Fira Sans\", color = Grey95, style = filled, fontcolor = White]\nl1 [label = \"No (98%)\"]\nl4 [label = \"No (69%)\"]\n\nnode [shape = egg, fontname = \"Fira Sans\", color = Grey95, style = filled, fontcolor = White]\nl2 [label = \"Yes (76%)\"]\nl3 [label = \"Yes (59%)\"]\n\nedge [fontname = \"Fira Sans\", color = DeepPink]\ns1 -> l1 [label = \"F\"]\ns1 -> s2 [label = \"T\"]\ns2 -> s3 [label = \"T\"]\ns2 -> l2 [label = \"F\"]\ns3 -> l3 [label = \"T\"]\ns3 -> l4 [label = \"F\"]\n}\n","config":{"engine":"dot","options":null}},"evals":[],"jsHooks":[]}</script>
+
+---
+class: middle
+
+You now know the anatomy of a decision tree.
+
+But where do trees come from—how do we train.super[🌲] a tree?
+
+.footnote[
+🌲 grow
+]
+---
+layout: true
+# Decision trees
+
+---
+name: growth
+## Growing trees
+
+We will start with .attn[regression trees], _i.e._, trees used in regression settings.
+
+--
+
+As we saw, the task of .hi[growing a tree] involves two main steps:
+
+1. .b[Divide the predictor space] into `\(J\)` regions (using predictors `\(\mathbf{x}_1,\ldots,\mathbf{x}_p\)`)
+
+--
+
+1. .b[Make predictions] using the regions' mean outcome.
+&lt;br&gt;For region `\(R_j\)` predict `\(\hat{y}_{R_j}\)` where
+$$
+`\begin{align}
+  \hat{y}_{R_j} = \frac{1}{n_j} \sum_{i\in R_j} y
+\end{align}`
+$$
+
+---
+## Growing trees
+
+We .hi[choose the regions to minimize RSS] .it[across all] `\(J\)` [regions], _i.e._,
+$$
+`\begin{align}
+  \sum_{j=1}^{J} \left( y_i - \hat{y}_{R_j} \right)^2
+\end{align}`
+$$
+
+--
+
+.b[Problem:] Examining every possible parition is computationally infeasible.
+
+--
+
+.b[Solution:] a .it[top-down, greedy] algorithm named .attn[recursive binary splitting]
+- .attn[recursive] start with the "best" split, then find the next "best" split, ...
+- .attn[binary] each split creates two branches—"yes" and "no"
+- .attn[greedy] each step makes .it[best] split—no consideration of overall process
+
+---
+## Growing trees: Choosing a split
+
+.ex[Recall] Regression trees choose the split that minimizes RSS.
+
+To find this split, we need
+
+1. a .purple[predictor], `\(\color{#6A5ACD}{\mathbf{x}_j}\)`
+1. a .attn[cutoff] `\(\color{#e64173}{s}\)` that splits `\(\color{#6A5ACD}{\mathbf{x}_j}\)` into two parts: (1) `\(\color{#6A5ACD}{\mathbf{x}_j} &lt; \color{#e64173}{s}\)` and (2) `\(\color{#6A5ACD}{\mathbf{x}_j} \ge \color{#e64173}{s}\)`
+
+--
+
+Searching across each of our .purple[predictors] `\(\color{#6A5ACD}{j}\)` and all of their .pink[cutoffs] `\(\color{#e64173}{s}\)`,
+&lt;br&gt;we choose the combination that .b[minimizes RSS].
+
+---
+layout: true
+# Decision trees
+## Example: Splitting
+
+---
+name: ex-split
+
+.ex[Example] Consider the dataset
+
+<table class="huxtable" style="border-collapse: collapse; margin-bottom: 2em; margin-top: 2em; width: 50%; margin-left: auto; margin-right: auto;  ">
+<col><col><col><col><col><tr>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; border-style: solid solid solid solid; border-width: 0pt 0pt 1pt 0pt; padding: 4pt 4pt 4pt 4pt; font-weight: bold;">i</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt; font-weight: bold;"><span style="color: rgb(255, 255, 255);">pred.</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; border-style: solid solid solid solid; border-width: 0pt 0pt 1pt 0pt; padding: 4pt 4pt 4pt 4pt; font-weight: bold;">y</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; border-style: solid solid solid solid; border-width: 0pt 0pt 1pt 0pt; padding: 4pt 4pt 4pt 4pt; font-weight: bold;">x.sub[1]</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; border-style: solid solid solid solid; border-width: 0pt 0pt 1pt 0pt; padding: 4pt 4pt 4pt 4pt; font-weight: bold;">x.sub[2]</td>
+</tr>
+<tr>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;">1</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(255, 255, 255);">0</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;">0</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;">1</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;">4</td>
+</tr>
+<tr>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;">2</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(255, 255, 255);">0</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;">8</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;">3</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;">2</td>
+</tr>
+<tr>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;">3</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(255, 255, 255);">0</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;">6</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;">5</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;">6</td>
+</tr>
+</table>
+
+
+--
+
+With just three observations, each variable only has two actual splits..super[🌲]
+
+.footnote[
+🌲 You can think about cutoffs as the ways we divide observations into two groups.
+]
+---
+
+One possible split: x.sub[1] at 2, which yields .purple[(.b[1]) x.sub[1] &lt; 2] .it[vs.] .pink[(.b[2]) x.sub[1] ≥ 2]
+
+<table class="huxtable" style="border-collapse: collapse; margin-bottom: 2em; margin-top: 2em; width: 50%; margin-left: auto; margin-right: auto;  ">
+<col><col><col><col><col><tr>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; border-style: solid solid solid solid; border-width: 0pt 0pt 1pt 0pt; padding: 4pt 4pt 4pt 4pt; font-weight: bold;">i</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt; font-weight: bold;"><span style="color: rgb(255, 255, 255);">pred.</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; border-style: solid solid solid solid; border-width: 0pt 0pt 1pt 0pt; padding: 4pt 4pt 4pt 4pt; font-weight: bold;">y</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; border-style: solid solid solid solid; border-width: 0pt 0pt 1pt 0pt; padding: 4pt 4pt 4pt 4pt; font-weight: bold;">x.sub[1]</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; border-style: solid solid solid solid; border-width: 0pt 0pt 1pt 0pt; padding: 4pt 4pt 4pt 4pt; font-weight: bold;">x.sub[2]</td>
+</tr>
+<tr>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(106, 90, 205);">1</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(255, 255, 255);">0</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(106, 90, 205);">0</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(106, 90, 205);">1</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;">4</td>
+</tr>
+<tr>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(230, 65, 115);">2</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(255, 255, 255);">7</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(230, 65, 115);">8</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(230, 65, 115);">3</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;">2</td>
+</tr>
+<tr>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(230, 65, 115);">3</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(255, 255, 255);">7</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(230, 65, 115);">6</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(230, 65, 115);">5</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;">6</td>
+</tr>
+</table>
+
+
+---
+
+One possible split: x.sub[1] at 2, which yields .purple[(.b[1]) x.sub[1] &lt; 2] .it[vs.] .pink[(.b[2]) x.sub[1] ≥ 2]
+
+<table class="huxtable" style="border-collapse: collapse; margin-bottom: 2em; margin-top: 2em; width: 50%; margin-left: auto; margin-right: auto;  ">
+<col><col><col><col><col><tr>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; border-style: solid solid solid solid; border-width: 0pt 0pt 1pt 0pt; padding: 4pt 4pt 4pt 4pt; font-weight: bold;">i</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; border-style: solid solid solid solid; border-width: 0pt 0pt 1pt 0pt; padding: 4pt 4pt 4pt 4pt; font-weight: bold;">pred.</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; border-style: solid solid solid solid; border-width: 0pt 0pt 1pt 0pt; padding: 4pt 4pt 4pt 4pt; font-weight: bold;">y</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; border-style: solid solid solid solid; border-width: 0pt 0pt 1pt 0pt; padding: 4pt 4pt 4pt 4pt; font-weight: bold;">x.sub[1]</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; border-style: solid solid solid solid; border-width: 0pt 0pt 1pt 0pt; padding: 4pt 4pt 4pt 4pt; font-weight: bold;">x.sub[2]</td>
+</tr>
+<tr>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(106, 90, 205);">1</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt; font-weight: bold;"><span style="color: rgb(106, 90, 205);">0</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(106, 90, 205);">0</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(106, 90, 205);">1</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;">4</td>
+</tr>
+<tr>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(230, 65, 115);">2</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt; font-weight: bold;"><span style="color: rgb(230, 65, 115);">7</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(230, 65, 115);">8</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(230, 65, 115);">3</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;">2</td>
+</tr>
+<tr>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(230, 65, 115);">3</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt; font-weight: bold;"><span style="color: rgb(230, 65, 115);">7</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(230, 65, 115);">6</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(230, 65, 115);">5</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;">6</td>
+</tr>
+</table>
+
+
+This split yields an RSS of .purple[0.super[2]] + .pink[1.super[2]] + .pink[(-1).super[2]] = 2.
+
+--
+
+.note[Note.sub[1]] Splitting x.sub[1] at 2 yields that same results as 1.5, 2.5—anything in (1, 3).
+
+--
+
+.note[Note.sub[2]] Trees often grow until they hit some number of observations in a leaf.
+---
+
+An alternative split: x.sub[1] at 4, which yields .purple[(.b[1]) x.sub[1] &lt; 4] .it[vs.] .pink[(.b[2]) x.sub[1] ≥ 4]
+
+<table class="huxtable" style="border-collapse: collapse; margin-bottom: 2em; margin-top: 2em; width: 50%; margin-left: auto; margin-right: auto;  ">
+<col><col><col><col><col><tr>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; border-style: solid solid solid solid; border-width: 0pt 0pt 1pt 0pt; padding: 4pt 4pt 4pt 4pt; font-weight: bold;">i</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; border-style: solid solid solid solid; border-width: 0pt 0pt 1pt 0pt; padding: 4pt 4pt 4pt 4pt; font-weight: bold;">pred.</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; border-style: solid solid solid solid; border-width: 0pt 0pt 1pt 0pt; padding: 4pt 4pt 4pt 4pt; font-weight: bold;">y</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; border-style: solid solid solid solid; border-width: 0pt 0pt 1pt 0pt; padding: 4pt 4pt 4pt 4pt; font-weight: bold;">x.sub[1]</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; border-style: solid solid solid solid; border-width: 0pt 0pt 1pt 0pt; padding: 4pt 4pt 4pt 4pt; font-weight: bold;">x.sub[2]</td>
+</tr>
+<tr>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(106, 90, 205);">1</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt; font-weight: bold;"><span style="color: rgb(106, 90, 205);">4</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(106, 90, 205);">0</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(106, 90, 205);">1</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;">4</td>
+</tr>
+<tr>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(106, 90, 205);">2</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt; font-weight: bold;"><span style="color: rgb(106, 90, 205);">4</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(106, 90, 205);">8</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(106, 90, 205);">3</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;">2</td>
+</tr>
+<tr>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(230, 65, 115);">3</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt; font-weight: bold;"><span style="color: rgb(230, 65, 115);">6</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(230, 65, 115);">6</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(230, 65, 115);">5</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;">6</td>
+</tr>
+</table>
+
+
+This split yields an RSS of .purple[(-4).super[2]] + .purple[4.super[2]] + .pink[0.super[2]] = 32.
+
+--
+
+.it[Previous:] Splitting x.sub[1] at 4 yielded RSS = 2. .it.grey-light[(Much better)]
+
+---
+
+Another split: x.sub[2] at 3, which yields .purple[(.b[1]) x.sub[1] &lt; 3] .it[vs.] .pink[(.b[2]) x.sub[1] ≥ 3]
+
+<table class="huxtable" style="border-collapse: collapse; margin-bottom: 2em; margin-top: 2em; width: 50%; margin-left: auto; margin-right: auto;  ">
+<col><col><col><col><col><tr>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; border-style: solid solid solid solid; border-width: 0pt 0pt 1pt 0pt; padding: 4pt 4pt 4pt 4pt; font-weight: bold;">i</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; border-style: solid solid solid solid; border-width: 0pt 0pt 1pt 0pt; padding: 4pt 4pt 4pt 4pt; font-weight: bold;">pred.</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; border-style: solid solid solid solid; border-width: 0pt 0pt 1pt 0pt; padding: 4pt 4pt 4pt 4pt; font-weight: bold;">y</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; border-style: solid solid solid solid; border-width: 0pt 0pt 1pt 0pt; padding: 4pt 4pt 4pt 4pt; font-weight: bold;">x.sub[1]</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; border-style: solid solid solid solid; border-width: 0pt 0pt 1pt 0pt; padding: 4pt 4pt 4pt 4pt; font-weight: bold;">x.sub[2]</td>
+</tr>
+<tr>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(230, 65, 115);">1</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt; font-weight: bold;"><span style="color: rgb(230, 65, 115);">3</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(230, 65, 115);">0</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;">1</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(230, 65, 115);">4</span></td>
+</tr>
+<tr>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(106, 90, 205);">2</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt; font-weight: bold;"><span style="color: rgb(106, 90, 205);">8</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(106, 90, 205);">8</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;">3</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(106, 90, 205);">2</span></td>
+</tr>
+<tr>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(230, 65, 115);">3</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt; font-weight: bold;"><span style="color: rgb(230, 65, 115);">3</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(230, 65, 115);">6</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;">5</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(230, 65, 115);">6</span></td>
+</tr>
+</table>
+
+
+This split yields an RSS of .pink[(-3).super[2]] + .purple[0.super[2]] + .pink[3.super[2]] = 18.
+
+---
+
+Final split: x.sub[2] at 5, which yields .purple[(.b[1]) x.sub[1] &lt; 5] .it[vs.] .pink[(.b[2]) x.sub[1] ≥ 5]
+
+<table class="huxtable" style="border-collapse: collapse; margin-bottom: 2em; margin-top: 2em; width: 50%; margin-left: auto; margin-right: auto;  ">
+<col><col><col><col><col><tr>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; border-style: solid solid solid solid; border-width: 0pt 0pt 1pt 0pt; padding: 4pt 4pt 4pt 4pt; font-weight: bold;">i</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; border-style: solid solid solid solid; border-width: 0pt 0pt 1pt 0pt; padding: 4pt 4pt 4pt 4pt; font-weight: bold;">pred.</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; border-style: solid solid solid solid; border-width: 0pt 0pt 1pt 0pt; padding: 4pt 4pt 4pt 4pt; font-weight: bold;">y</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; border-style: solid solid solid solid; border-width: 0pt 0pt 1pt 0pt; padding: 4pt 4pt 4pt 4pt; font-weight: bold;">x.sub[1]</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; border-style: solid solid solid solid; border-width: 0pt 0pt 1pt 0pt; padding: 4pt 4pt 4pt 4pt; font-weight: bold;">x.sub[2]</td>
+</tr>
+<tr>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(106, 90, 205);">1</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt; font-weight: bold;"><span style="color: rgb(106, 90, 205);">4</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(106, 90, 205);">0</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;">1</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(106, 90, 205);">4</span></td>
+</tr>
+<tr>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(106, 90, 205);">2</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt; font-weight: bold;"><span style="color: rgb(106, 90, 205);">4</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(106, 90, 205);">8</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;">3</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(106, 90, 205);">2</span></td>
+</tr>
+<tr>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(230, 65, 115);">3</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt; font-weight: bold;"><span style="color: rgb(230, 65, 115);">6</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(230, 65, 115);">6</span></td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;">5</td>
+<td style="vertical-align: top; text-align: center; white-space: nowrap; padding: 4pt 4pt 4pt 4pt;"><span style="color: rgb(230, 65, 115);">6</span></td>
+</tr>
+</table>
+
+
+This split yields an RSS of .pink[(-4).super[2]] + .pink[4.super[2]] + .purple[0.super[2]] = 32.
+---
+Across our four possible splits (two variables each with two splits)
+- x.sub[1] with a cutoff of 2: .b[RSS] = 2
+- x.sub[1] with a cutoff of 4: .b[RSS] = 32
+- x.sub[2] with a cutoff of 2: .b[RSS] = 18
+- x.sub[2] with a cutoff of 2: .b[RSS] = 32
+
+our split of x.sub[1] at 2 generates the lowest RSS.
+---
+layout: false
+class: clear, middle
+
+.note[Note:] Categorical predictors work in exactly the same way.
+&lt;br&gt;We want to try .b[all possible combinations] of the categories.
+
+.ex[Ex:] For a four-level categorical predicator (levels: A, B, C, D)
+
+.col-left[
+- Split 1: .pink[A|B|C] .it[vs.] .purple[D]
+- Split 2: .pink[A|B|D] .it[vs.] .purple[C]
+- Split 3: .pink[A|C|D] .it[vs.] .purple[B]
+- Split 4: .pink[B|C|D] .it[vs.] .purple[A]
+]
+.col-right[
+- Split 5: .pink[A|B] .it[vs.] .purple[C|D]
+- Split 6: .pink[A|C] .it[vs.] .purple[B|D]
+- Split 7: .pink[A|D] .it[vs.] .purple[B|C]
+]
+
+.clear-up[
+we would need to try 7 possible splits.
+]
+
+---
+layout: true
+# Decision trees
+
+---
+name: splits-more
+## More splits
+
+Once we make our a split, we then continue splitting,
+&lt;br&gt;.b[conditional] on the regions from our previous splits.
+
+So if our first split creates R.sub[1] and R.sub[2], then our next split
+&lt;br&gt;searches the predictor space only in R.sub[1] or R.sub[2]..super[🌲]
+
+.footnote[
+🌲 We are no longer searching the full space—it is conditional on the previous splits.
+]
+
+--
+
+The tree continue to .b[grow until] it hits some specified threshold,
+&lt;br&gt;_e.g._, at most 5 observations in each leaf.
+---
+## Too many splits?
+
+One can have too many splits.
+
+.qa[Q] Why?
+
+--
+
+.qa[A] "More splits" means
+1. more flexibility (think about the bias-variance tradeoff/overfitting)
+1. less interpretability (one of the selling points for trees)
+
+--
+
+.qa[Q] So what can we do?
+
+--
+
+.qa[A] Prune your trees!
+---
+name: pruning
+## Pruning
+
+.attn[Pruning] allows us to trim our trees back to their "best selves."
+
+.note[The idea:] Some regions may increase .hi[variance] more than they reduce .hi[bias].
+&lt;br&gt; By removing these regions, we gain in test MSE.
+
+.note[Candidates for trimming:] Regions that do not .b[reduce RSS] very much.
+
+--
+
+.note[Updated strategy:] Grow big trees `\(T_0\)` and then trim `\(T_0\)` to an optimal .attn[subtree].
+
+--
+
+.note[Updated problem:] Considering all possible subtrees can get expensive.
+
+---
+## Pruning
+
+.attn[Cost-complexity pruning].super[🌲] offers a solution.
+
+.footnote[
+🌲 Also called: .it[weakest-link pruning].
+]
+
+Just as we did with lasso, .attn[cost-complexity pruning] forces the tree to pay a price (penalty) to become more complex
+
+.it[Complexity] here is defined as the number of regions `\(|T|\)`.
+
+---
+## Pruning
+
+Specifically, .attn[cost-complexity pruning] adds a penalty of `\(\alpha |T|\)` to the RSS, _i.e._,
+$$
+`\begin{align}
+  \sum_{m=1}^{|T|} \sum_{i:x\in R_m} \left( y_i - \hat{y}_{R_m} \right)^2 + \alpha |T|
+\end{align}`
+$$
+
+For any value of `\(\alpha (\ge 0)\)`, we get a subtree `\(T\subset T_0\)`.
+
+--
+
+`\(\alpha = 0\)` generates `\(T_0\)`, but as `\(\alpha\)` increases, we begin to cut back the tree.
+
+--
+
+We choose `\(\alpha\)` via cross validation.
+
+---
+name: ctree
+## Classification trees
+
+Classification with trees is very similar to regression.
+
+--
+
+.col-left[
+.hi-purple[Regression trees]
+- .hi-slate[Predict:] Region's mean
+- .hi-slate[Split:] Minimize RSS
+- .hi-slate[Prune:] Penalized RSS
+]
+
+--
+
+.col-right[
+.hi-pink[Classification trees]
+- .hi-slate[Predict:] Region's mode
+- .hi-slate[Split:] Min. Gini or entropy.super[🌲]
+- .hi-slate[Prune:] Penalized error rate.super[🌴]
+]
+
+.footnote[
+🌲 Defined on the next slide. 🌴 ... or Gini index or entropy
+]
+
+.clear-up[
+An additional nuance for .attn[classification trees]: We typically care about the .b[proportions of classes in the leaves]—not just the final prediction.
+]
+
+---
+name: gini
+## The Gini index
+
+Let `\(\hat{p}_{mk}\)` denote the proportion of observations in class `\(k\)` and region `\(m\)`.
+
+--
+
+The .attn[Gini index] tells us about a region's "purity".super[🌲]
+$$
+`\begin{align}
+   G = \sum_{k=1}^{K} \hat{p}_{mk} \left( 1 - \hat{p}_{mk} \right)
+\end{align}`
+$$
+if a region is very homogeneous, then the Gini index will be small.
+
+.footnote[
+🌲 This vocabulary is Voldemort's contribution to the machine-learning literature.
+]
+
+Homogenous regions are easier to predict.
+&lt;br&gt;Reducing the Gini index yields to more homogeneous regions
+&lt;br&gt;∴ We want to minimize the Gini index.
+
+
+---
+name: entropy
+## Entropy
+
+Let `\(\hat{p}_{mk}\)` denote the proportion of observations in class `\(k\)` and region `\(m\)`.
+
+.attn[Entropy] also measures the "purity" of a node/leaf
+$$
+`\begin{align}
+  D = - \sum_{k=1}^{K} \hat{p}_{mk} \log \left( \hat{p}_{mk} \right)
+\end{align}`
+$$
+.attn[Entropy] is also minimized when `\(\hat{p}_{mk}\)` values are close to 0 and 1.
+
+---
+name: class-why
+## Rational
+
+.qa[Q] Why are we using the Gini index or entropy (*vs.* error rate)?
+
+--
+
+.qa[A] The error rate isn't sufficiently sensitive to grow good trees.
+&lt;br&gt; The Gini index and entropy tell us about the .b[composition] of the leaf.
+
+--
+
+.ex[Ex.] Consider two different leaves in a three-level classification.
+
+.col-left[
+.b[Leaf 1]
+- .b[A:] 51, .b[B:] 49, .b[C:] 00
+- .hi-orange[Error rate:] 49%
+- .hi-purple[Gini index:] 0.4998
+- .hi-pink[Entropy:] 0.6929
+]
+
+.col-right[
+.b[Leaf 2]
+- .b[A:] 51, .b[B:] 25, .b[C:] 24
+- .hi-orange[Error rate:] 49%
+- .hi-purple[Gini index:] 0.6198
+- .hi-pink[Entropy:] 1.0325
+]
+
+.clear-up[
+The .hi-purple[Gini index] and .hi-pink[entropy] tell us about the distribution.
+]
+---
+## Classification trees
+
+When .b[growing] classification trees, we want to use the Gini index or entropy.
+
+However, when .b[pruning], the error rate is typically fine—especially if accuracy will be the final criterion.
+---
+name: in-r
+## In R
+
+To train decision trees in R, we can use `caret`, which draws upon `rpart`.
+
+--
+
+To `train()` our model in `caret`
+- our `method` is `"rpart"`
+- the main tuning parameter is `cp`, the .note[complexity parameter] (penalty)
+
+
+```r
+# Set seed
+set.seed(12345)
+# CV and train
+default_tree = train(
+  default ~ .,
+  data = default_df,
+  method = "rpart",
+  trControl = trainControl("cv", number = 5),
+  tuneGrid = data.frame(cp = seq(0, 0.2, by = 0.005))
+)
+```
+---
+layout: true
+class: clear
+
+---
+.b[Accuracy and complexity] via `cp`, the penalty for complexity
+
+&lt;img src="007-slides_files/figure-html/plot-cv-cp-1.svg" style="display: block; margin: auto;" /&gt;
+---
+class: middle
+
+To plot the CV-chosen tree, we need to
+
+1. .b[extract] the fitted model, _e.g._, `default_tree$finalModel`
+
+1. apply a .b[plotting function] _e.g._, `rpart.plot()` from `rpart.plot`
+
+---
+class: clear, middle
+
+&lt;img src="007-slides_files/figure-html/plot-rpart-cv-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+class: clear, middle
+
+which we can compare to a less unpruned tree (`cp = 0.005`)
+
+---
+class: clear, middle
+
+&lt;img src="007-slides_files/figure-html/plot-tree_complex-1.svg" style="display: block; margin: auto;" /&gt;
+---
+class: clear, middle
+
+And now for a more penalized tree (`cp = 0.1`)...
+
+---
+class: clear, middle
+
+&lt;img src="007-slides_files/figure-html/plot-tree_simple-1.svg" style="display: block; margin: auto;" /&gt;
+---
+layout: true
+class: clear, middle
+
+---
+name: linearity
+
+.qa[Q] How do trees compare to linear models?
+
+.tran[.b[A] It depends how linear truth is.]
+
+---
+
+.qa[Q] How do trees compare to linear models?
+
+.qa[A] It depends how linear the true boundary is.
+
+---
+
+.b[Linear boundary:] trees struggle to recreate a line.
+
+&lt;img src="images/compare-linear.png" width="5784" style="display: block; margin: auto;" /&gt;
+
+.ex.small[Source: ISL, p. 315]
+
+---
+
+.b[Nonlinear boundary:] trees easily replicate the nonlinear boundary.
+
+&lt;img src="images/compare-nonlinear.png" width="5784" style="display: block; margin: auto;" /&gt;
+
+.ex.small[Source: ISL, p. 315]
+
+---
+layout: false
+name: tree-pro-con
+# Decision trees
+## Strengths and weaknesses
+
+As with any method, decision trees have tradeoffs.
+
+.col-left.purple.small[
+.b[Strengths]
+&lt;br&gt;.b[+] Easily explained/interpretted
+&lt;br&gt;.b[+] Include several graphical options
+&lt;br&gt;.b[+] Mirror human decision making?
+&lt;br&gt;.b[+] Handle num. or cat. on LHS/RHS.super[🌳]
+]
+
+.footnote[
+🌳 Without needing to create lots of dummy variables!
+&lt;br&gt;
+.tran[🌴 Blank]
+]
+
+
+--
+
+.col-right.pink.small[
+.b[Weaknesses]
+&lt;br&gt;.b[-] Outperformed by other methods
+&lt;br&gt;.b[-] Struggle with linearity
+&lt;br&gt;.b[-] Can be very "non-robust"
+]
+
+.clear-up[
+.attn[Non-robust:] Small data changes can cause huge changes in our tree.
+]
+
+--
+
+.note[Next:] Create ensembles of trees.super[🌲] to strengthen these weaknesses..super[🌴]
+
+.footnote[
+.tran[🌴 Blank]
+&lt;br&gt;
+🌲 Forests! 🌴 Which will also weaken some of the strengths.
+]
+
+
+---
+name: sources
+layout: false
+# Sources
+
+These notes draw upon
+
+- [An Introduction to Statistical Learning](http://faculty.marshall.usc.edu/gareth-james/ISL/) (*ISL*)&lt;br&gt;James, Witten, Hastie, and Tibshirani
+---
+# Table of contents
+
+.col-left[
+.smallest[
+#### Admin
+- [Today](#admin-today)
+- [Upcoming](#admin-soon)
+
+#### Decision trees
+
+1. [Fundamentals](#fundamentals)
+1. [Partitioning predictors](#ex-partition)
+1. [Definitions](#defn)
+1. [Growing trees](#growth)
+1. [Example: Splitting](#ex-split)
+1. [More splits](#splits-more)
+1. [Pruning](#pruning)
+1. [Classification trees](#ctree)
+  - [The Gini index](#gini)
+  - [Entropy](#entropy)
+  - [Rationale](#class-why)
+1. [In R](#in-r)
+1. [Linearity](#linearity)
+1. [Strengths and weaknesses](#tree-pro-con)
+
+]
+]
+.col-right[
+.smallest[
+
+#### Other
+- [Sources/references](#sources)
+]
+]
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
