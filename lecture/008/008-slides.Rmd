@@ -1,0 +1,1596 @@
+---
+title: "Lecture .mono[008]"
+subtitle: "Ensembles 🌲.smallest[🌲]🌲.smallest[🎄]🌲"
+author: "Edward Rubin"
+#date: "`r format(Sys.time(), '%d %B %Y')`"
+date: "25 February 2020"
+output:
+  xaringan::moon_reader:
+    css: ['default', 'metropolis', 'metropolis-fonts', 'my-css.css']
+    # self_contained: true
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+exclude: true
+
+```{R, setup, include = F}
+library(pacman)
+p_load(
+  ISLR,
+  broom, tidyverse,
+  ggplot2, ggthemes, ggforce, ggridges, cowplot, scales, rayshader,
+  latex2exp, viridis, extrafont, gridExtra, plotly, ggformula,
+  DiagrammeR,
+  kableExtra, DT, huxtable,
+  data.table, dplyr, snakecase, janitor,
+  lubridate, knitr,
+  caret, rpart, rpart.plot, rattle,
+  here, magrittr, parallel
+)
+# Define colors
+red_pink   = "#e64173"
+turquoise  = "#20B2AA"
+orange     = "#FFA500"
+red        = "#fb6107"
+blue       = "#3b3b9a"
+green      = "#8bb174"
+grey_light = "grey70"
+grey_mid   = "grey50"
+grey_dark  = "grey20"
+purple     = "#6A5ACD"
+slate      = "#314f4f"
+# Knitr options
+opts_chunk$set(
+  comment = "#>",
+  fig.align = "center",
+  fig.height = 7,
+  fig.width = 10.5,
+  warning = F,
+  message = F
+)
+opts_chunk$set(dev = "svg")
+options(device = function(file, width, height) {
+  svg(tempfile(), width = width, height = height)
+})
+options(knitr.table.format = "html")
+```
+---
+name: admin
+# Admin
+## Today
+
+- .note[Mini-survey] What are you missing?
+- .note[Topic] Ensembles (applied to decision trees)
+
+## Upcoming
+
+.b[Readings]
+- .note[Today] .it[ISL] Ch. 8.2
+- .note[Next] .it[ISL] Ch. 9
+
+.b[Project] Project topic was due Friday.
+
+---
+class: inverse, middle
+# Decision trees
+## Review
+
+---
+name: tree-review-fundamentals
+# Decision trees
+## Fundamentals
+
+.attn[Decision trees]
+- split the .it[predictor space] (our $\mathbf{X}$) into regions
+- then predict the most-common value within a region
+
+--
+
+
+.col-left[
+.hi-purple[Regression trees]
+- .hi-slate[Predict:] Region's mean
+- .hi-slate[Split:] Minimize RSS
+- .hi-slate[Prune:] Penalized RSS
+]
+
+--
+
+.col-right[
+.hi-pink[Classification trees]
+- .hi-slate[Predict:] Region's mode
+- .hi-slate[Split:] Min. Gini or entropy.super
+- .hi-slate[Prune:] Penalized error rate.super[🌴]
+]
+
+.footnote[
+🌴 ... or Gini index or entropy
+]
+
+--
+
+.clear-up[
+An additional nuance for .attn[classification trees:] we typically care about the .b[proportions of classes in the leaves]—not just the final prediction.
+]
+
+---
+class: clear
+
+```{R, data-tree-example, include = F, cache = T}
+# Data
+rec_dt = rbindlist(list(
+  data.table(1, 000, 010, 000, 100),
+  data.table(2, 010, 035, 000, 043),
+  data.table(3, 010, 035, 043, 100),
+  data.table(4, 035, 090, 000, 085),
+  data.table(5, 035, 090, 085, 100),
+  data.table(6, 090, 100, 000, 027),
+  data.table(7, 090, 100, 027, 055),
+  data.table(8, 090, 100, 055, 100)
+))
+setnames(rec_dt, c("r", "xmin", "xmax", "ymin", "ymax"))
+set.seed(13)
+rec_dt[, val := runif(8)]
+# Add labels
+rec_dt[, r_label := paste0("R[", r, "]")]
+# Remove ex_dt from memory
+rm(ex_dt)
+```
+
+.ex[Example] Each split in our tree creates .hi-purple[regions].
+
+```{R, plot-tree-example, echo = F, cache = T, dependson = "data-tree-example"}
+# Plot
+ggplot(
+  data = rec_dt,
+  aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax)
+) +
+geom_rect(fill = NA, color = purple) +
+xlab(expression(x[1])) +
+ylab(expression(x[2])) +
+geom_text(
+  aes(x = (xmin + xmax)/2, y = (ymin + ymax)/2, label = r_label),
+  size = 6.5, family = "Fira Sans Book", color = purple, parse = T
+) +
+theme_minimal(base_size = 18, base_family = "Fira Sans Book")
+```
+
+---
+class: clear
+
+.ex[Example] Each region has its own .b[predicted value].
+
+```{R, plot-tree-example2, echo = F, cache = T, dependson = "data-tree-example"}
+# Plot
+ggplot(
+  data = rec_dt,
+  aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax)
+) +
+geom_rect(aes(fill = val), color = "grey85", size = 0.5) +
+xlab(expression(x[1])) +
+ylab(expression(x[2])) +
+geom_text(
+  aes(x = (xmin + xmax)/2, y = (ymin + ymax)/2, label = r_label, color = val > 0.75),
+  size = 6.5, family = "Fira Sans Book", parse = T
+) +
+scale_fill_viridis_c(option = "magma") +
+scale_color_manual(values = c("white", "black")) +
+theme_minimal(base_size = 18, base_family = "Fira Sans Book") +
+theme(legend.position = "none")
+```
+
+---
+class: clear
+
+```{R, plot-tree-example3, echo = F, cache = T, message = F, dependson = "data-tree-example"}
+# Plot
+gg_regions = ggplot(
+  data = rec_dt,
+  aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax)
+) +
+geom_rect(aes(fill = val, color = val), size = 0.5) +
+xlab(expression(x[1])) +
+ylab(expression(x[2])) +
+scale_fill_viridis_c(option = "magma") +
+scale_color_viridis_c(option = "magma") +
+theme_minimal(base_size = 18, base_family = "Fira Sans Book") +
+theme(legend.position = "none")
+# Pass to rayshader
+plot_gg(
+  gg_regions,
+  zoom = 0.55,
+  theta = -15,
+  phi = 45,
+  width = 6,
+  windowsize = c(1400, 866),
+  # sunangle = 225,
+  multicore = T
+)
+render_snapshot(clear = TRUE)
+```
+
+---
+name: tree-review-tradeoff
+# Decision trees
+## Strengths and weaknesses
+
+As with any method, decision trees have tradeoffs.
+
+--
+
+.col-left.purple.small[
+.b[Strengths]
+<br>.b[+] Easily explained/interpretted
+<br>.b[+] Include several graphical options
+<br>.b[+] Mirror human decision making?
+<br>.b[+] Handle num. or cat. on LHS/RHS.super[🌳]
+]
+
+.footnote[
+🌳 Without needing to create lots of dummy variables!
+<br>
+.tran[🌴 Blank]
+]
+
+--
+
+.col-right.pink.small[
+.b[Weaknesses]
+<br>.b[-] Outperformed by other methods
+<br>.b[-] Struggle with linearity
+<br>.b[-] Can be very "non-robust"
+]
+
+.clear-up[
+.attn[Non-robust:] Small data changes can cause huge changes in our tree.
+]
+
+--
+
+.footnote[
+.tran[🌴 Blank]
+<br>
+🌲 Forests!
+]
+
+.note[Next:] Create ensembles of trees.super[🌲] to strengthen these weaknesses.
+--
+.super[🌴]
+
+.footnote[
+.tran[🌴 Blank]
+<br>
+.tran[🌲 Forests!] 🌴 Which will also weaken some of the strengths.
+]
+
+---
+layout: true
+# Ensemble methods
+
+---
+class: inverse, middle
+
+---
+name: intro
+## Intro
+
+Rather than focusing on training a .b[single], highly accurate model,
+<br>.attn[ensemble methods] combine .b[many] low-accuracy models into a .it[meta-model].
+
+--
+
+.note[Today:] Three common methods for .b[combining individual trees]
+
+1. .attn[Bagging]
+1. .attn[Random forests]
+1. .attn[Boosting]
+
+--
+
+.b[Why?] While individual trees may be highly variable and inaccurate,
+<br>a combination of trees is often quite stable and accurate.
+--
+.super[🌲]
+
+.footnote[
+🌲 We will lose interpretability.
+]
+
+---
+name: bag-intro
+## Bagging
+
+.attn[Bagging] creates additional samples via [.hi[bootstrapping]](https://raw.githack.com/edrubin/EC524W20/master/lecture/003/003-slides.html#62).
+
+--
+
+.qa[Q] How does bootstrapping help?
+
+--
+
+.qa[A] .note[Recall:] Individual decision trees suffer from variability (.it[non-robust]).
+
+--
+
+This .it[non-robustness] means trees can change .it[a lot] based upon which observations are included/excluded.
+
+--
+
+We're essentially using many "draws" instead of a single one..super[🌴]
+
+.footnote[
+🌴 Recall that an estimator's variance typically decreases as the sample size increases.
+]
+
+---
+name: bag-algorithm
+## Bagging
+
+.attn[Bootstrap aggregation] (bagging) reduces this type of variability.
+
+1. Create $B$ bootstrapped samples
+
+1. Train an estimator (tree) $\color{#6A5ACD}{\mathop{\hat{f^b}}(x)}$ on each of the $B$ samples
+
+1. Aggregate across your $B$ bootstrapped models:
+$$
+\begin{align}
+  \color{#e64173}{\mathop{\hat{f}_{\text{bag}}}(x)} = \dfrac{1}{B}\sum_{b=1}^{B}\color{#6A5ACD}{\mathop{\hat{f^b}}(x)}
+\end{align}
+$$
+
+This aggregated model $\color{#e64173}{\mathop{\hat{f}_{\text{bag}}}(x)}$ is your final model.
+
+---
+## Bagging trees
+
+When we apply bagging to decision trees,
+
+- we typically .hi-pink[grow the trees deep and do not prune]
+
+- for .hi-purple[regression], we .hi-purple[average] across the $B$ trees' regions
+
+- for .hi-purple[classification], we have more options—but often take .hi-purple[plurality]
+
+--
+
+.hi-pink[Individual] (unpruned) trees will be very .hi-pink[flexible] and .hi-pink[noisy],
+<br>but their .hi-purple[aggregate] will be quite .hi-purple[stable].
+
+--
+
+The number of trees $B$ is generally not critical with bagging.
+<br> $B=100$ often works fine.
+
+---
+name: bag-oob
+## Out-of-bag error estimation
+
+Bagging also offers a convenient method for evaluating performance.
+
+--
+
+For any bootstrapped sample, we omit ∼n/3 observations.
+
+.attn[Out-of-bag (OOB) error estimation] estimates the test error rate using observations .b[randomly omitted] from each bootstrapped sample.
+
+--
+
+For each observation $i$:
+
+1. Find all samples $S_i$ in which $i$ was omitted from training.
+
+1. Aggregate the $|S_i|$ predictions $\color{#6A5ACD}{\mathop{\hat{f^b}}(x_i)}$, _e.g._, using their mean or mode
+
+1. Calculate the error, _e.g._, $y_i - \mathop{\hat{f}_{i,\text{OOB},i}}(x_i)$
+
+---
+## Out-of-bag error estimation
+
+When $B$ is big enough, the OOB error rate will be very close to LOOCV.
+
+--
+
+.qa[Q] Why use OOB error rate?
+
+--
+
+.qa[A] When $B$ and $n$ are large, cross validation—with any number of folds—can become pretty computationally intensive.
+
+---
+name: bag-r
+## Bagging in R
+
+We can use our old friend, the `caret` package, for bagging trees.
+
+--
+
+.col-left[
+.b[Option 1:] `method = "treebag"`
+- Applied to `train()`
+- No tuning parameter
+]
+
+.col-right[
+```{R, eval = F}
+# Train a bagged tree model
+train(
+  y ~ .,
+  data = fake_df,
+  method = "treebag",
+  nbagg = 100,
+  keepX = T,
+  trControl = trainControl(
+    method = "oob"
+  )
+)
+```
+]
+---
+count: false
+## Bagging in R
+
+We can use our old friend, the `caret` package, for bagging trees.
+
+.col-left[
+.b[Option 1:] `method = "treebag"`
+- Applied to `train()`
+- No tuning parameter
+- `nbagg` = number of trees
+]
+
+.col-right[
+```{R, eval = F}
+# Train a bagged tree model
+train(
+  y ~ .,
+  data = fake_df,
+  method = "treebag",
+  nbagg = 100, #<<
+  keepX = T,
+  trControl = trainControl(
+    method = "oob"
+  )
+)
+```
+]
+---
+count: false
+## Bagging in R
+
+We can use our old friend, the `caret` package, for bagging trees.
+
+.col-left[
+.b[Option 1:] `method = "treebag"`
+- Applied to `train()`
+- No tuning parameter
+- `nbagg` = number of trees
+- `keepX = T` is necessary
+]
+
+.col-right[
+```{R, eval = F}
+# Train a bagged tree model
+train(
+  y ~ .,
+  data = fake_df,
+  method = "treebag",
+  nbagg = 100,
+  keepX = T, #<<
+  trControl = trainControl(
+    method = "oob"
+  )
+)
+```
+]
+---
+count: false
+## Bagging in R
+
+We can use our old friend, the `caret` package, for bagging trees.
+
+.col-left[
+.b[Option 1:] `method = "treebag"`
+- Applied to `train()`
+- No tuning parameter
+- `nbagg` = number of trees
+- `keepX = T` is necessary
+- `method = "oob"` for OOB error
+]
+
+.col-right[
+```{R, eval = F}
+# Train a bagged tree model
+train(
+  y ~ .,
+  data = fake_df,
+  method = "treebag",
+  nbagg = 100,
+  keepX = T,
+  trControl = trainControl( #<<
+    method = "oob" #<<
+  ) #<<
+)
+```
+]
+
+--
+
+.clear-up[
+.b[Option 2:] `caret`'s `bag()` function extends bagging to many methods.
+]
+
+---
+## Example: Bagging in R
+
+```{R, load-data-heart, include = F, cache = T}
+# Read data
+heart_df = read_csv("Heart.csv") %>%
+  dplyr::select(-X1) %>%
+  rename(HeartDisease = AHD) %>%
+  clean_names()
+# Impute missing values
+heart_df %<>%
+  preProcess(method = "medianImpute") %>%
+  predict(newdata = heart_df) %>%
+  mutate(thal = if_else(is.na(thal), "normal", thal))
+```
+
+.col-left[
+<br>With OOB-based error
+```{R, ex-bag-oob, cache = T, dependson = "load-data-heart"}
+# Set the seed
+set.seed(12345)
+# Train the bagged trees
+heart_bag = train(
+  heart_disease ~ .,
+  data = heart_df,
+  method = "treebag",
+  nbagg = 100,
+  keepX = T,
+  trControl = trainControl(
+    method = "oob" #<<
+  )
+)
+```
+]
+.col-right[
+<br>With CV-based error
+```{R, ex-bag-cv, eval = F}
+# Set the seed
+set.seed(12345)
+# Train the bagged trees
+heart_bag_cv = train(
+  heart_disease ~ .,
+  data = heart_df,
+  method = "treebag",
+  nbagg = 100,
+  keepX = T,
+  trControl = trainControl(
+    method = "cv", #<<
+    number = 5 #<<
+  )
+)
+```
+]
+
+---
+exclude: true
+
+```{R, sim-bag-size, cache = T}
+# Set the seed
+set.seed(12345)
+# Train the bagged trees
+bag_oob = mclapply(
+  X = 2:300,
+  mc.cores = 12,
+  FUN = function(n) {
+    train(
+      heart_disease ~ .,
+      data = heart_df,
+      method = "treebag",
+      nbagg = n,
+      keepX = T,
+      trControl = trainControl(
+        method = "oob"
+      )
+    )$results$Accuracy %>%
+    data.frame(accuracy = ., n_trees = n)
+  }
+) %>% bind_rows()
+# Train the bagged trees
+bag_cv = mclapply(
+  X = 2:300,
+  mc.cores = 12,
+  FUN = function(n) {
+    train(
+      heart_disease ~ .,
+      data = heart_df,
+      method = "treebag",
+      nbagg = n,
+      keepX = T,
+      trControl = trainControl(
+        method = "cv",
+        number = 5
+      )
+    )$results$Accuracy %>%
+    data.frame(accuracy = ., n_trees = n)
+  }
+) %>% bind_rows()
+```
+
+---
+layout: false
+class: clear
+
+.b[Bagging and the number of trees]
+
+```{R, plot-bag, echo = F, cache = T}
+ggplot(
+  data = bind_rows(
+    bag_oob %>% mutate(type = "Bagged, OOB"),
+    bag_cv %>% mutate(type = "Bagged, CV")
+  ),
+  aes(x = n_trees, y = accuracy, color = type)
+) +
+geom_line() +
+scale_y_continuous("Accuracy", labels = scales::percent) +
+scale_x_continuous("Number of trees") +
+scale_color_manual("[Method, Estimate]", values = c(red_pink, purple)) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(legend.position = "bottom") +
+coord_cartesian(ylim = c(0.60, 0.90))
+```
+---
+name: bag-var
+# Ensemble methods
+## Variable importance
+
+While ensemble methods tend to .hi[improve predictive performance],
+<br>they also tend .hi[reduce interpretability].
+
+--
+
+We can illustrate .attn[variables' importance] by considering their splits' reductions in the model's performance metric (RSS, Gini, entropy, _etc._)..super[🌳]
+
+.footnote[
+🌳 This idea isn't exclusive to bagging/ensembles—we can (and do) apply it to a single tree.
+]
+
+--
+
+In R, we can use `caret`'s `varImp()` function to calculate variable important.
+
+.note[Note] By default, `varImp()` will scale improtance between 0 and 100.
+
+---
+class: clear
+
+```{R, ex-var-importance, include = F, cache = T, dependson = "ex-bag-oob"}
+# Get importance
+bag_imp = varImp(heart_bag, scale = F)
+# Convert to data frame
+imp_df = tibble(
+  variable = row.names(bag_imp$importance),
+  importance = bag_imp$importance
+) %>% mutate(
+  variable = if_else(str_detect(variable, "thal"), "thal", variable),
+  variable = if_else(str_detect(variable, "chest_pain"), "chest_pain", variable)
+) %>% group_by(variable) %>%
+summarize(importance = sum(importance)) %>%
+mutate(importance = importance - min(importance)) %>%
+mutate(importance = 100 * importance / max(importance))
+```
+
+.hi-pink[Variable importance] from our bagged tree model.
+
+```{R, plot-var-importance, echo = F, dependson = "ex-var-importance"}
+# Plot importance
+ggplot(
+  data = imp_df,
+  aes(x = reorder(variable, -importance), y = importance)
+) +
+geom_col(fill = red_pink) +
+geom_hline(yintercept = 0) +
+xlab("Variable") +
+ylab("Importance (scaled)") +
+# scale_fill_viridis_c(option = "magma", direction = -1) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(legend.position = "none") +
+coord_flip()
+```
+---
+name: bag-weak
+# Ensemble methods
+## Bagging
+
+Bagging has one additional shortcoming...
+
+If one variable dominates other variables, the .hi[trees will be very correlated].
+
+--
+
+If the trees are very correlated, then bagging loses its advantage.
+
+--
+
+.note[Solution] We should make the trees less correlated.
+
+---
+layout: true
+# Ensemble methods
+
+---
+name: rf-intro
+## Random forests
+
+.attn[Random forests] improve upon bagged trees by .it[decorrelating] the trees.
+
+--
+
+In order to decorrelate its trees, a .attn[random forest] only .pink[considers a random subset of] $\color{#e64173}{m\enspace (\approx\sqrt{p})}$ .pink[predictors] when making each split (for each tree).
+
+--
+
+Restricting the variables our tree sees at a given split
+
+--
+
+- nudges trees away from always using the same variables,
+
+--
+
+- increasing the variation across trees in our forest,
+
+--
+
+- which potentially reduces the variance of our estimates.
+
+--
+
+If our predictors are very correlated, we may want to shrink $m$.
+
+---
+## Random forests
+
+Random forests thus introduce .b[two dimensions of random variation]
+
+1. the .b[bootstrapped sample]
+
+2. the $m$ .b[randomly selected predictors]
+
+Everything else about random forests works just as it did with bagging..super[🎄]
+
+.footnote[
+🎄 And just as it did with plain, old decision trees.
+]
+
+
+---
+name: rf-r
+## Random forests in R
+
+You have .it[many] [options](http://topepo.github.io/caret/train-models-by-tag.html#Random_Forest) for training random forests in R.
+<br>_E.g._, `party`, `Rborist`, `ranger`, `randomForest`.
+
+`caret` offers access to each of these packages via `train`.
+
+--
+
+- _E.g._, `method = "rf"` or `method = "ranger"`
+
+--
+
+- The argument `mtry` gives the number of predictors at each split..super[🌲]
+
+.footnote[
+🌲 `predFixed` for `Rborist`.
+]
+
+--
+
+- Some methods have additional parameters, _e.g._, `ranger` needs
+  - minimal node size `min.node.size`
+  - a splitting rule `splitrule`.
+
+---
+layout: true
+# Ensemble methods
+
+Training a random forest in R using `caret`...
+
+---
+
+.col-left[
+... and `ranger`
+]
+
+.col-right[
+```{R, ex-ranger, cache = T}
+# Set the seed
+set.seed(12345)
+# Train the random forest
+heart_forest = train(
+  heart_disease ~ .,
+  data = heart_df,
+  method = "ranger",
+  num.trees = 100,
+  trControl = trainControl(
+    method = "oob"
+  ),
+  tuneGrid = expand.grid(
+    "mtry" = 2:13,
+    "splitrule" = "gini",
+    "min.node.size" = 1:10
+  )
+)
+```
+]
+
+---
+count: false
+
+.col-left[
+... and `ranger`
+- Specify `"ranger"` for method
+]
+
+.col-right[
+```{R, eval = F}
+# Set the seed
+set.seed(12345)
+# Train the random forest
+heart_forest = train(
+  heart_disease ~ .,
+  data = heart_df,
+  method = "ranger", #<<
+  num.trees = 100,
+  trControl = trainControl(
+    method = "oob"
+  ),
+  tuneGrid = expand.grid(
+    "mtry" = 2:13,
+    "splitrule" = "gini",
+    "min.node.size" = 1:10
+  )
+)
+```
+]
+---
+count: false
+
+.col-left[
+... and `ranger`
+- Specify `"ranger"` for method
+- Number of trees: `num.trees`
+]
+
+.col-right[
+```{R, eval = F}
+# Set the seed
+set.seed(12345)
+# Train the random forest
+heart_forest = train(
+  heart_disease ~ .,
+  data = heart_df,
+  method = "ranger",
+  num.trees = 100, #<<
+  trControl = trainControl(
+    method = "oob"
+  ),
+  tuneGrid = expand.grid(
+    "mtry" = 2:13,
+    "splitrule" = "gini",
+    "min.node.size" = 1:10
+  )
+)
+```
+]
+---
+count: false
+
+.col-left[
+... and `ranger`
+- Specify `"ranger"` for method
+- Number of trees: `num.trees`
+- We can still use OOB for error
+]
+
+.col-right[
+```{R, eval = F}
+# Set the seed
+set.seed(12345)
+# Train the random forest
+heart_forest = train(
+  heart_disease ~ .,
+  data = heart_df,
+  method = "ranger",
+  num.trees = 100,
+  trControl = trainControl(
+    method = "oob" #<<
+  ),
+  tuneGrid = expand.grid(
+    "mtry" = 2:13,
+    "splitrule" = "gini",
+    "min.node.size" = 1:10
+  )
+)
+```
+]
+---
+count: false
+
+.col-left[
+... and `ranger`
+- Specify `"ranger"` for method
+- Number of trees: `num.trees`
+- We can still use OOB for error
+- Parameters to choose/train
+  1. $m$, # of predictors at a split
+]
+
+.col-right[
+```{R, eval = F}
+# Set the seed
+set.seed(12345)
+# Train the random forest
+heart_forest = train(
+  heart_disease ~ .,
+  data = heart_df,
+  method = "ranger",
+  num.trees = 100,
+  trControl = trainControl(
+    method = "oob"
+  ),
+  tuneGrid = expand.grid(
+    "mtry" = 2:13, #<<
+    "splitrule" = "gini",
+    "min.node.size" = 1:10
+  )
+)
+```
+]
+---
+count: false
+
+.col-left[
+... and `ranger`
+- Specify `"ranger"` for method
+- Number of trees: `num.trees`
+- We can still use OOB for error
+- Parameters to choose/train
+  1. $m$, # of predictors at a split
+  1. the rule for splitting
+]
+
+.col-right[
+```{R, eval = F}
+# Set the seed
+set.seed(12345)
+# Train the random forest
+heart_forest = train(
+  heart_disease ~ .,
+  data = heart_df,
+  method = "ranger",
+  num.trees = 100,
+  trControl = trainControl(
+    method = "oob"
+  ),
+  tuneGrid = expand.grid(
+    "mtry" = 2:13,
+    "splitrule" = "gini", #<<
+    "min.node.size" = 1:10
+  )
+)
+```
+]
+---
+count: false
+
+.col-left[
+... and `ranger`
+- Specify `"ranger"` for method
+- Number of trees: `num.trees`
+- We can still use OOB for error
+- Parameters to choose/train
+  1. $m$, # of predictors at a split
+  1. the rule for splitting
+  1. minimum size for a leaf
+]
+
+.col-right[
+```{R, eval = F}
+# Set the seed
+set.seed(12345)
+# Train the random forest
+heart_forest = train(
+  heart_disease ~ .,
+  data = heart_df,
+  method = "ranger",
+  num.trees = 100,
+  trControl = trainControl(
+    method = "oob"
+  ),
+  tuneGrid = expand.grid(
+    "mtry" = 2:13,
+    "splitrule" = "gini",
+    "min.node.size" = 1:10 #<<
+  )
+)
+```
+]
+
+---
+layout: false
+class: clear
+
+.b[Accuracy] (OOB) across the grid of our parameters.
+
+```{R, plot-rf-parameters, echo = F}
+ggplot(
+  data = heart_forest$results,
+  aes(x = mtry, y = min.node.size, fill = Accuracy)
+) +
+geom_tile(color = "white", size = 0.3) +
+xlab("Number of variables at split (m)") +
+ylab("Min. leaf size") +
+scale_fill_viridis_c("Accuracy", option = "magma", labels = percent) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(
+  legend.position = "bottom",
+  legend.key.width = unit(3, "cm")
+)
+```
+---
+class: clear
+exclude: true
+
+.col-left[
+```{R, sim-forest-size, cache = T}
+# Set the seed
+set.seed(12345)
+# Train the bagged trees
+rf_oob = mclapply(
+  X = 2:300,
+  mc.cores = 12,
+  FUN = function(n) {
+    train(
+      heart_disease ~ .,
+      data = heart_df,
+      method = "ranger",
+      num.trees = n,
+      trControl = trainControl(
+        method = "oob"
+      ),
+      tuneGrid = data.frame(
+        "mtry" = 2,
+        "splitrule" = "gini",
+        "min.node.size" = 4
+      )
+    )$finalModel$prediction.error %>% subtract(1, .) %>%
+    data.frame(accuracy = ., n_trees = n)
+  }
+) %>% bind_rows()
+```
+]
+
+.col-right[
+```{R, sim-forest-size2, cache = T}
+# Set seed
+set.seed(6789)
+# Train the bagged trees
+rf_cv = mclapply(
+  X = 2:300,
+  mc.cores = 12,
+  FUN = function(n) {
+    train(
+      heart_disease ~ .,
+      data = heart_df,
+      method = "ranger",
+      num.trees = n,
+      trControl = trainControl(
+        method = "cv",
+        number = 5
+      ),
+      tuneGrid = data.frame(
+        "mtry" = 2,
+        "splitrule" = "gini",
+        "min.node.size" = 4
+      )
+    )$finalModel$prediction.error %>% subtract(1, .) %>%
+    data.frame(accuracy = ., n_trees = n)
+  }
+) %>% bind_rows()
+```
+]
+
+---
+class: clear
+
+.b[Tree ensembles and the number of trees]
+
+```{R, plot-bag-rf, echo = F}
+ggplot(
+  data = bind_rows(
+    bag_oob %>% mutate(type = "Bagged, OOB"),
+    bag_cv %>% mutate(type = "Bagged, CV"),
+    rf_oob %>% mutate(type = "Random forest, OOB"),
+    rf_cv %>% mutate(type = "Random forest, CV")
+  ),
+  aes(x = n_trees, y = accuracy, color = type)
+) +
+geom_line() +
+scale_y_continuous("Accuracy", labels = scales::percent) +
+scale_x_continuous("Number of trees") +
+scale_color_manual(
+  "[Method, Estimate]",
+  values = c(red_pink, purple, orange, slate)
+) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(legend.position = "bottom") +
+coord_cartesian(ylim = c(0.60, 0.90))
+```
+---
+layout: true
+# Ensemble methods
+
+---
+name: boost-intro
+## Boosting
+
+So far, the elements of our ensembles have been acting independently:
+<br> any single tree knows nothing about the rest of the forest.
+
+--
+
+.attn[Boosting] allows trees to pass on information to eachother.
+
+--
+
+Specifically, .attn[boosting] trains its trees.super[🌲] .it[sequentially]—each new tree trains on the residuals (mistakes) from its predecessors.
+
+.footnote[
+🌲 As with bagging, boosting can be applied to many methods (in addition to trees).
+]
+
+--
+
+- We add each new tree to our model $\hat{f}$ (and update our residuals).
+
+- Trees are typically small—slowly improving $\hat{f}$ .it[where it struggles].
+
+---
+name: boost-param
+## Boosting
+
+Boosting has three .hi[tuning parameters].
+
+1. The .hi[number of trees] $\color{#e64173}{B}$ can be important to prevent overfitting.
+
+--
+
+1. The .hi[shrinkage parameter] $\color{#e64173}{\lambda}$, which controls boosting's .it[learning rate] (often 0.01 or 0.001).
+
+--
+
+1. The .hi[number of splits] $\color{#e64173}{d}$ in each tree (trees' complexity).
+--
+
+  - Individaul trees are typically short—often $d=1$ ("stumps").
+
+  - .note[Remember] Trees learn from predecessors' mistakes,<br>so no single tree needs to offer a perfect model.
+---
+name: boost-alg
+## How to boost
+
+.hi-purple[Step 1:] Set $\color{#6A5ACD}{\mathop{\hat{f}}}(x) = 0$, which yields residuals $r_i = y_i$ for all $i$.
+
+--
+
+.hi-pink[Step 2:] For $\color{#e64173}{b} = 1,\,2\,\ldots,\, B$ do:
+
+.move-right[
+.b[A.] Fit a tree $\color{#e64173}{\hat{f^b}}$ with $d$ splits.
+]
+
+--
+
+.move-right[
+.b[B.] Update the model $\color{#6A5ACD}{\hat{f}}$ with "shrunken version" of new treee $\color{#e64173}{\hat{f^b}}$
+]
+
+$$
+\begin{align}
+  \color{#6A5ACD}{\mathop{\hat{f}}}(x) \leftarrow \color{#6A5ACD}{\mathop{\hat{f}}}(x) + \lambda \mathop{\color{#e64173}{\hat{f^b}}}(x)
+\end{align}
+$$
+
+--
+
+.move-right[
+.b[C.] Update the residuals: $r_i \leftarrow r_i - \lambda \mathop{\color{#e64173}{\hat{f^b}}}(x)$.
+]
+
+--
+
+.hi-orange[Step 3:] Output the boosted model:
+$\mathop{\color{#6A5ACD}{\hat{f}}}(x) = \sum_{b} \lambda \mathop{\color{#e64173}{\hat{f^b}}}(x)$.
+---
+name: boost-r
+## Boosting in R
+
+We will use `caret`'s `method = "gbm"` to train boosted trees..super[🌴]
+
+.footnote[
+🌴 This method uses the `gbm` package.
+]
+
+`gbm` needs the three standard parameters of boosted trees—plus one more:
+
+1. `n.trees`, the number of trees $(B)$
+
+1. `interaction.depth`, trees' depth (max. splits from top)
+
+1. `shrinkage`, the learning rate $(\lambda)$
+
+1. `n.minobsinnode`, minimum observations in a terminal node
+---
+exclude: true
+
+```{R, ex-boost, cache = T, message = F}
+# Set the seed
+set.seed(12345)
+# Train the random forest
+heart_boost = train(
+  heart_disease ~ .,
+  data = heart_df,
+  method = "gbm",
+  trControl = trainControl(
+    method = "cv",
+    number = 5
+  ),
+  tuneGrid = expand.grid(
+    "n.trees" = seq(1, 300, by = 1),
+    "interaction.depth" = 1:3,
+    "shrinkage" = c(0.1, 0.01, 0.001),
+    "n.minobsinnode" = 5
+  )
+)
+```
+---
+## Boosting in R
+
+.col-left.pad-top[
+```{R, eval = F}
+# Set the seed
+set.seed(12345)
+# Train the random forest
+heart_boost = train(
+  heart_disease ~ .,
+  data = heart_df,
+  method = "gbm",
+  trControl = trainControl(
+    method = "cv",
+    number = 5
+  ),
+  tuneGrid = expand.grid(
+    "n.trees" = seq(25, 200, by = 25),
+    "interaction.depth" = 1:3,
+    "shrinkage" = c(0.1, 0.01, 0.001),
+    "n.minobsinnode" = 5
+  )
+)
+```
+]
+---
+count: false
+## Boosting in R
+
+.col-left.pad-top[
+```{R, eval = F}
+# Set the seed
+set.seed(12345)
+# Train the random forest
+heart_boost = train(
+  heart_disease ~ .,
+  data = heart_df,
+  method = "gbm", #<<
+  trControl = trainControl(
+    method = "cv",
+    number = 5
+  ),
+  tuneGrid = expand.grid(
+    "n.trees" = seq(25, 200, by = 25),
+    "interaction.depth" = 1:3,
+    "shrinkage" = c(0.1, 0.01, 0.001),
+    "n.minobsinnode" = 5
+  )
+)
+```
+]
+.col-right.pad-top[
+<br>
+- boosted trees via `gbm` package
+]
+---
+count: false
+## Boosting in R
+
+.col-left.pad-top[
+```{R, eval = F}
+# Set the seed
+set.seed(12345)
+# Train the random forest
+heart_boost = train(
+  heart_disease ~ .,
+  data = heart_df,
+  method = "gbm",
+  trControl = trainControl(
+    method = "cv", #<<
+    number = 5 #<<
+  ),
+  tuneGrid = expand.grid(
+    "n.trees" = seq(25, 200, by = 25),
+    "interaction.depth" = 1:3,
+    "shrinkage" = c(0.1, 0.01, 0.001),
+    "n.minobsinnode" = 5
+  )
+)
+```
+]
+.col-right.pad-top[
+<br>
+- boosted trees via `gbm` package
+- cross validation now (no OOB)
+]
+---
+count: false
+## Boosting in R
+
+.col-left.pad-top[
+```{R, eval = F}
+# Set the seed
+set.seed(12345)
+# Train the random forest
+heart_boost = train(
+  heart_disease ~ .,
+  data = heart_df,
+  method = "gbm",
+  trControl = trainControl(
+    method = "cv",
+    number = 5
+  ),
+  tuneGrid = expand.grid(
+    "n.trees" = seq(25, 200, by = 25), #<<
+    "interaction.depth" = 1:3,
+    "shrinkage" = c(0.1, 0.01, 0.001),
+    "n.minobsinnode" = 5
+  )
+)
+```
+]
+.col-right.pad-top[
+<br>
+- boosted trees via `gbm` package
+- cross validation now (no OOB)
+- CV-search of parameter grid
+  - number of trees
+]
+---
+count: false
+## Boosting in R
+
+.col-left.pad-top[
+```{R, eval = F}
+# Set the seed
+set.seed(12345)
+# Train the random forest
+heart_boost = train(
+  heart_disease ~ .,
+  data = heart_df,
+  method = "gbm",
+  trControl = trainControl(
+    method = "cv",
+    number = 5
+  ),
+  tuneGrid = expand.grid(
+    "n.trees" = seq(25, 200, by = 25),
+    "interaction.depth" = 1:3, #<<
+    "shrinkage" = c(0.1, 0.01, 0.001),
+    "n.minobsinnode" = 5
+  )
+)
+```
+]
+.col-right.pad-top[
+<br>
+- boosted trees via `gbm` package
+- cross validation now (no OOB)
+- CV-search of parameter grid
+  - number of trees
+  - tree depth (complexity)
+]
+---
+count: false
+## Boosting in R
+
+.col-left.pad-top[
+```{R, eval = F}
+# Set the seed
+set.seed(12345)
+# Train the random forest
+heart_boost = train(
+  heart_disease ~ .,
+  data = heart_df,
+  method = "gbm",
+  trControl = trainControl(
+    method = "cv",
+    number = 5
+  ),
+  tuneGrid = expand.grid(
+    "n.trees" = seq(25, 200, by = 25),
+    "interaction.depth" = 1:3,
+    "shrinkage" = c(0.1, 0.01, 0.001), #<<
+    "n.minobsinnode" = 5
+  )
+)
+```
+]
+.col-right.pad-top[
+<br>
+- boosted trees via `gbm` package
+- cross validation now (no OOB)
+- CV-search of parameter grid
+  - number of trees
+  - tree depth (complexity)
+  - shrinkage (learing rate)
+]
+---
+count: false
+## Boosting in R
+
+.col-left.pad-top[
+```{R, eval = F}
+# Set the seed
+set.seed(12345)
+# Train the random forest
+heart_boost = train(
+  heart_disease ~ .,
+  data = heart_df,
+  method = "gbm",
+  trControl = trainControl(
+    method = "cv",
+    number = 5
+  ),
+  tuneGrid = expand.grid(
+    "n.trees" = seq(25, 200, by = 25),
+    "interaction.depth" = 1:3,
+    "shrinkage" = c(0.1, 0.01, 0.001),
+    "n.minobsinnode" = 5 #<<
+  )
+)
+```
+]
+.col-right.pad-top[
+<br>
+- boosted trees via `gbm` package
+- cross validation now (no OOB)
+- CV-search of parameter grid
+  - number of trees
+  - tree depth (complexity)
+  - shrinkage (learing rate)
+  - minimum leaf size<br>(not searching here)
+]
+---
+layout: false
+class: clear
+
+.b[Comparing boosting parameters]—notice the rates of learning
+
+```{R, plot-boost-param, echo = F}
+ggplot(
+  data = heart_boost$results %>% mutate(grp = paste(shrinkage, interaction.depth, sep = ", ")),
+  aes(
+    x = n.trees,
+    y = Accuracy,
+    color = as.character(interaction.depth),
+    linetype = as.character(shrinkage)
+  )
+) +
+geom_vline(xintercept = 204, size = 1.3, alpha = 0.3, color = red_pink) +
+geom_line(size = 0.4) +
+scale_y_continuous("Accuracy", labels = percent) +
+scale_x_continuous("Number of trees") +
+scale_color_viridis_d("Tree depth", option = "magma", end = 0.85) +
+scale_linetype_manual("Shrinkage", values = c("longdash", "dotted", "solid")) +
+theme_minimal(base_size = 18, base_family = "Fira Sans Book")
+```
+---
+class: clear
+
+.b[Tree ensembles and the number of trees]
+
+```{R, plot-bag-rf-boost, echo = F}
+ggplot(
+  data = bind_rows(
+    bag_oob %>% mutate(type = "Bagged, OOB"),
+    bag_cv %>% mutate(type = "Bagged, CV"),
+    rf_oob %>% mutate(type = "RF, OOB"),
+    rf_cv %>% mutate(type = "RF, CV"),
+    heart_boost$results %>% filter(
+      shrinkage == 0.1 &
+      interaction.depth == 1 &
+      between(n.trees, 2, 300)
+    ) %>% transmute(accuracy = Accuracy, n_trees = n.trees, type = "Boosted, CV")
+  ),
+  aes(x = n_trees, y = accuracy, color = type, size = type)
+) +
+geom_line() +
+scale_y_continuous("Accuracy", labels = scales::percent) +
+scale_x_continuous("Number of trees") +
+scale_color_manual(
+  "[Method, Estimate]",
+  values = c(red_pink, purple, turquoise, orange, slate)
+) +
+scale_size_manual(
+  "[Method, Estimate]",
+  values = c(0.25, 0.25, 0.7, 0.25, 0.25)
+) +
+theme_minimal(base_size = 18, base_family = "Fira Sans Book") +
+theme(legend.position = "bottom") +
+coord_cartesian(ylim = c(0.60, 0.90))
+```
+
+
+
+---
+name: sources
+layout: false
+# Sources
+
+These notes draw upon
+
+- [An Introduction to Statistical Learning](http://faculty.marshall.usc.edu/gareth-james/ISL/) (*ISL*)<br>James, Witten, Hastie, and Tibshirani
+---
+# Table of contents
+
+.col-left[
+.smallest[
+#### Admin
+- [Today and upcoming](#admin)
+
+#### Decision trees
+
+1. [Fundamentals](#tree-review-fundamentals)
+1. [Strengths and weaknesses](#tree-review-tradeoff)
+
+#### Other
+- [Sources/references](#sources)
+
+]
+]
+.col-right[
+.smallest[
+
+#### Ensemble methods
+
+1. [Introduction](#intro)
+1. [Bagging](#bag-intro)
+  - [Introduction](#bag-intro)
+  - [Algorithm](#bag-algorithm)
+  - [Out-of-bag](#bag-oob)
+  - [In R](#bag-r)
+  - [Variable importance](#bag-var)
+1. [Random forests](#rf-intro)
+  - [Introduction](#rf-intro)
+  - [In R](#rf-r)
+1. [Boosting](#boost-intro)
+  - [Introduction](#boost-intro)
+  - [Parameters](#boost-param)
+  - [Algorithm](#boost-alg)
+  - [In R](#boost-r)
+
+]
+]

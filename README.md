@@ -106,6 +106,15 @@ Welcome to Economics 524 (424): Prediction and machine-learning in econometrics,
 
 **Formats** [.html](https://raw.githack.com/edrubin/EC524W20/master/lecture/007/007-slides.html) | [.pdf](https://raw.githack.com/edrubin/EC524W20/master/lecture/007/007-slides.pdf) | [.Rmd](https://raw.githack.com/edrubin/EC524W20/master/lecture/007/007-slides.Rmd)
 
+[**008 - Ensemble methods**](https://raw.githack.com/edrubin/EC524W20/master/lecture/008/008-slides.html)
+
+1. Introduction
+1. Bagging
+1. Random forests
+1. Boosting
+
+**Formats** [.html](https://raw.githack.com/edrubin/EC524W20/master/lecture/008/008-slides.html) | [.pdf](https://raw.githack.com/edrubin/EC524W20/master/lecture/008/008-slides.pdf) | [.Rmd](https://raw.githack.com/edrubin/EC524W20/master/lecture/008/008-slides.Rmd)
+
 ## Projects
 
 **Intro** [Predicting sales price in housing data (Kaggle)](https://github.com/edrubin/EC524W20/tree/master/projects/kaggle-house-prices)
@@ -159,7 +168,7 @@ You will need to sign into you Kaggle account and then hit "Copy and Edit" to ad
 
 **004**
 
-**005**
+[**005** - Data cleaning and `dplyr`](https://raw.githack.com/CMLennon/EC524W20/master/lab/003-DPLYR-part-2-electric-boogaloo/001-slides.html#1)
 
 **Additional** [Data cleaning in R](https://www.kaggle.com/edwardarubin/ec524-clean-data/) (with `caret`)
 

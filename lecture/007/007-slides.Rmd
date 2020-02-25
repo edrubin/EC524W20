@@ -3,7 +3,7 @@ title: "Lecture .mono[007]"
 subtitle: "Trees 🌲🌴🌳"
 author: "Edward Rubin"
 #date: "`r format(Sys.time(), '%d %B %Y')`"
-date: "13 February 2020"
+date: "20 February 2020"
 output:
   xaringan::moon_reader:
     css: ['default', 'metropolis', 'metropolis-fonts', 'my-css.css']
@@ -74,8 +74,8 @@ name: admin-soon
 ## Upcoming
 
 .b[Readings]
-- .note[Today] .it[ISL] Ch. 8
-- .note[Next] .it[ISL] Ch. 9
+- .note[Today] .it[ISL] Ch. 8.1
+- .note[Next] .it[ISL] Ch. 8.2
 
 .b[Problem sets]
 - .it[Classification] Due today
@@ -729,8 +729,8 @@ This split yields an RSS of .pink[(-4).super[2]] + .pink[4.super[2]] + .purple[0
 Across our four possible splits (two variables each with two splits)
 - x.sub[1] with a cutoff of 2: .b[RSS] = 2
 - x.sub[1] with a cutoff of 4: .b[RSS] = 32
-- x.sub[2] with a cutoff of 2: .b[RSS] = 18
-- x.sub[2] with a cutoff of 2: .b[RSS] = 32
+- x.sub[2] with a cutoff of 3: .b[RSS] = 18
+- x.sub[2] with a cutoff of 5: .b[RSS] = 32
 
 our split of x.sub[1] at 2 generates the lowest RSS.
 ---

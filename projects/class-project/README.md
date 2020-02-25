@@ -88,3 +88,7 @@ Submit a short evaluation of whether you and your group-member equally distribut
 | 9  | Zeng Youshi |   | Cold calls and car insurance |
 | 10.1 | Juliette Soia | Natalie Weaver | SF bike share |
 | 10.2 | Juliette Soia | Natalie Weaver | Building efficiency |
+| 11 | Tong Ling | AJ Zhao | Predicting car prices |
+| 12 | Zuzhang Jin | Luigi Oka | Bank loan status  |
+| 13 | Feiyi Shao |   | 🍄 |
+| 14 | David Nickles |  | Salmon populations |
