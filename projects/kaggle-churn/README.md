@@ -23,7 +23,7 @@ More specifically: We are going to predict "customer churn", which is industry-s
    - Make sure you've processed the data in a way that makes sense for your method.
    - Use cross validation to train your models' key parameters.
 6. Use your trained models to create a prediction for `Churn` in the testing data. Your prediction should be `"Yes"` (the customer *churned*) or `"No"` (the customer is still with the company). *Note:* You may need to transform this outcome to `1` and `0` for certain methods.
-7. [Submit each model's predictions to the competition on Kaggle](https://www.kaggle.com/c/ec524-in-class-classification-competition/submit).
+7. [Submit each model's predictions in this Google Drive folder](https://drive.google.com/open?id=1C7mHsyQAXK6OqElCK3orTZCbsQKn7yA1).
    - *Note:* Your submission should be a CSV with two columns: (1) `CustomerID` column and (2) `Churn` (your prediction).
    - *Hint:* You can see an example submission file (1) on Kaggle and (2) in the files you downloaded to get the training and testing data.
 
