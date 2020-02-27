@@ -134,8 +134,13 @@ You will need to sign into you Kaggle account and then hit "Copy and Edit" to ad
 *Due* 13 February 2020 before midnight.
 
 **004** [Predicting heart disease (Kaggle competition)](https://github.com/edrubin/EC524W20/tree/master/projects/kaggle-heart-disease) | [Competition](https://www.kaggle.com/c/ec524-heart-disease/)
+*Due* 20 February 2020 before midnight.
+
+**005** [Classifying customer churn (Kaggle competition)](https://github.com/edrubin/EC524W20/tree/master/projects/kaggle-churn) | [Competition](https://www.kaggle.com/t/6b275809d36248e49d11bea483394c42)
+*Due* In-class 27 February 2020.
 
 [**Class project**](https://github.com/edrubin/EC524W20/tree/master/projects/class-project)
+*Due* 12 March 2020 before class.
 
 ## Lab notes
 

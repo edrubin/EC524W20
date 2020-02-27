@@ -18,10 +18,14 @@
 
 ## Materials due
 
+By 10am on March 12th, submit on Canvas:
+
 1. Kaggle notebook with (commented) analysis code and figures
 1. 1-page "executive summary" (see below for format)
 1. 4-slide summary following paragraphs 2–5 of the executive summary (below)
 1. Evaluation of your group members
+
+**NOTE:** No late submissions accepted.
 
 ## Notebook
 
@@ -81,9 +85,7 @@ Submit a short evaluation of whether you and your group-member equally distribut
 | 4  | Nina Kerkebane | Rebecca Amadeo | Predicting retention rates in US colleges |
 | 5  | Brad Bailey | Jake Schefrin | Annual expansion of pine beetle in Western US |
 | 6  | Jeffrey Stenquist | Michael Wagnon | Predicting college football game outcomes |
-| 7.1 | Mary McDonough | Evan Jonson | Airbnb price prediction |
-| 7.2 | Mary McDonough | Evan Jonson | Movie ratings and box office |
-| 7.3 | Mary McDonough | Evan Jonson | Twitter sentiment and primary results |
+| 7  | Mary McDonough | Evan Jonson | Twitter sentiment and primary results |
 | 8  | Elliott Chase | Eli Willman | Uber and Lyft pricing |
 | 9  | Zeng Youshi |   | Cold calls and car insurance |
 | 10.1 | Juliette Soia | Natalie Weaver | SF bike share |
@@ -92,3 +94,4 @@ Submit a short evaluation of whether you and your group-member equally distribut
 | 12 | Zuzhang Jin | Luigi Oka | Bank loan status  |
 | 13 | Feiyi Shao |   | 🍄 |
 | 14 | David Nickles |  | Salmon populations |
+| 15 | Salvatore Pasquino-Greco |   |   |
