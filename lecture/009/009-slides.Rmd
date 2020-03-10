@@ -19,11 +19,11 @@ exclude: true
 library(pacman)
 p_load(
   tidyverse, plotly, furrr, future,
-  ggplot2, scales, extrafont,
+  ggplot2, scales, extrafont, rootSolve,
   kableExtra, DT, huxtable,
   data.table, dplyr, janitor,
   lubridate, knitr,
-  e1071, caret,
+  e1071, kernlab, caret,
   here, magrittr, parallel
 )
 # Define colors
@@ -821,7 +821,7 @@ nosep_cv = tune.svm(
   cost = c(0.1, 1:3, 10, 100),
   tunecontrol = tune.control(cross = 5)
 )
-#
+# Fit the model
 nosep_svm = svm(
   above_fac ~ x1 + x2,
   data = nosep_sub,
@@ -833,23 +833,6 @@ nosep_svm = svm(
 bn0 = coef(nosep_svm)[1]
 bn1 = coef(nosep_svm)[2]
 bn2 = coef(nosep_svm)[3]
-```
-
-```{R}
-
-
-tmp = cbind(x, y) %>% as.data.frame()
-names(tmp) = c("x1", "x2", "y")
-
-ggplot(
-  data = tmp,
-  aes(x = x1, y = x2, color = as.factor(y))
-) +
-geom_point() +
-geom_abline(intercept = beta0/beta[2], slope = -beta[1]/beta[2]) +
-geom_abline(intercept = (beta0 - 1)/beta[2], slope = -beta[1]/beta[2], lty = 2) +
-geom_abline(intercept = (beta0 + 1)/beta[2], slope = -beta[1]/beta[2], lty = 2)
-
 ```
 
 ---
@@ -1444,7 +1427,711 @@ theme(legend.position = "none") +
 coord_equal(xlim = c(-100,100), ylim = c(-100, 100))
 ```
 
+---
+class: middle
 
+The .hi[support-vector classifier] extends the .hi[maximal-margin classifier]:
+
+1. Allowing for .b[misclassification]
+  - Observations on the *wrong side of the hyperplane*.
+  - Situations where there is no separating hyperplane.
+
+1. Permitting .b[violations of the margin].
+
+1. Typically using .b[more observations] to determine decision boundary.
+
+---
+class: middle
+
+However, we still are using a (single) linear boundary between our classes.
+
+---
+exclude: true
+
+
+
+```{R, data-nonlin, include = F, cache = T}
+# Sample some data
+set.seed(12345)
+nonlin_dt = nosep_dt[between(x1, x2 - 60, x2 + 60), .(x1, x2)] %>%
+  sample_n(99) %T>% setDT()
+# Create ranking
+nonlin_dt[, tmp := x1 + x2]
+setorder(nonlin_dt, tmp)
+nonlin_dt[, above := rep(c(F, T, F), each = 33)]
+nonlin_dt[, above_fac := above %>% factor()]
+# Linear SVM for nonlinear data
+nonlin_lin_cv = tune.svm(
+  above_fac ~ x1 + x2,
+  data = nonlin_dt,
+  kernel = "linear",
+  degree = 1,
+  cost = c(0.001, 0.01, 0.1, 1:3, 10, 100),
+  tunecontrol = tune.control(cross = 5),
+  scale = F
+)
+nonlin_lin_svm = svm(
+  above_fac ~ x1 + x2,
+  data = nosep_sub,
+  kernel = "linear",
+  degree = 1,
+  cost = nonlin_lin_cv$best.parameters$cost,
+  scale = F
+)
+bnl0 = coef(nonlin_lin_svm)[1]
+bnl1 = coef(nonlin_lin_svm)[2]
+bnl2 = coef(nonlin_lin_svm)[3]
+# Cross validate
+nonlin_poly_cv = tune.svm(
+  above_fac ~ x1 + x2 + I(x1^2),
+  data = nonlin_dt,
+  kernel = "linear",
+  degree = 1,
+  cost = c(0.001, 0.01, 0.1),
+  tunecontrol = tune.control(cross = 5),
+  scale = F
+)
+nonlin_poly_svm = svm(
+  above_fac ~ x1 + x2 + I(x1^2),
+  data = nosep_sub,
+  kernel = "linear",
+  degree = 1,
+  cost = nonlin_poly_cv$best.parameters$cost,
+  scale = F
+)
+p0 = coef(nonlin_poly_svm)[1]
+p1 = coef(nonlin_poly_svm)[2]
+p2 = coef(nonlin_poly_svm)[3]
+p3 = coef(nonlin_poly_svm)[4]
+```
+
+---
+
+.ex[Ex:] Some data
+
+```{R, plot-nonlin-data, echo = F}
+# Plot
+ggplot(
+  data = nonlin_dt,
+  aes(x1, x2, color = above)
+) +
+geom_point(size = 3.5, alpha = 0.8) +
+scale_x_continuous(expression(X[1])) +
+scale_y_continuous(expression(X[2])) +
+scale_color_manual(values = c(purple, orange)) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(legend.position = "none") +
+coord_equal(xlim = c(-100,100), ylim = c(-100, 100))
+```
+---
+
+.ex[Ex:] Some data don't really work with .pink[*linear* decision boundaries].
+
+```{R, plot-nonlin-lin-svm, echo = F}
+# Plot
+ggplot(
+  data = nonlin_dt,
+  aes(x1, x2, color = above)
+) +
+geom_ribbon(
+  data = tibble(
+    x = c(-100, 100),
+    ymin = -(bnl0 - 1)/bnl2 -bnl1/bnl2 * x,
+    ymax = -(bnl0 + 1)/bnl2 -bnl1/bnl2 * x
+  ),
+  aes(x = x, y = x, ymin = ymin, ymax = ymax, color = NA),
+  fill = "black", alpha = 0.1
+) +
+geom_abline(intercept = bnl0/(-bnl2), slope = bnl1/(-bnl2), color = red_pink, size = 1) +
+geom_point(size = 3.5, alpha = 0.8) +
+scale_x_continuous(expression(X[1])) +
+scale_y_continuous(expression(X[2])) +
+scale_color_manual(values = c(purple, orange)) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(legend.position = "none") +
+coord_equal(xlim = c(-100,100), ylim = c(-100, 100))
+```
+---
+
+.ex[Ex:] Some data may have .pink[*non-linear* decision boundaries].
+
+```{R, plot-nonlin-quad-svm, echo = F}
+p_fun = function(x) -1/p2 * (p0 + p1 * x + p3 * x^2)
+p_fun_hi = function(x) -1/p2 * (p0 - 1 + p1 * x + p3 * x^2)
+p_fun_lo = function(x) -1/p2 * (p0 + 1 + p1 * x + p3 * x^2)
+# Plot
+ggplot(
+  data = data.frame(x = c(-100, 100)),
+  aes(x)
+) +
+stat_function(
+  aes(x),
+  fun = p_fun,
+  n = 100,
+  geom = "line",
+  color = red_pink,
+  size = 1
+) +
+geom_ribbon(
+  data = tibble(
+    x = seq(-100, 100, by = 1),
+    ymin = p_fun_lo(x),
+    ymax = p_fun_hi(x)
+  ),
+  aes(x = x, ymin = ymin, ymax = ymax),
+  fill = "black", alpha = 0.1
+) +
+geom_point(
+  data = nonlin_dt,
+  aes(x1, x2, color = above),
+  size = 3.5, alpha = 0.8
+) +
+scale_x_continuous(expression(X[1])) +
+scale_y_continuous(expression(X[2])) +
+scale_color_manual(values = c(purple, orange)) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(legend.position = "none") +
+coord_equal(xlim = c(-100,100), ylim = c(-100, 100))
+```
+---
+
+.ex[Ex:] We could probably do even better with more flexibility.
+
+```{R, plot-nonlin-quad-svm2, echo = F}
+p_fun = function(x) -1/p2 * (p0 + p1 * x + p3 * x^2)
+p_fun_hi = function(x) -1/p2 * (p0 - 1 + p1 * x + p3 * x^2)
+p_fun_lo = function(x) -1/p2 * (p0 + 1 + p1 * x + p3 * x^2)
+# Plot
+ggplot(
+  data = data.frame(x = c(-100, 100)),
+  aes(x)
+) +
+stat_function(
+  aes(x),
+  fun = p_fun,
+  n = 100,
+  geom = "line",
+  color = red_pink,
+  size = 1
+) +
+geom_ribbon(
+  data = tibble(
+    x = seq(-100, 100, by = 1),
+    ymin = p_fun_lo(x),
+    ymax = p_fun_hi(x)
+  ),
+  aes(x = x, ymin = ymin, ymax = ymax),
+  fill = "black", alpha = 0.1
+) +
+geom_point(
+  data = nonlin_dt,
+  aes(x1, x2, color = above),
+  size = 3.5, alpha = 0.8
+) +
+scale_x_continuous(expression(X[1])) +
+scale_y_continuous(expression(X[2])) +
+scale_color_manual(values = c(purple, orange)) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(legend.position = "none") +
+coord_equal(xlim = c(-100,100), ylim = c(-100, 100))
+```
+---
+layout: true
+# Support vector machines
+
+---
+name: the-svm
+## Flexibility
+
+In the regression setting, we increase our model's flexiblity by adding polynomials in our predictors, _e.g._, $\hat{y}_i = \hat{\beta}_0  + \hat{\beta}_1 x_i + \hat{\beta}_2 x_i^2 + \hat{\beta}_3 x_i^3$.
+
+--
+
+We can apply a very similar idea to our support vector classifier.
+
+.note[Previously:] Train the classifier on $X_1, X_2, \ldots, X_p$.
+
+.note[Idea:] Train the classifier on $X_1, X_1^2, X_2, X_2^2 \ldots, X_p, X_p^2$ (and so on).
+
+--
+
+The new classifier has a .b[linear decision boundary] in the expanded space.
+
+--
+
+The boundary is going to be .b[nonlinear] within the original space.
+
+---
+name: the-svm
+## Introducing
+
+The .attn[support vector machine] runs with this idea of expanded flexiblity.
+
+(Why stop at quadratic functions—or polynomials?)
+
+Support vector machines .b[train a support vector classifier] on .b[expanded feature].super[.pink[†]] .b[spaces] that result from applying .attn[kernels] to the original features.
+
+.footnote[
+.pink[†] feature = predictor
+]
+
+---
+name: inner
+## Dot products
+
+It turns out that solving the support vector classifier only involves the
+<br>.attn[dot product] of our observations.
+
+The .attn[dot product] of two vectors is defined as
+$$
+\begin{align}
+  \langle a,b \rangle = a_1 b_1 + a_2 b_2 + \cdots + a_p b_p = \sum_{i=1}^p a_i b_i
+\end{align}
+$$
+
+--
+
+.ex[Ex:] The dot product of $a$ = (1,2) and $b$ = (3,4) is $\langle a,b \rangle$ = 1×3 + 2×4 = 11.
+
+--
+
+Dot products are often pitched as a measure of two vectors' similarity.
+
+
+---
+## Dot products and the SVC
+
+We can write the linear support vector classifier as
+$$
+\begin{align}
+  f(x) = \beta_0 + \sum_{i=1}^n \alpha_i \langle x,x_i \rangle
+\end{align}
+$$
+and we fit the $(n)$ $\alpha_i$ and $\beta_0$ with the training observations' dot products..super[.pink[†]]
+
+.footnote[
+.pink[†] The actually fitting is beyond what we're doing today.
+]
+
+--
+
+As you might guess, $\alpha_i\neq 0$ only for support-vector obsevations.
+
+---
+name: svm-gen
+## Generalizing
+
+.note[Recall:] Linear support vector classifier $f(x) = \beta_0 + \sum_{i=1}^n \alpha_i \langle x,x_i \rangle$
+
+--
+
+.attn[Support vector machines] generalize this linear classifier by simply replacing $\langle x,x_i \rangle$ with (non-linear) .attn[kernel functions].super[.pink[†]] $K(x_i,x_{i'})$.
+
+.footnote[
+.pink[†] Or just .it[kernels].
+]
+
+--
+
+These magical .attn[kernel functions] are various ways to measure similarity between observations.
+
+--
+
+- .note[Linear kernel:] $K(x_i,x_{i'}) = \sum_{i=1}^p x_{i,j} x_{i',j}$  .grey-light[(back to SVC)]
+
+--
+
+- .note[Polynomial kernel:] $K(x_i,x_{i'}) = \left( 1 + \sum_{i=1}^p x_{i,j} x_{i',j} \right)^2$
+
+--
+
+- .note[Radial kernel:] $K(x_i,x_{i'}) = \mathop{\text{exp}}\left( -\gamma \sum_{j=1}^p \left( x_{i,j} - x_{i',j} \right)^2 \right)$
+
+---
+layout: true
+class: clear
+
+---
+exclude: true
+
+```{R, train-lin-svm, include = F, cache = T}
+set.seed(12345)
+# Linear
+svm_lin = train(
+  above_fac ~ x1 + x2 + x1:x2,
+  data = nonlin_dt,
+  method = "svmLinear",
+  scaled = T,
+  trControl = trainControl(method = "cv", number = 5),
+  tuneGrid = data.frame(
+    C = 10^seq(-1, 2, by = 0.1)
+  )
+)
+```
+
+```{R, train-poly-svm, include = F, cache = T}
+set.seed(12345)
+# Polynomial
+svm_poly = train(
+  above_fac ~ x1 + x2,
+  data = nonlin_dt,
+  method = "svmPoly",
+  scaled = T,
+  trControl = trainControl(method = "cv", number = 5),
+  tuneGrid = expand.grid(
+    degree = 2:4,
+    scale = T,
+    C = 10^seq(-2, 1, by = 0.5)
+  )
+)
+```
+
+```{R, train-radial-svm, include = F, cache = T}
+set.seed(12345)
+# Radial
+svm_radial = train(
+  above_fac ~ x1 + x2,
+  data = nonlin_dt,
+  method = "svmRadial",
+  scaled = T,
+  trControl = trainControl(method = "cv", number = 5),
+  tuneGrid = expand.grid(
+    sigma = c(0.1, 1, 5, 10, 20),
+    C = 10^seq(-2, 1, by = 1)
+  )
+)
+```
+
+```{R, train-radial-svm-sigma, include = F, cache = T}
+set.seed(12345)
+# Radial
+svm_radial_sigma = train(
+  above_fac ~ x1 + x2,
+  data = nonlin_dt,
+  method = "svmRadial",
+  scaled = T,
+  trControl = trainControl(method = "cv", number = 5),
+  tuneGrid = expand.grid(
+    sigma = c(50, 100, 1000),
+    C = 10^seq(1, 3, by = 0.5)
+  )
+)
+```
+
+---
+
+Our example data.
+
+```{R, plot-data-nonlin, echo = F}
+ggplot(
+  data = nonlin_dt,
+  aes(x1, x2, color = above)
+) +
+geom_point(size = 3.5, alpha = 0.8) +
+scale_x_continuous(expression(X[1])) +
+scale_y_continuous(expression(X[2])) +
+scale_color_manual(values = c(purple, orange)) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(legend.position = "none") +
+coord_equal(xlim = c(-100,100), ylim = c(-100, 100))
+```
+
+---
+
+With a linear kernel *plus* and interaction between $X_1$ and $X_2$..super[.pink[†]]
+
+.footnote[
+.pink[†] Exciting!!
+]
+
+
+```{R, plot-svm-lin-kern, echo = F}
+# Dataset for grid
+grid_dt = expand.grid(x1 = seq(-100, 100, by = 0.5), x2 = seq(-100, 100, by = 0.5)) %T>% setDT()
+# The plot
+ggplot(
+  data = nonlin_dt,
+  aes(x1, x2, color = above)
+) +
+geom_raster(
+  aes(fill = above),
+  data =  grid_dt[, .(
+    x1, x2,
+    above = predict(svm_lin, newdata = grid_dt)
+  )],
+  alpha = 0.3,
+  color = NA,
+  interpolate = T
+) +
+geom_point(size = 3.5, alpha = 0.8) +
+scale_x_continuous(expression(X[1])) +
+scale_y_continuous(expression(X[2])) +
+scale_color_manual(values = c(purple, orange)) +
+scale_fill_manual(values = c(purple, orange)) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(legend.position = "none") +
+coord_equal(xlim = c(-100,100), ylim = c(-100, 100))
+```
+---
+
+Polynomial kernel (of degree `r svm_poly$bestTune$degree`).
+
+```{R, plot-svm-poly-kern, echo = F}
+ggplot(
+  data = nonlin_dt,
+  aes(x1, x2, color = above)
+) +
+geom_raster(
+  aes(fill = above),
+  data =  grid_dt[, .(
+    x1, x2,
+    above = predict(svm_poly, newdata = grid_dt)
+  )],
+  alpha = 0.3,
+  color = NA,
+  interpolate = T
+) +
+geom_point(size = 3.5, alpha = 0.8) +
+scale_x_continuous(expression(X[1])) +
+scale_y_continuous(expression(X[2])) +
+scale_color_manual(values = c(purple, orange)) +
+scale_fill_manual(values = c(purple, orange)) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(legend.position = "none") +
+coord_equal(xlim = c(-100,100), ylim = c(-100, 100))
+```
+---
+
+And now for the radial kernel!
+
+```{R, plot-svm-radial-kern, echo = F}
+ggplot(
+  data = nonlin_dt,
+  aes(x1, x2, color = above)
+) +
+geom_raster(
+  aes(fill = above),
+  data =  grid_dt[, .(
+    x1, x2,
+    above = predict(svm_radial, newdata = grid_dt)
+  )],
+  alpha = 0.3,
+  color = NA,
+  interpolate = T
+) +
+geom_point(size = 3.5, alpha = 0.8) +
+scale_x_continuous(expression(X[1])) +
+scale_y_continuous(expression(X[2])) +
+scale_color_manual(values = c(purple, orange)) +
+scale_fill_manual(values = c(purple, orange)) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(legend.position = "none") +
+coord_equal(xlim = c(-100,100), ylim = c(-100, 100))
+```
+---
+
+Very small $\gamma$ forces radial kernel to be *even more* local.
+
+```{R, plot-svm-radial-kern-sigma, echo = F}
+ggplot(
+  data = nonlin_dt,
+  aes(x1, x2, color = above)
+) +
+geom_raster(
+  aes(fill = above),
+  data =  grid_dt[, .(
+    x1, x2,
+    above = predict(svm_radial_sigma, newdata = grid_dt)
+  )],
+  alpha = 0.3,
+  color = NA,
+  interpolate = T
+) +
+geom_point(size = 3.5, alpha = 0.8) +
+scale_x_continuous(expression(X[1])) +
+scale_y_continuous(expression(X[2])) +
+scale_color_manual(values = c(purple, orange)) +
+scale_fill_manual(values = c(purple, orange)) +
+theme_minimal(base_size = 20, base_family = "Fira Sans Book") +
+theme(legend.position = "none") +
+coord_equal(xlim = c(-100,100), ylim = c(-100, 100))
+```
+
+---
+layout: true
+# Support vector machines
+
+---
+## More generalizing
+
+So why make a big deal of kernels? Anyone can transform variables.
+
+--
+
+While anyone can transform variables, you cannot transform variables to cover all spaces that our kernels cover.
+
+--
+
+For example, the feature space of the radial kernel is infinite dimensional..super[.pink[†]]
+
+.footnote[
+.pink[†] And implicit
+]
+
+--
+
+```{R, bill-nye, echo = F}
+knitr::include_graphics("images/bill.gif")
+```
+
+---
+name: svm-r
+## In R
+
+As you probably guessed, `caret` offers *many* SVM options.
+
+Two common popular R packages: `kernlab` and `e1071`.
+
+`caret` offers linear, polynomial, and radial kernels for both packages.
+
+You can also find more kernels in the actual packages (or other packages).
+
+---
+layout: true
+class: clear
+
+---
+
+.ex[Example:] An SVM with a radial kernel—tuning, training, predicting.
+
+.col-left[
+```{R, ex-radial, eval = F}
+# Set a seed
+set.seed(12345)
+# Tune radial
+svm_radial = train(
+  above_fac ~ x1 + x2,
+  data = nonlin_dt,
+  method = "svmRadial", #<<
+  scaled = T,
+  trControl = trainControl(
+    method = "cv",
+    number = 5
+  ),
+  tuneGrid = expand.grid(
+    sigma = c(0.1, 1, 5, 10, 20),
+    C = 10^seq(-2, 1, by = 1)
+  )
+)
+# Predict
+predict(svm_radial, newdata = test_dt)
+```
+]
+.col-right.pad-top[
+- Method: `"svmRadial"`
+]
+---
+
+.ex[Example:] An SVM with a radial kernel—tuning, training, predicting.
+
+.col-left[
+```{R, ex-radial-2, eval = F}
+# Set a seed
+set.seed(12345)
+# Tune radial
+svm_radial = train(
+  above_fac ~ x1 + x2,
+  data = nonlin_dt,
+  method = "svmRadial",
+  scaled = T, #<<
+  trControl = trainControl(
+    method = "cv",
+    number = 5
+  ),
+  tuneGrid = expand.grid(
+    sigma = c(0.1, 1, 5, 10, 20),
+    C = 10^seq(-2, 1, by = 1)
+  )
+)
+# Predict
+predict(svm_radial, newdata = test_dt)
+```
+]
+.col-right.pad-top[
+- Method: `"svmRadial"`
+
+- Scale (and center) variables?
+]
+---
+
+.ex[Example:] An SVM with a radial kernel—tuning, training, predicting.
+
+.col-left[
+```{R, ex-radial-3, eval = F}
+# Set a seed
+set.seed(12345)
+# Tune radial
+svm_radial = train(
+  above_fac ~ x1 + x2,
+  data = nonlin_dt,
+  method = "svmRadial",
+  scaled = T,
+  trControl = trainControl(
+    method = "cv", #<<
+    number = 5 #<<
+  ),
+  tuneGrid = expand.grid(
+    sigma = c(0.1, 1, 5, 10, 20), #<<
+    C = 10^seq(-2, 1, by = 1) #<<
+  )
+)
+# Predict
+predict(svm_radial, newdata = test_dt)
+```
+]
+.col-right.pad-top[
+- Method: `"svmRadial"`
+
+- Scale (and center) variables?
+
+- Tuning parameters (CV)
+  - `sigma`: radial param.
+  - `C`: cost
+]
+
+---
+layout: false
+class: clear, middle
+
+.note[Note:] Costs have units. You often want to center/scale your variables.
+
+---
+layout: false
+name: multiclass
+# Support vector machines
+## Multi-class classification
+
+You will commonly see SVMs applied in settings with $K>2$ classes.
+
+--
+
+What can we do?
+--
+ We have options!
+
+--
+
+.attn[One-versus-one classification]
+
+- Compares each *pair* of classes, one pair at a time.
+- Final prediction comes from the most-common pairwise prediction.
+
+--
+
+.attn[One-versus-all classification]
+
+- Fits $K$ unique SVMs—one for each class: $k$ *vs.* not $k$.
+- Predicts the class for which $\mathop{f}_k(x)$ is largest.
 
 ---
 name: sources
@@ -1463,17 +2150,25 @@ These notes draw upon
 - [Today and upcoming](#admin)
 - [In-class competition](#competition)
 
-#### SVM
+#### Other
+- [Sources/references](#sources)
+]
+]
 
+.col-right[
+.smallest[
+#### SVM
 1. [Intro](#intro)
 1. [Hyperplanes](#hyperplanes)
 1. [Hyperplanes and classification](#sep-class)
 1. [Which hyperplane? (The maximal margin)](#which-hyperplane)
 1. [Soft margins](#soft-margins)
 1. [The support vector classifier](#svc)
-
-#### Other
-- [Sources/references](#sources)
-
+1. [Support vector machines](#the-svm)
+  - [Intro](#the-svm)
+  - [Dot products](#inner)
+  - [Generalization](#svm-gen)
+  - [In R](#svm-r)
+1. [Multi-class classification](#multiclass)
 ]
 ]

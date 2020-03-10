@@ -113,7 +113,14 @@ Welcome to Economics 524 (424): Prediction and machine-learning in econometrics,
 1. Random forests
 1. Boosting
 
+**Formats** [.html](https://raw.githack.com/edrubin/EC524W20/master/lecture/008/008-slides.html) | [.pdf](https://raw.githack.com/edrubin/EC524W20/master/lecture/008/008-slides.pdf) | [.Rmd](https://raw.githack.com/edrubin/EC524W20/master/lecture/008/008-slides.Rmd)
+
 [**009 - Support vector machines**](https://raw.githack.com/edrubin/EC524W20/master/lecture/009/009-slides.html)
+
+1. Hyperplanes and classification
+2. The maximal margin hyperplane/classifier
+3. The support vector classifier
+4. Support vector machines
 
 **Formats** [.html](https://raw.githack.com/edrubin/EC524W20/master/lecture/009/009-slides.html) | [.pdf](https://raw.githack.com/edrubin/EC524W20/master/lecture/009/009-slides.pdf) | [.Rmd](https://raw.githack.com/edrubin/EC524W20/master/lecture/009/009-slides.Rmd)
 
