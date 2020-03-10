@@ -2002,6 +2002,277 @@ class: clear
 
 ---
 
+.ex[Example:] An SVM with a linear kernel—tuning, training, predicting.
+
+.col-left[
+```{R, ex-linear-0, eval = F}
+# Set a seed
+set.seed(12345)
+# Tune linear SVM
+svm_lin = train(
+  above_fac ~ x1 + x2 + x1:x2,  #<<
+  data = nonlin_dt,
+  method = "svmLinear",
+  scaled = T,
+  trControl = trainControl(
+    method = "cv",
+    number = 5
+  ),
+  tuneGrid = data.frame(
+    C = 10^seq(-3, 2, by = 0.5)
+  )
+)
+# Predict
+predict(svm_linear, newdata = test_dt)
+```
+]
+.col-right.pad-top[
+- Interactions!
+]
+---
+
+.ex[Example:] An SVM with a linear kernel—tuning, training, predicting.
+
+.col-left[
+```{R, ex-linear, eval = F}
+# Set a seed
+set.seed(12345)
+# Tune linear SVM
+svm_lin = train(
+  above_fac ~ x1 + x2 + x1:x2,
+  data = nonlin_dt,
+  method = "svmLinear", #<<
+  scaled = T,
+  trControl = trainControl(
+    method = "cv",
+    number = 5
+  ),
+  tuneGrid = data.frame(
+    C = 10^seq(-3, 2, by = 0.5)
+  )
+)
+# Predict
+predict(svm_linear, newdata = test_dt)
+```
+]
+.col-right.pad-top[
+- Interactions!
+
+- Method: `"svmLinear"` (`kernlab`)
+]
+---
+
+.ex[Example:] An SVM with a linear kernel—tuning, training, predicting.
+
+.col-left[
+```{R, ex-linear-2, eval = F}
+# Set a seed
+set.seed(12345)
+# Tune linear SVM
+svm_lin = train(
+  above_fac ~ x1 + x2 + x1:x2,
+  data = nonlin_dt,
+  method = "svmLinear",
+  scaled = T,
+  trControl = trainControl(
+    method = "cv", #<<
+    number = 5 #<<
+  ),
+  tuneGrid = data.frame(
+    C = 10^seq(-3, 2, by = 0.5) #<<
+  )
+)
+# Predict
+predict(svm_linear, newdata = test_dt)
+```
+]
+.col-right.pad-top[
+- Interactions!
+
+- Method: `"svmLinear"` (`kernlab`)
+
+- One tuning param: cost
+]
+
+---
+
+.ex[Example:] An SVM with a polynomial kernel—tuning, training, predicting.
+
+.col-left[
+```{R, ex-poly-0, eval = F}
+# Set a seed
+set.seed(12345)
+# Tune polynomial SVM
+svm_poly = train(
+  above_fac ~ x1 + x2,
+  data = nonlin_dt,
+  method = "svmPoly", #<<
+  scaled = T,
+  trControl = trainControl(
+    method = "cv",
+    number = 5
+  ),
+  tuneGrid = expand.grid(
+    degree = 2:4,
+    scale = 1,
+    C = 10^seq(-2, 1, by = 0.5)
+  )
+)
+# Predict
+predict(svm_poly, newdata = test_dt)
+```
+]
+.col-right.pad-top[
+- Method: `"svmPoly"` (`kernlab`)
+]
+---
+
+.ex[Example:] An SVM with a polynomial kernel—tuning, training, predicting.
+
+.col-left[
+```{R, ex-poly-1, eval = F}
+# Set a seed
+set.seed(12345)
+# Tune polynomial SVM
+svm_poly = train(
+  above_fac ~ x1 + x2,
+  data = nonlin_dt,
+  method = "svmPoly",
+  scaled = T,  #<<
+  trControl = trainControl(
+    method = "cv",
+    number = 5
+  ),
+  tuneGrid = expand.grid(
+    degree = 2:4,
+    scale = 1,
+    C = 10^seq(-2, 1, by = 0.5)
+  )
+)
+# Predict
+predict(svm_poly, newdata = test_dt)
+```
+]
+.col-right.pad-top[
+- Method: `"svmPoly"` (`kernlab`)
+
+- Scale (and center) variables?
+
+]
+---
+
+.ex[Example:] An SVM with a polynomial kernel—tuning, training, predicting.
+
+.col-left[
+```{R, ex-poly-2, eval = F}
+# Set a seed
+set.seed(12345)
+# Tune polynomial SVM
+svm_poly = train(
+  above_fac ~ x1 + x2,
+  data = nonlin_dt,
+  method = "svmPoly",
+  scaled = T,
+  trControl = trainControl(
+    method = "cv", #<<
+    number = 5 #<<
+  ),
+  tuneGrid = expand.grid(
+    degree = 2:4, #<<
+    scale = 1,
+    C = 10^seq(-2, 1, by = 0.5)
+  )
+)
+# Predict
+predict(svm_poly, newdata = test_dt)
+```
+]
+.col-right.pad-top[
+- Method: `"svmPoly"` (`kernlab`)
+
+- Scale (and center) variables?
+
+- Tuning parameters:
+  - Polynomial `degree`
+]
+---
+
+.ex[Example:] An SVM with a polynomial kernel—tuning, training, predicting.
+
+.col-left[
+```{R, ex-poly-3, eval = F}
+# Set a seed
+set.seed(12345)
+# Tune polynomial SVM
+svm_poly = train(
+  above_fac ~ x1 + x2,
+  data = nonlin_dt,
+  method = "svmPoly",
+  scaled = T,
+  trControl = trainControl(
+    method = "cv", #<<
+    number = 5 #<<
+  ),
+  tuneGrid = expand.grid(
+    degree = 2:4,
+    scale = 1, #<<
+    C = 10^seq(-2, 1, by = 0.5)
+  )
+)
+# Predict
+predict(svm_poly, newdata = test_dt)
+```
+]
+.col-right.pad-top[
+- Method: `"svmPoly"` (`kernlab`)
+
+- Scale (and center) variables?
+
+- Tuning parameters:
+  - Polynomial `degree`
+  - `scale` dotproduct in $K(\cdot)$
+]
+---
+
+.ex[Example:] An SVM with a polynomial kernel—tuning, training, predicting.
+
+.col-left[
+```{R, ex-poly-4, eval = F}
+# Set a seed
+set.seed(12345)
+# Tune polynomial SVM
+svm_poly = train(
+  above_fac ~ x1 + x2,
+  data = nonlin_dt,
+  method = "svmPoly",
+  scaled = T,
+  trControl = trainControl(
+    method = "cv", #<<
+    number = 5 #<<
+  ),
+  tuneGrid = expand.grid(
+    degree = 2:4,
+    scale = 1,
+    C = 10^seq(-2, 1, by = 0.5)  #<<
+  )
+)
+# Predict
+predict(svm_poly, newdata = test_dt)
+```
+]
+.col-right.pad-top[
+- Method: `"svmPoly"` (`kernlab`)
+
+- Scale (and center) variables?
+
+- Tuning parameters:
+  - Polynomial `degree`
+  - `scale` dotproduct in $K(\cdot)$
+  - cost (`C`)
+]
+
+---
+
 .ex[Example:] An SVM with a radial kernel—tuning, training, predicting.
 
 .col-left[
@@ -2134,6 +2405,22 @@ What can we do?
 - Predicts the class for which $\mathop{f}_k(x)$ is largest.
 
 ---
+name: more
+layout: false
+# SVM
+## More material
+
+Visualizing decision boundaries
+- [From `scikit-learn`](https://scikit-learn.org/stable/auto_examples/classification/plot_classifier_comparison.html)
+- [From sub-subroutine](http://www.subsubroutine.com/sub-subroutine/2016/2/15/understanding-machine-learning-techniques-by-the-decision-boundaries-they-are-capable-of)
+
+[The `kernlab` paper](https://cran.r-project.org/web/packages/kernlab/vignettes/kernlab.pdf) (describes kernel parameters)
+
+[*A Practical Guide to Support Vector Classification*](https://www.csie.ntu.edu.tw/~cjlin/papers/guide/guide.pdf)
+
+.note[Coming up:] [A nice neural-net video](https://www.youtube.com/watch?v=aircAruvnKk)
+
+---
 name: sources
 layout: false
 # Sources
@@ -2151,6 +2438,7 @@ These notes draw upon
 - [In-class competition](#competition)
 
 #### Other
+- [More materials](#more)
 - [Sources/references](#sources)
 ]
 ]
