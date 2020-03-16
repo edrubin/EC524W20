@@ -1,7 +1,7 @@
 
 # EC 524, Winter 2020
 
-Welcome to Economics 524 (424): Prediction and machine-learning in econometrics, taught by [Ed Rubin](https://edrub.in).
+Welcome to Economics 524 (424): Prediction and machine-learning in econometrics, taught by [Ed Rubin](https://edrub.in) and [Connor Lennon](https://economics.uoregon.edu/profile/clennon/).
 
 ## Schedule
 
@@ -128,6 +128,8 @@ Welcome to Economics 524 (424): Prediction and machine-learning in econometrics,
 
 **Intro** [Predicting sales price in housing data (Kaggle)](https://github.com/edrubin/EC524W20/tree/master/projects/kaggle-house-prices)
 
+**Help:** [Kaggle notebooks](https://rpubs.com/Clennon/KagNotes)
+
 **001** [KNN and loss (Kaggle notebook)](https://www.kaggle.com/edwardarubin/ec524-knn-loss)
 <br>
 You will need to sign into you Kaggle account and then hit "Copy and Edit" to add the notebook to your account.
@@ -165,6 +167,7 @@ You will need to sign into you Kaggle account and then hit "Copy and Edit" to ad
 
 1. Finish [previous lab on `dplyr`](https://raw.githack.com/edrubin/EC524W20/master/lab/000-cleaning/000-slides.html#48)
 2. [Working in (Kaggle) notebooks](https://www.kaggle.com/voodoojanus/ec524-jan-17-20)
+3. [Kaggle contest notes](https://rpubs.com/Clennon/KagNotes)
 
 [**002 - Cross validation and simulation**](https://raw.githack.com/edrubin/EC524W20/master/lab/002-resampling/002-slides.html)
 
