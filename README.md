@@ -181,11 +181,11 @@ You will need to sign into you Kaggle account and then hit "Copy and Edit" to ad
 
 **Additional** [R script for simulation](https://raw.githack.com/edrubin/EC524W20/master/lab/002-resampling/cv-sim.R)
 
-**003**
+[**003** - Data cleaning and `dplyr`](https://raw.githack.com/CMLennon/EC524W20/master/lab/003-DPLYR-part-2-electric-boogaloo/001-slides.html#1)
 
-**004**
+[**004** - Data cleaning and workflow with `tidymodels`](https://raw.githack.com/CMLennon/EC524W20/master/lab/004-Tidymodels/004-slides.html#1)
 
-[**005** - Data cleaning and `dplyr`](https://raw.githack.com/CMLennon/EC524W20/master/lab/003-DPLYR-part-2-electric-boogaloo/001-slides.html#1)
+[**005** - Perceptrons and neural nets](https://raw.githack.com/CMLennon/EC524W20/master/lab/005-Perceptrons_and_NeuralNets/005-slides.html#1)
 
 **Additional** [Data cleaning in R](https://www.kaggle.com/edwardarubin/ec524-clean-data/) (with `caret`)
 
